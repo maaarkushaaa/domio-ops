@@ -3,8 +3,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Building2, Package, TrendingUp, AlertTriangle } from "lucide-react";
+import { useProcurement } from "@/hooks/use-procurement";
+import { SupplierDialog } from "@/components/procurement/SupplierDialog";
 
 export default function Procurement() {
+  const { suppliers, orders, warehouseItems } = useProcurement();
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'draft': return 'Черновик';
+      case 'sent': return 'Отправлен';
+      case 'confirmed': return 'Подтвержден';
+      case 'in_transit': return 'В пути';
+      case 'delivered': return 'Доставлен';
+      case 'cancelled': return 'Отменен';
+      default: return status;
+    }
+  };
+
+  const criticalItems = warehouseItems.filter(
+    item => item.min_quantity && item.quantity < item.min_quantity
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -13,10 +33,12 @@ export default function Procurement() {
           <p className="text-muted-foreground">Поставщики, заказы и склад</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Building2 className="h-4 w-4 mr-2" />
-            Поставщики
-          </Button>
+          <SupplierDialog trigger={
+            <Button variant="outline">
+              <Building2 className="h-4 w-4 mr-2" />
+              Поставщики
+            </Button>
+          } />
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             Новый заказ
@@ -32,7 +54,7 @@ export default function Procurement() {
             <Package className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length}</div>
             <p className="text-xs text-muted-foreground">в процессе</p>
           </CardContent>
         </Card>
@@ -43,7 +65,7 @@ export default function Procurement() {
             <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">245 600 ₽</div>
+            <div className="text-2xl font-bold">{orders.reduce((sum, o) => sum + o.total_amount, 0).toLocaleString('ru-RU')} ₽</div>
             <p className="text-xs text-muted-foreground">за месяц</p>
           </CardContent>
         </Card>
@@ -54,7 +76,7 @@ export default function Procurement() {
             <Package className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
+            <div className="text-2xl font-bold">{orders.filter(o => o.status === 'in_transit').length}</div>
             <p className="text-xs text-muted-foreground">заказов</p>
           </CardContent>
         </Card>
@@ -65,7 +87,7 @@ export default function Procurement() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">8</div>
+            <div className="text-2xl font-bold text-destructive">{criticalItems.length}</div>
             <p className="text-xs text-muted-foreground">позиций</p>
           </CardContent>
         </Card>
@@ -85,42 +107,9 @@ export default function Procurement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  {
-                    number: "PO-2024-087",
-                    supplier: "Мебель Плюс",
-                    items: "ЛДСП, кромка",
-                    amount: 45000,
-                    status: "delivered",
-                    date: "15 Окт",
-                  },
-                  {
-                    number: "PO-2024-088",
-                    supplier: "Фурнитура Про",
-                    items: "Петли, направляющие",
-                    amount: 28500,
-                    status: "in_transit",
-                    date: "12 Окт",
-                  },
-                  {
-                    number: "PO-2024-089",
-                    supplier: "Крепеж Мастер",
-                    items: "Конфирматы, саморезы",
-                    amount: 8900,
-                    status: "pending",
-                    date: "10 Окт",
-                  },
-                  {
-                    number: "PO-2024-090",
-                    supplier: "Мебель Плюс",
-                    items: "Плиты МДФ",
-                    amount: 52000,
-                    status: "in_transit",
-                    date: "8 Окт",
-                  },
-                ].map((order, i) => (
+                {orders.map((order) => (
                   <div
-                    key={i}
+                    key={order.id}
                     className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                   >
                     <div className="space-y-1 flex-1">
@@ -135,19 +124,16 @@ export default function Procurement() {
                               : "secondary"
                           }
                         >
-                          {order.status === "delivered"
-                            ? "Доставлен"
-                            : order.status === "in_transit"
-                            ? "В пути"
-                            : "Ожидание"}
+                          {getStatusLabel(order.status)}
                         </Badge>
                       </div>
-                      <p className="text-sm font-medium">{order.supplier}</p>
-                      <p className="text-sm text-muted-foreground">{order.items}</p>
-                      <p className="text-xs text-muted-foreground">Создан: {order.date}</p>
+                      <p className="text-sm font-medium">{order.supplier?.name || 'Поставщик не указан'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Создан: {new Date(order.order_date).toLocaleDateString('ru-RU')}
+                      </p>
                     </div>
                     <div className="text-right ml-4">
-                      <p className="text-lg font-bold">{order.amount.toLocaleString('ru-RU')} ₽</p>
+                      <p className="text-lg font-bold">{order.total_amount.toLocaleString('ru-RU')} ₽</p>
                       <Button variant="outline" size="sm" className="mt-2">
                         Детали
                       </Button>
@@ -166,59 +152,26 @@ export default function Procurement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  {
-                    name: "Мебель Плюс",
-                    category: "ЛДСП, плиты",
-                    rating: 4.8,
-                    orders: 24,
-                    totalAmount: 1250000,
-                    deliveryTime: "3-5 дней",
-                  },
-                  {
-                    name: "Фурнитура Про",
-                    category: "Петли, направляющие",
-                    rating: 4.5,
-                    orders: 18,
-                    totalAmount: 450000,
-                    deliveryTime: "2-3 дня",
-                  },
-                  {
-                    name: "Крепеж Мастер",
-                    category: "Метизы",
-                    rating: 4.7,
-                    orders: 32,
-                    totalAmount: 180000,
-                    deliveryTime: "1-2 дня",
-                  },
-                  {
-                    name: "Кромка Профи",
-                    category: "Кромочные материалы",
-                    rating: 4.6,
-                    orders: 15,
-                    totalAmount: 320000,
-                    deliveryTime: "3-4 дня",
-                  },
-                ].map((supplier, i) => (
+                {suppliers.map((supplier) => (
                   <div
-                    key={i}
+                    key={supplier.id}
                     className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                   >
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{supplier.name}</p>
-                        <Badge variant="outline">
-                          ⭐ {supplier.rating}
-                        </Badge>
+                        {supplier.rating && (
+                          <Badge variant="outline">
+                            ⭐ {supplier.rating}
+                          </Badge>
+                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground">{supplier.category}</p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                        <span>Заказов: {supplier.orders}</span>
-                        <span>•</span>
-                        <span>Сумма: {supplier.totalAmount.toLocaleString('ru-RU')} ₽</span>
-                        <span>•</span>
-                        <span>Доставка: {supplier.deliveryTime}</span>
-                      </div>
+                      <p className="text-sm text-muted-foreground">{supplier.category || 'Без категории'}</p>
+                      {supplier.delivery_time && (
+                        <p className="text-xs text-muted-foreground">
+                          Доставка: {supplier.delivery_time}
+                        </p>
+                      )}
                     </div>
                     <Button variant="outline" size="sm">
                       Создать заказ
@@ -237,51 +190,45 @@ export default function Procurement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { name: "ЛДСП 16мм белый", inStock: 12, min: 8, unit: "м²", status: "ok" },
-                  { name: "ЛДСП 16мм дуб", inStock: 5, min: 8, unit: "м²", status: "low" },
-                  { name: "Кромка ПВХ 2мм белая", inStock: 30, min: 40, unit: "м", status: "low" },
-                  { name: "Петли Blum", inStock: 8, min: 10, unit: "шт", status: "critical" },
-                  { name: "Направляющие 500мм", inStock: 2, min: 6, unit: "пар", status: "critical" },
-                  { name: "Конфирматы 5x70", inStock: 100, min: 50, unit: "шт", status: "ok" },
-                  { name: "МДФ 18мм", inStock: 15, min: 10, unit: "м²", status: "ok" },
-                  { name: "Кромка ПВХ 2мм венге", inStock: 8, min: 30, unit: "м", status: "critical" },
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Минимум: {item.min} {item.unit}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-lg font-bold">
-                          {item.inStock} {item.unit}
-                        </p>
+                {warehouseItems.map((item) => {
+                  const isLow = item.min_quantity && item.quantity < item.min_quantity;
+                  const isCritical = item.min_quantity && item.quantity < (item.min_quantity * 0.5);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium">{item.name}</p>
+                        {item.min_quantity && (
+                          <p className="text-sm text-muted-foreground">
+                            Минимум: {item.min_quantity} {item.unit}
+                          </p>
+                        )}
                       </div>
-                      <Badge
-                        variant={
-                          item.status === "ok"
-                            ? "default"
-                            : item.status === "low"
-                            ? "outline"
-                            : "destructive"
-                        }
-                        className="min-w-[90px] justify-center"
-                      >
-                        {item.status === "ok"
-                          ? "В наличии"
-                          : item.status === "low"
-                          ? "Мало"
-                          : "Критично"}
-                      </Badge>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-lg font-bold">
+                            {item.quantity} {item.unit}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            isCritical
+                              ? "destructive"
+                              : isLow
+                              ? "outline"
+                              : "default"
+                          }
+                          className="min-w-[90px] justify-center"
+                        >
+                          {isCritical ? "Критично" : isLow ? "Мало" : "В наличии"}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

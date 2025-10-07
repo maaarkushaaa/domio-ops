@@ -12,8 +12,22 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
+import { useFinance } from "@/hooks/use-finance";
+import { useAccounts } from "@/hooks/use-accounts";
+import { OperationDialog } from "@/components/finance/OperationDialog";
 
 export default function Finance() {
+  const { operations, invoices } = useFinance();
+  const { defaultAccount } = useAccounts();
+
+  const totalBalance = 1234567; // Placeholder - should be calculated from accounts
+  const monthIncome = operations
+    .filter(op => op.type === 'income')
+    .reduce((sum, op) => sum + op.amount, 0);
+  const monthExpense = operations
+    .filter(op => op.type === 'expense')
+    .reduce((sum, op) => sum + op.amount, 0);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -23,10 +37,17 @@ export default function Finance() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline">Экспорт</Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Новая операция
-          </Button>
+          {defaultAccount && (
+            <OperationDialog 
+              accountId={defaultAccount.id}
+              trigger={
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Новая операция
+                </Button>
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -38,7 +59,7 @@ export default function Finance() {
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1 234 567 ₽</div>
+            <div className="text-2xl font-bold">{totalBalance.toLocaleString('ru-RU')} ₽</div>
             <p className="text-xs text-success flex items-center gap-1">
               <TrendingUp className="h-3 w-3" />
               +12.3% за месяц
@@ -52,7 +73,7 @@ export default function Finance() {
             <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">845 200 ₽</div>
+            <div className="text-2xl font-bold">{monthIncome.toLocaleString('ru-RU')} ₽</div>
             <p className="text-xs text-muted-foreground">+18% к прошлому</p>
           </CardContent>
         </Card>
@@ -63,7 +84,7 @@ export default function Finance() {
             <TrendingDown className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">523 450 ₽</div>
+            <div className="text-2xl font-bold">{monthExpense.toLocaleString('ru-RU')} ₽</div>
             <p className="text-xs text-muted-foreground">-5% к прошлому</p>
           </CardContent>
         </Card>
@@ -95,21 +116,16 @@ export default function Finance() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { date: "10 Окт", description: "Оплата от клиента А123", category: "Продажи", amount: 125000, type: "income" },
-                  { date: "9 Окт", description: "Закупка материалов Мебель+", category: "Производство", amount: -45000, type: "expense" },
-                  { date: "8 Окт", description: "Подписка Adobe Creative Cloud", category: "Маркетинг", amount: -3500, type: "expense" },
-                  { date: "7 Окт", description: "Оплата от клиента B456", category: "Продажи", amount: 85000, type: "income" },
-                  { date: "6 Окт", description: "Аренда офиса", category: "Общее", amount: -35000, type: "expense" },
-                  { date: "5 Окт", description: "Закупка фурнитуры", category: "Производство", amount: -15500, type: "expense" },
-                ].map((op, i) => (
+                {operations.slice(0, 10).map((op) => (
                   <div
-                    key={i}
+                    key={op.id}
                     className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div className="text-center min-w-[50px]">
-                        <p className="text-xs text-muted-foreground">{op.date}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(op.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                        </p>
                       </div>
                       <div>
                         <p className="font-medium">{op.description}</p>
@@ -119,7 +135,7 @@ export default function Finance() {
                       </div>
                     </div>
                     <div className={`text-lg font-bold ${op.type === 'income' ? 'text-success' : 'text-foreground'}`}>
-                      {op.amount > 0 ? '+' : ''}{op.amount.toLocaleString('ru-RU')} ₽
+                      {op.type === 'income' ? '+' : '-'}{op.amount.toLocaleString('ru-RU')} ₽
                     </div>
                   </div>
                 ))}
@@ -135,44 +151,53 @@ export default function Finance() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { number: "INV-1234", client: "ООО Интерьер", amount: 125000, status: "paid", date: "10 Окт", dueDate: "5 Окт" },
-                  { number: "INV-1235", client: "ИП Петров", amount: 85000, status: "paid", date: "7 Окт", dueDate: "2 Окт" },
-                  { number: "INV-1236", client: "ООО Дизайн Про", amount: 156000, status: "overdue", date: "28 Сен", dueDate: "5 Окт" },
-                  { number: "INV-1237", client: "ИП Сидоров", amount: 92000, status: "sent", date: "12 Окт", dueDate: "17 Окт" },
-                ].map((invoice, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{invoice.number}</p>
-                        <Badge
-                          variant={
-                            invoice.status === "paid"
-                              ? "default"
-                              : invoice.status === "overdue"
-                              ? "destructive"
-                              : "outline"
-                          }
-                        >
-                          {invoice.status === "paid" ? "Оплачен" : invoice.status === "overdue" ? "Просрочен" : "Отправлен"}
-                        </Badge>
+                {invoices.map((invoice) => {
+                  const getStatusLabel = (status: string) => {
+                    switch (status) {
+                      case 'paid': return 'Оплачен';
+                      case 'sent': return 'Отправлен';
+                      case 'overdue': return 'Просрочен';
+                      case 'draft': return 'Черновик';
+                      case 'cancelled': return 'Отменен';
+                      default: return status;
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={invoice.id}
+                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{invoice.number}</p>
+                          <Badge
+                            variant={
+                              invoice.status === "paid"
+                                ? "default"
+                                : invoice.status === "overdue"
+                                ? "destructive"
+                                : "outline"
+                            }
+                          >
+                            {getStatusLabel(invoice.status)}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{invoice.client?.name || 'Клиент не указан'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Создан: {new Date(invoice.issue_date).toLocaleDateString('ru-RU')} • 
+                          Оплатить до: {new Date(invoice.due_date).toLocaleDateString('ru-RU')}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">{invoice.client}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Создан: {invoice.date} • Оплатить до: {invoice.dueDate}
-                      </p>
+                      <div className="text-right">
+                        <p className="text-lg font-bold">{invoice.amount.toLocaleString('ru-RU')} ₽</p>
+                        <Button variant="outline" size="sm" className="mt-2">
+                          Просмотр
+                        </Button>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">{invoice.amount.toLocaleString('ru-RU')} ₽</p>
-                      <Button variant="outline" size="sm" className="mt-2">
-                        Просмотр
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

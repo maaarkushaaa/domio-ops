@@ -1,9 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Phone, Mail } from "lucide-react";
+import { Plus, Mail, Phone, TrendingUp } from "lucide-react";
+import { useClients } from "@/hooks/use-clients";
+import { ClientDialog } from "@/components/clients/ClientDialog";
 
 export default function Clients() {
+  const { clients, deals, isLoading } = useClients();
+
+  const getClientDealCount = (clientId: string) => {
+    return deals.filter(d => d.client_id === clientId).length;
+  };
+
+  if (isLoading) {
+    return <div className="p-6">Загрузка...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -11,10 +23,12 @@ export default function Clients() {
           <h1 className="text-3xl font-bold">Клиенты и сделки</h1>
           <p className="text-muted-foreground">Управление отношениями с клиентами</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Новый клиент
-        </Button>
+        <ClientDialog trigger={
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Новый клиент
+          </Button>
+        } />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -46,64 +60,58 @@ export default function Clients() {
         </Card>
       </div>
 
+      {/* Список клиентов */}
       <Card>
         <CardHeader>
           <CardTitle>Клиенты</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              {
-                name: "ООО Интерьер Плюс",
-                contact: "Иванов Иван",
-                phone: "+7 (999) 123-45-67",
-                email: "ivan@interior.ru",
-                deals: 3,
-                status: "active",
-              },
-              {
-                name: "ИП Петров А.С.",
-                contact: "Петров Андрей",
-                phone: "+7 (999) 234-56-78",
-                email: "petrov@design.ru",
-                deals: 2,
-                status: "active",
-              },
-              {
-                name: "ООО Дизайн Про",
-                contact: "Сидорова Мария",
-                phone: "+7 (999) 345-67-89",
-                email: "maria@designpro.ru",
-                deals: 5,
-                status: "active",
-              },
-            ].map((client, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-              >
-                <div className="space-y-2 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{client.name}</p>
-                    <Badge variant="default">Активен</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{client.contact}</p>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Phone className="h-3 w-3" />
-                      {client.phone}
+          <div className="space-y-4">
+            {clients.map((client) => (
+              <Card key={client.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold">{client.name}</h3>
+                        <Badge variant="outline">Активен</Badge>
+                      </div>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        {client.contact_person && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Контакт:</span>
+                            <span>{client.contact_person}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4">
+                          {client.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              <span>{client.phone}</span>
+                            </div>
+                          )}
+                          {client.email && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
+                              <span>{client.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      {client.email}
+                    <div className="text-right space-y-2">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Сделки</p>
+                        <p className="text-2xl font-bold flex items-center gap-1">
+                          {getClientDealCount(client.id)}
+                          <TrendingUp className="h-4 w-4 text-success" />
+                        </p>
+                      </div>
+                      <Button>Открыть</Button>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Сделок: {client.deals}</p>
-                </div>
-                <Button variant="outline" size="sm">
-                  Открыть
-                </Button>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </CardContent>

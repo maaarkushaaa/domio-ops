@@ -2,39 +2,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, MoreVertical, User } from "lucide-react";
+import { useTasks } from "@/hooks/use-tasks";
+import { TaskDialog } from "@/components/tasks/TaskDialog";
 
 const columns = [
   { id: "backlog", title: "Backlog", color: "bg-muted" },
   { id: "todo", title: "К выполнению", color: "bg-primary/10" },
-  { id: "inProgress", title: "В работе", color: "bg-warning/10" },
+  { id: "in_progress", title: "В работе", color: "bg-warning/10" },
   { id: "review", title: "На ревью", color: "bg-accent/10" },
   { id: "done", title: "Готово", color: "bg-success/10" },
 ];
 
-const tasks = {
-  backlog: [
-    { id: 1, title: "Оптимизация модели стола", project: "3D", priority: "low", assignee: "Иван" },
-    { id: 2, title: "Обновить базу знаний", project: "Общее", priority: "low", assignee: null },
-  ],
-  todo: [
-    { id: 3, title: "Моделинг шкафа Версаль", project: "3D", priority: "high", assignee: "Мария" },
-    { id: 4, title: "Закупка фурнитуры", project: "Закупки", priority: "medium", assignee: "Петр" },
-  ],
-  inProgress: [
-    { id: 5, title: "UV-развертка комода", project: "3D", priority: "high", assignee: "Мария" },
-    { id: 6, title: "Подготовка DXF для стола", project: "Производство", priority: "high", assignee: "Иван" },
-    { id: 7, title: "Создание BOM для тумбы", project: "Производство", priority: "medium", assignee: "Петр" },
-  ],
-  review: [
-    { id: 8, title: "GLB модель шкафа", project: "3D", priority: "high", assignee: "Мария" },
-  ],
-  done: [
-    { id: 9, title: "Оплата поставщику Мебель+", project: "Финансы", priority: "high", assignee: "Петр" },
-    { id: 10, title: "Проверка качества модели", project: "3D", priority: "medium", assignee: "Мария" },
-  ],
-};
-
 export default function Tasks() {
+  const { tasks, updateTask } = useTasks();
+
+  const tasksByColumn = tasks.reduce((acc, task) => {
+    if (!acc[task.status]) acc[task.status] = [];
+    acc[task.status].push(task);
+    return acc;
+  }, {} as Record<string, typeof tasks>);
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'Высокий';
+      case 'medium': return 'Средний';
+      case 'low': return 'Низкий';
+      default: return priority;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -42,10 +38,12 @@ export default function Tasks() {
           <h1 className="text-3xl font-bold">Задачи</h1>
           <p className="text-muted-foreground">Канбан-доска проектов</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Новая задача
-        </Button>
+        <TaskDialog trigger={
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Новая задача
+          </Button>
+        } />
       </div>
 
       <div className="flex gap-4 overflow-x-auto pb-4">
@@ -57,7 +55,7 @@ export default function Tasks() {
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     {column.title}
                     <Badge variant="secondary" className="text-xs">
-                      {tasks[column.id as keyof typeof tasks].length}
+                      {tasksByColumn[column.id]?.length || 0}
                     </Badge>
                   </CardTitle>
                   <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -66,7 +64,7 @@ export default function Tasks() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {tasks[column.id as keyof typeof tasks].map((task) => (
+                {(tasksByColumn[column.id] || []).map((task) => (
                   <Card key={task.id} className="bg-card hover:shadow-md transition-shadow cursor-pointer">
                     <CardContent className="p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
@@ -78,7 +76,7 @@ export default function Tasks() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs">
-                            {task.project}
+                            {task.project?.name || 'Без проекта'}
                           </Badge>
                           <Badge
                             variant={
@@ -90,13 +88,13 @@ export default function Tasks() {
                             }
                             className="text-xs"
                           >
-                            {task.priority === "high" ? "Высокий" : task.priority === "medium" ? "Средний" : "Низкий"}
+                            {getPriorityLabel(task.priority)}
                           </Badge>
                         </div>
                         {task.assignee && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <User className="h-3 w-3" />
-                            {task.assignee}
+                            {task.assignee.full_name}
                           </div>
                         )}
                       </div>

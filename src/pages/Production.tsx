@@ -4,51 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Plus, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
+import { useProducts } from "@/hooks/use-products";
+import { ProductDialog } from "@/components/production/ProductDialog";
 
-const products = [
-  {
-    id: 1,
-    name: "Шкаф Версаль",
-    status: "В работе",
-    stage: "UV-развертка",
-    progress: 75,
-    deadline: "15 Окт 2025",
-    assignee: "Мария",
-    quality: "Проверен",
-  },
-  {
-    id: 2,
-    name: "Стол Модерн",
-    status: "Техподготовка",
-    stage: "Создание DXF",
-    progress: 60,
-    deadline: "17 Окт 2025",
-    assignee: "Иван",
-    quality: "Ожидание",
-  },
-  {
-    id: 3,
-    name: "Комод Классик",
-    status: "Ожидание материалов",
-    stage: "Закупка",
-    progress: 20,
-    deadline: "20 Окт 2025",
-    assignee: "Петр",
-    quality: "Не проверен",
-  },
-  {
-    id: 4,
-    name: "Тумба Лофт",
-    status: "Планирование",
-    stage: "Создание BOM",
-    progress: 10,
-    deadline: "22 Окт 2025",
-    assignee: "Иван",
-    quality: "Не проверен",
-  },
-];
-
-const bomItems = [
+const bomItemsStatic = [
   { name: "ЛДСП 16мм белый", quantity: 8, unit: "м²", inStock: 12, status: "В наличии" },
   { name: "Кромка ПВХ 2мм", quantity: 45, unit: "м", inStock: 30, status: "Недостаточно" },
   { name: "Петли Blum", quantity: 6, unit: "шт", inStock: 8, status: "В наличии" },
@@ -57,6 +16,23 @@ const bomItems = [
 ];
 
 export default function Production() {
+  const { products, isLoading } = useProducts();
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'planning': return 'Планирование';
+      case 'in_progress': return 'В работе';
+      case 'quality_check': return 'Контроль качества';
+      case 'completed': return 'Завершено';
+      case 'on_hold': return 'На паузе';
+      default: return status;
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-6">Загрузка...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -64,10 +40,12 @@ export default function Production() {
           <h1 className="text-3xl font-bold">Производство</h1>
           <p className="text-muted-foreground">Управление производственными процессами</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Новое изделие
-        </Button>
+        <ProductDialog trigger={
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Новое изделие
+          </Button>
+        } />
       </div>
 
       {/* Статистика */}
@@ -132,22 +110,12 @@ export default function Production() {
                   <div className="space-y-1">
                     <CardTitle>{product.name}</CardTitle>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">{product.status}</Badge>
-                      <Badge variant="secondary">{product.stage}</Badge>
-                      <span className="text-sm text-muted-foreground">• {product.assignee}</span>
+                      <Badge variant="outline">{getStatusLabel(product.status)}</Badge>
+                      {product.assignee && (
+                        <span className="text-sm text-muted-foreground">• {product.assignee.full_name}</span>
+                      )}
                     </div>
                   </div>
-                  <Badge
-                    variant={
-                      product.quality === "Проверен"
-                        ? "default"
-                        : product.quality === "Ожидание"
-                        ? "outline"
-                        : "secondary"
-                    }
-                  >
-                    {product.quality}
-                  </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -158,10 +126,12 @@ export default function Production() {
                   </div>
                   <Progress value={product.progress} />
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Дедлайн</span>
-                  <span className="font-medium">{product.deadline}</span>
-                </div>
+                {product.deadline && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Дедлайн</span>
+                    <span className="font-medium">{new Date(product.deadline).toLocaleDateString('ru-RU')}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -174,7 +144,7 @@ export default function Production() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {bomItems.map((item, i) => (
+                {bomItemsStatic.map((item, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between p-3 rounded-lg border border-border"
