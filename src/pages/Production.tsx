@@ -6,6 +6,8 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
 import { ProductDialog } from "@/components/production/ProductDialog";
+import { ProductionDetailsDialog } from "@/components/production/ProductionDetailsDialog";
+import { useState } from "react";
 
 const bomItemsStatic = [
   { name: "ЛДСП 16мм белый", quantity: 8, unit: "м²", inStock: 12, status: "В наличии" },
@@ -17,6 +19,7 @@ const bomItemsStatic = [
 
 export default function Production() {
   const { products, isLoading } = useProducts();
+  const [detailsType, setDetailsType] = useState<'inProgress' | 'completed' | 'needsMaterials' | 'warehouse' | null>(null);
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -50,7 +53,10 @@ export default function Production() {
 
       {/* Статистика */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-all hover-lift"
+          onClick={() => setDetailsType('inProgress')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">В работе</CardTitle>
             <Clock className="h-4 w-4 text-warning" />
@@ -61,7 +67,10 @@ export default function Production() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-all hover-lift"
+          onClick={() => setDetailsType('completed')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Завершено за месяц</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-success" />
@@ -72,7 +81,10 @@ export default function Production() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-all hover-lift"
+          onClick={() => setDetailsType('needsMaterials')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Требуют материалов</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -83,7 +95,10 @@ export default function Production() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-all hover-lift"
+          onClick={() => setDetailsType('warehouse')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">На складе</CardTitle>
             <Package className="h-4 w-4 text-primary" />
@@ -94,6 +109,12 @@ export default function Production() {
           </CardContent>
         </Card>
       </div>
+
+      <ProductionDetailsDialog
+        type={detailsType || 'inProgress'}
+        open={!!detailsType}
+        onOpenChange={(open) => !open && setDetailsType(null)}
+      />
 
       <Tabs defaultValue="products" className="space-y-4">
         <TabsList>

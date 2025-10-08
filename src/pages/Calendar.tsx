@@ -8,19 +8,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EventDetailsDialog } from "@/components/calendar/EventDetailsDialog";
+
+interface Event {
+  id: number;
+  title: string;
+  date: Date;
+  type: string;
+  description?: string;
+}
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState([
-    { id: 1, title: "Встреча с клиентом", date: new Date(2025, 9, 15), type: "meeting" },
-    { id: 2, title: "Дедлайн проекта", date: new Date(2025, 9, 20), type: "deadline" },
-    { id: 3, title: "Доставка материалов", date: new Date(2025, 9, 18), type: "delivery" },
+  const [events, setEvents] = useState<Event[]>([
+    { id: 1, title: "Встреча с клиентом", date: new Date(2025, 9, 15), type: "meeting", description: "Обсуждение проекта кухни" },
+    { id: 2, title: "Дедлайн проекта", date: new Date(2025, 9, 20), type: "deadline", description: "Сдача 3D модели шкафа" },
+    { id: 3, title: "Доставка материалов", date: new Date(2025, 9, 18), type: "delivery", description: "Поставка ЛДСП и фурнитуры" },
   ]);
   const [newEventName, setNewEventName] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
   const [newEventType, setNewEventType] = useState('');
   const [newEventDescription, setNewEventDescription] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -73,11 +84,12 @@ export default function Calendar() {
             <form onSubmit={(e) => {
               e.preventDefault();
               if (!newEventName || !newEventDate || !newEventType) return;
-              const newEvent = {
+              const newEvent: Event = {
                 id: events.length + 1,
                 title: newEventName,
                 date: new Date(newEventDate),
-                type: newEventType
+                type: newEventType,
+                description: newEventDescription || undefined
               };
               setEvents([...events, newEvent]);
               setNewEventName('');
@@ -118,6 +130,16 @@ export default function Calendar() {
                     <SelectItem value="payment">Оплата</SelectItem>
                     <SelectItem value="call">Звонок</SelectItem>
                     <SelectItem value="training">Обучение</SelectItem>
+                    <SelectItem value="presentation">Презентация</SelectItem>
+                    <SelectItem value="conference">Конференция</SelectItem>
+                    <SelectItem value="workshop">Воркшоп</SelectItem>
+                    <SelectItem value="interview">Собеседование</SelectItem>
+                    <SelectItem value="review">Ревью</SelectItem>
+                    <SelectItem value="planning">Планирование</SelectItem>
+                    <SelectItem value="installation">Монтаж</SelectItem>
+                    <SelectItem value="maintenance">Обслуживание</SelectItem>
+                    <SelectItem value="vacation">Отпуск</SelectItem>
+                    <SelectItem value="holiday">Праздник</SelectItem>
                     <SelectItem value="other">Другое</SelectItem>
                   </SelectContent>
                 </Select>
@@ -184,7 +206,11 @@ export default function Calendar() {
                       <Badge 
                         key={event.id} 
                         variant={event.type === 'deadline' ? 'destructive' : 'secondary'}
-                        className="text-xs w-full justify-start truncate"
+                        className="text-xs w-full justify-start truncate cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => {
+                          setSelectedEvent(event);
+                          setEventDetailsOpen(true);
+                        }}
                       >
                         {event.title}
                       </Badge>
@@ -226,6 +252,12 @@ export default function Calendar() {
           </div>
         </CardContent>
       </Card>
+
+      <EventDetailsDialog
+        event={selectedEvent}
+        open={eventDetailsOpen}
+        onOpenChange={setEventDetailsOpen}
+      />
     </div>
   );
 }

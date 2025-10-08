@@ -64,14 +64,14 @@ export default function Dashboard() {
 
         <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '200ms' }}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Баланс</CardTitle>
+            <CardTitle className="text-sm font-medium">Баланс (Взлётная полоса: 8 мес)</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">1 234 567 ₽</div>
             <p className="text-xs text-green-500 flex items-center gap-1">
               <TrendingUp className="h-3 w-3" />
-              +12.3% за месяц
+              +12.3% за месяц • Расход: 150к ₽/мес
             </p>
           </CardContent>
         </Card>

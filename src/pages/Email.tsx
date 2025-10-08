@@ -132,9 +132,9 @@ export default function Email() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-4 h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
         {/* Folders Sidebar */}
-        <Card className="col-span-3">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -174,7 +174,7 @@ export default function Email() {
         </Card>
 
         {/* Email List */}
-        <Card className="col-span-4">
+        <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {folders.find(f => f.id === selectedFolder)?.label}
@@ -217,7 +217,7 @@ export default function Email() {
         </Card>
 
         {/* Email Content or Compose */}
-        <Card className="col-span-5">
+        <Card className="lg:col-span-5">
           {composing ? (
             <>
               <CardHeader>

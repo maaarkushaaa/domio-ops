@@ -7,6 +7,7 @@ import { Plus, MoreVertical, User, Kanban, List } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
+import { TaskActionsMenu } from "@/components/tasks/TaskActionsMenu";
 
 const columns = [
   { id: "backlog", title: "Backlog", color: "bg-muted" },
@@ -73,9 +74,9 @@ export default function Tasks() {
       {view === 'kanban' ? (
         <KanbanBoard />
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {columns.map((column) => (
-          <div key={column.id} className="flex-shrink-0 w-80">
+          <div key={column.id}>
             <Card className={column.color}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -96,9 +97,7 @@ export default function Tasks() {
                     <CardContent className="p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <h4 className="text-sm font-medium leading-tight">{task.title}</h4>
-                        <Button variant="ghost" size="icon" className="h-6 w-6">
-                          <MoreVertical className="h-3 w-3" />
-                        </Button>
+                        <TaskActionsMenu taskId={task.id} taskTitle={task.title} />
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
