@@ -6,6 +6,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { AppProvider, useApp } from "./contexts/AppContext";
 import { ThemeProvider } from "./components/ui/theme-provider";
+import { CommandPalette } from "./components/common/CommandPalette";
+import { GlobalSearch } from "./components/search/GlobalSearch";
+import { KeyboardShortcuts } from "./components/shortcuts/KeyboardShortcuts";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Production from "./pages/Production";
@@ -42,6 +45,9 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <CommandPalette />
+          <GlobalSearch />
+          <KeyboardShortcuts />
           <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />

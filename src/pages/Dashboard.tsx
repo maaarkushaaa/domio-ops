@@ -10,6 +10,8 @@ import {
   Clock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { ProjectTimeline } from "@/components/timeline/ProjectTimeline";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -23,6 +25,14 @@ export default function Dashboard() {
         </h1>
         <p className="text-muted-foreground mt-1">Обзор операций DOMIO</p>
       </div>
+
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Обзор</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline проектов</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
 
       {/* Статистика */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -197,6 +207,12 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="timeline">
+          <ProjectTimeline />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

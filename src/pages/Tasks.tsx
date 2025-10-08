@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, MoreVertical, User } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, MoreVertical, User, Kanban, List } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
+import { KanbanBoard } from "@/components/tasks/KanbanBoard";
 
 const columns = [
   { id: "backlog", title: "Backlog", color: "bg-muted" },
@@ -15,6 +18,7 @@ const columns = [
 
 export default function Tasks() {
   const { tasks, updateTask } = useTasks();
+  const [view, setView] = useState<'list' | 'kanban'>('kanban');
 
   const tasksByColumn = tasks.reduce((acc, task) => {
     if (!acc[task.status]) acc[task.status] = [];
@@ -36,17 +40,40 @@ export default function Tasks() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Задачи</h1>
-          <p className="text-muted-foreground">Канбан-доска проектов</p>
+          <p className="text-muted-foreground">Управление задачами проектов</p>
         </div>
-        <TaskDialog trigger={
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Новая задача
-          </Button>
-        } />
+        <div className="flex gap-2">
+          <div className="flex border rounded-lg">
+            <Button
+              variant={view === 'kanban' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setView('kanban')}
+            >
+              <Kanban className="h-4 w-4 mr-2" />
+              Канбан
+            </Button>
+            <Button
+              variant={view === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setView('list')}
+            >
+              <List className="h-4 w-4 mr-2" />
+              Список
+            </Button>
+          </div>
+          <TaskDialog trigger={
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Новая задача
+            </Button>
+          } />
+        </div>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      {view === 'kanban' ? (
+        <KanbanBoard />
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-4">
         {columns.map((column) => (
           <div key={column.id} className="flex-shrink-0 w-80">
             <Card className={column.color}>
@@ -105,7 +132,8 @@ export default function Tasks() {
             </Card>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

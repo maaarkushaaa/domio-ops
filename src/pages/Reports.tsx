@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Calendar, TrendingUp, DollarSign, Package, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { DataExporter } from "@/components/export/DataExporter";
+import { useTasks } from "@/hooks/use-tasks";
+import { useProjects } from "@/hooks/use-projects";
+import { useFinance } from "@/hooks/use-finance";
 
 const reports = [
   {

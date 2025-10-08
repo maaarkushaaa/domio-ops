@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package } from "lucide-react";
+import { AdvancedCharts } from "@/components/analytics/AdvancedCharts";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--destructive))'];
 
@@ -97,6 +98,7 @@ export default function Analytics() {
           <TabsTrigger value="revenue">Финансы</TabsTrigger>
           <TabsTrigger value="projects">Проекты</TabsTrigger>
           <TabsTrigger value="tasks">Задачи</TabsTrigger>
+          <TabsTrigger value="advanced">Продвинутые</TabsTrigger>
         </TabsList>
 
         <TabsContent value="revenue" className="space-y-4">
@@ -206,6 +208,10 @@ export default function Analytics() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="advanced">
+          <AdvancedCharts />
         </TabsContent>
       </Tabs>
     </div>
