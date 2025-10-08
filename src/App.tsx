@@ -45,10 +45,10 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <CommandPalette />
-          <GlobalSearch />
-          <KeyboardShortcuts />
           <BrowserRouter>
+            <CommandPalette />
+            <GlobalSearch />
+            <KeyboardShortcuts />
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/" element={
@@ -151,7 +151,7 @@ const App = () => (
           } />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
+          </BrowserRouter>
         </TooltipProvider>
       </AppProvider>
     </ThemeProvider>
