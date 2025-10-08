@@ -140,9 +140,9 @@ export default function Email() {
       </div>
 
       {/* Email Interface */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 bg-card border rounded-lg overflow-hidden">
+      <div className="flex-1 flex gap-0 bg-card border rounded-lg overflow-hidden">
         {/* Folders Sidebar */}
-        <div className={`lg:col-span-2 border-r bg-card ${mobileView !== 'folders' ? 'hidden lg:block' : 'block'}`}>
+        <div className={`w-64 flex-shrink-0 border-r bg-card ${mobileView !== 'folders' ? 'hidden lg:flex' : 'flex'} flex-col`}>
           <div className="p-4 border-b">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -187,7 +187,7 @@ export default function Email() {
         </div>
 
         {/* Email List */}
-        <div className={`lg:col-span-4 border-r bg-card ${mobileView !== 'list' ? 'hidden lg:block' : 'block'}`}>
+        <div className={`w-96 flex-shrink-0 border-r bg-card ${mobileView !== 'list' ? 'hidden lg:flex' : 'flex'} flex-col`}>
           <div className="p-4 border-b">
             <div className="flex items-center gap-2">
               <Button 
@@ -247,7 +247,7 @@ export default function Email() {
         </div>
 
         {/* Email Content or Compose */}
-        <div className={`lg:col-span-6 bg-card ${mobileView !== 'content' ? 'hidden lg:flex' : 'flex'} flex-col`}>
+        <div className={`flex-1 bg-card ${mobileView !== 'content' ? 'hidden lg:flex' : 'flex'} flex-col min-w-0`}>
           {composing ? (
             <>
               <div className="p-4 border-b">

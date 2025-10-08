@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTasks, TaskStatus, TaskPriority } from '@/hooks/use-tasks';
 import { useProjects } from '@/hooks/use-projects';
+import { VoiceInput } from '@/components/voice/VoiceInput';
 
 interface TaskDialogProps {
   trigger?: React.ReactNode;
@@ -57,24 +58,32 @@ export function TaskDialog({ trigger, onClose }: TaskDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Название</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Название задачи"
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Название задачи"
+                required
+                className="flex-1"
+              />
+              <VoiceInput onTranscript={(text) => setTitle(text)} />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Описание</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Описание задачи"
-              rows={3}
-            />
+            <div className="flex gap-2">
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Описание задачи"
+                rows={3}
+                className="flex-1"
+              />
+              <VoiceInput onTranscript={(text) => setDescription(text)} />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

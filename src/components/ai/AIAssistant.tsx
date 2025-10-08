@@ -47,7 +47,7 @@ export function AIAssistant() {
       <Button
         onClick={() => setOpen(true)}
         size="lg"
-        className="fixed bottom-6 right-6 rounded-full h-14 w-14 shadow-lg z-50"
+        className="fixed bottom-24 right-6 rounded-full h-14 w-14 shadow-lg z-50"
       >
         <Bot className="h-6 w-6" />
       </Button>
@@ -55,7 +55,7 @@ export function AIAssistant() {
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 w-96 h-[500px] shadow-2xl z-50 flex flex-col">
+    <Card className="fixed bottom-24 right-6 w-96 h-[500px] shadow-2xl z-50 flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">

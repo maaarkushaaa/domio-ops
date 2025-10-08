@@ -137,7 +137,11 @@ export default function Admin() {
               <CardContent>
                 <div className="space-y-3">
                   {tasks.slice(0, 5).map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover-lift">
+                    <div 
+                      key={task.id} 
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover-lift cursor-pointer transition-colors"
+                      onClick={() => window.location.href = '/tasks'}
+                    >
                       <div>
                         <p className="font-medium">{task.title}</p>
                         <p className="text-sm text-muted-foreground">
@@ -161,7 +165,11 @@ export default function Admin() {
               <CardContent>
                 <div className="space-y-4">
                   {financialOperations.slice(0, 5).map((op) => (
-                    <div key={op.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover-lift">
+                    <div 
+                      key={op.id} 
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover-lift cursor-pointer transition-colors"
+                      onClick={() => window.location.href = '/finance'}
+                    >
                       <div>
                         <p className="font-medium">{op.category}</p>
                         <p className="text-sm text-muted-foreground">
@@ -200,7 +208,7 @@ export default function Admin() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow className="hover-lift">
+                  <TableRow className="hover-lift cursor-pointer transition-colors" onClick={() => window.location.href = '/settings'}>
                     <TableCell className="font-mono text-xs">{user.id}</TableCell>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
@@ -229,7 +237,15 @@ export default function Admin() {
             <CardContent>
               <div className="space-y-4">
                 {systemInfo.map((info, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover-lift">
+                  <div 
+                    key={index} 
+                    className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover-lift cursor-pointer transition-colors"
+                    onClick={() => {
+                      if (info.label === 'Задачи') window.location.href = '/tasks';
+                      if (info.label === 'Клиенты') window.location.href = '/clients';
+                      if (info.label === 'Поставщики') window.location.href = '/procurement';
+                    }}
+                  >
                     <div className="flex items-center gap-3">
                       <Database className="h-5 w-5 text-primary" />
                       <div>

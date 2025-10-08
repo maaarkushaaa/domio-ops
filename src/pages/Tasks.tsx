@@ -75,9 +75,8 @@ export default function Tasks() {
         <KanbanBoard />
       ) : (
         <div className="space-y-4">
-        {columns.map((column) => (
-          <div key={column.id}>
-            <Card className={column.color}>
+          {columns.map((column) => (
+            <Card key={column.id} className={column.color}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -129,8 +128,7 @@ export default function Tasks() {
                 ))}
               </CardContent>
             </Card>
-          </div>
-        ))}
+          ))}
         </div>
       )}
     </div>

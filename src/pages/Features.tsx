@@ -7,6 +7,16 @@ import { Achievements } from "@/components/gamification/Achievements";
 import { VoiceInput } from "@/components/voice/VoiceInput";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { IntegrationHub } from "@/components/integrations/IntegrationHub";
+import { VideoCallWidget } from "@/components/modern/VideoCallWidget";
+import { TimeTracker } from "@/components/modern/TimeTracker";
+import { SmartSearch } from "@/components/modern/SmartSearch";
+import { CollaborativeWhiteboard } from "@/components/modern/CollaborativeWhiteboard";
+import { BiometricAuth } from "@/components/modern/BiometricAuth";
+import { BlockchainContracts } from "@/components/modern/BlockchainContracts";
+import { ARViewer } from "@/components/modern/ARViewer";
+import { AIAutomation } from "@/components/modern/AIAutomation";
+import { DigitalSignature } from "@/components/modern/DigitalSignature";
+import { KanbanAutomation } from "@/components/modern/KanbanAutomation";
 import { 
   Bell, 
   Upload, 
@@ -17,7 +27,15 @@ import {
   Zap,
   TrendingUp,
   Video,
-  Wifi
+  Wifi,
+  Clock,
+  Search,
+  Palette,
+  Fingerprint,
+  Link2,
+  Eye,
+  PenTool,
+  Workflow
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -34,30 +52,34 @@ export default function Features() {
       </div>
 
       <Tabs defaultValue="notifications" className="space-y-4">
-        <TabsList className="grid grid-cols-3 lg:grid-cols-6">
-          <TabsTrigger value="notifications">
-            <Bell className="h-4 w-4 mr-2" />
+        <TabsList className="grid grid-cols-3 lg:grid-cols-7 gap-1">
+          <TabsTrigger value="notifications" className="text-xs">
+            <Bell className="h-4 w-4 mr-1" />
             <span className="hidden sm:inline">Уведомления</span>
           </TabsTrigger>
-          <TabsTrigger value="files">
-            <Upload className="h-4 w-4 mr-2" />
+          <TabsTrigger value="files" className="text-xs">
+            <Upload className="h-4 w-4 mr-1" />
             <span className="hidden sm:inline">Файлы</span>
           </TabsTrigger>
-          <TabsTrigger value="qr">
-            <QrCode className="h-4 w-4 mr-2" />
+          <TabsTrigger value="qr" className="text-xs">
+            <QrCode className="h-4 w-4 mr-1" />
             <span className="hidden sm:inline">QR</span>
           </TabsTrigger>
-          <TabsTrigger value="achievements">
-            <Trophy className="h-4 w-4 mr-2" />
+          <TabsTrigger value="achievements" className="text-xs">
+            <Trophy className="h-4 w-4 mr-1" />
             <span className="hidden sm:inline">Достижения</span>
           </TabsTrigger>
-          <TabsTrigger value="voice">
-            <Mic className="h-4 w-4 mr-2" />
+          <TabsTrigger value="voice" className="text-xs">
+            <Mic className="h-4 w-4 mr-1" />
             <span className="hidden sm:inline">Голос</span>
           </TabsTrigger>
-          <TabsTrigger value="integrations">
-            <Zap className="h-4 w-4 mr-2" />
+          <TabsTrigger value="integrations" className="text-xs">
+            <Zap className="h-4 w-4 mr-1" />
             <span className="hidden sm:inline">Интеграции</span>
+          </TabsTrigger>
+          <TabsTrigger value="advanced" className="text-xs">
+            <TrendingUp className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Продвинутые</span>
           </TabsTrigger>
         </TabsList>
 
@@ -253,6 +275,21 @@ export default function Features() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="advanced" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <VideoCallWidget />
+            <TimeTracker />
+            <SmartSearch />
+            <CollaborativeWhiteboard />
+            <BiometricAuth />
+            <BlockchainContracts />
+            <ARViewer />
+            <AIAutomation />
+            <DigitalSignature />
+            <KanbanAutomation />
           </div>
         </TabsContent>
       </Tabs>
