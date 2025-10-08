@@ -13,6 +13,7 @@ import {
   FileBarChart,
   Shield,
   Settings,
+  Mail,
 } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -38,6 +39,7 @@ const menuItems = [
   { title: "Аналитика", url: "/analytics", icon: BarChart },
   { title: "Отчеты", url: "/reports", icon: FileBarChart },
   { title: "Документы", url: "/documents", icon: FileText },
+  { title: "Почта", url: "/email", icon: Mail },
   { title: "База знаний", url: "/knowledge", icon: BookOpen },
 ];
 

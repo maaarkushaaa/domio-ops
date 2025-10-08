@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Calendar, TrendingUp, DollarSign, Package, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 
 const reports = [
   {
@@ -67,6 +68,28 @@ export default function Reports() {
     ? reports 
     : reports.filter(r => r.type === reportType);
 
+  const handleDownloadReport = (report: typeof reports[0]) => {
+    // Generate CSV data
+    const csvData = `DOMIO Ops - ${report.name}\nДата: ${report.date}\nТип: ${getTypeName(report.type)}\n\nДанные отчета...`;
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${report.name}.csv`;
+    link.click();
+    
+    toast({
+      title: 'Отчет загружен',
+      description: `Файл ${report.name}.csv сохранен`
+    });
+  };
+
+  const handleGenerateReport = () => {
+    toast({
+      title: 'Генерация отчета',
+      description: 'Отчет будет готов через несколько минут'
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -74,7 +97,7 @@ export default function Reports() {
           <h1 className="text-3xl font-bold">Отчеты</h1>
           <p className="text-muted-foreground">Генерация и загрузка отчетов</p>
         </div>
-        <Button>
+        <Button onClick={handleGenerateReport}>
           <FileText className="mr-2 h-4 w-4" />
           Создать отчет
         </Button>
@@ -180,7 +203,11 @@ export default function Reports() {
                     {report.status === 'ready' ? 'Готов' : 'Обработка'}
                   </Badge>
                   {report.status === 'ready' && (
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleDownloadReport(report)}
+                    >
                       <Download className="h-4 w-4" />
                     </Button>
                   )}

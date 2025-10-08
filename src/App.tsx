@@ -13,6 +13,7 @@ import Finance from "./pages/Finance";
 import Procurement from "./pages/Procurement";
 import Clients from "./pages/Clients";
 import Documents from "./pages/Documents";
+import Email from "./pages/Email";
 import Knowledge from "./pages/Knowledge";
 import Calendar from "./pages/Calendar";
 import Analytics from "./pages/Analytics";
@@ -90,6 +91,13 @@ const App = () => (
             <ProtectedRoute>
               <AppLayout>
                 <Documents />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/email" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Email />
               </AppLayout>
             </ProtectedRoute>
           } />
