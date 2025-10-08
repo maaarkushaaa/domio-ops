@@ -9,15 +9,25 @@ export default function Documents() {
   const { toast } = useToast();
 
   const handleView = (docName: string) => {
+    // Открываем документ в новой вкладке (демо)
+    window.open('https://example.com/document', '_blank');
     toast({
       title: 'Просмотр документа',
-      description: `Открытие документа: ${docName}`,
+      description: `Открыт: ${docName}`,
     });
   };
 
   const handleDownload = (docName: string) => {
+    // Создаем фиктивную ссылку для скачивания
+    const link = document.createElement('a');
+    link.href = '#';
+    link.download = docName + '.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
     toast({
-      title: 'Загрузка документа',
+      title: 'Загрузка начата',
       description: `Скачивание: ${docName}`,
     });
   };

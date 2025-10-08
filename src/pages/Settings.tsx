@@ -1,7 +1,9 @@
 import { TelegramSettings } from '@/components/notifications/TelegramSettings';
+import { TelegramSettings as TelegramUserSettings } from '@/components/settings/TelegramSettings';
+import { EmailSettings } from '@/components/settings/EmailSettings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Bell, Shield, Palette } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Shield, Palette, Mail, MessageCircle, User } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Navigate } from 'react-router-dom';
 
@@ -24,25 +26,29 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="notifications" className="space-y-4">
+      <Tabs defaultValue="profile" className="space-y-4">
         <TabsList className="glass-card">
+          <TabsTrigger value="profile">
+            <User className="h-4 w-4 mr-2" />
+            Профиль
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="h-4 w-4 mr-2" />
             Уведомления
           </TabsTrigger>
-          <TabsTrigger value="profile">
-            <Shield className="h-4 w-4 mr-2" />
-            Профиль
+          <TabsTrigger value="telegram">
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Telegram
+          </TabsTrigger>
+          <TabsTrigger value="email">
+            <Mail className="h-4 w-4 mr-2" />
+            Почта
           </TabsTrigger>
           <TabsTrigger value="appearance">
             <Palette className="h-4 w-4 mr-2" />
             Внешний вид
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="notifications" className="space-y-4">
-          <TelegramSettings />
-        </TabsContent>
 
         <TabsContent value="profile">
           <Card className="glass-card">
@@ -73,6 +79,18 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <TelegramSettings />
+        </TabsContent>
+
+        <TabsContent value="telegram" className="space-y-4">
+          <TelegramUserSettings />
+        </TabsContent>
+
+        <TabsContent value="email" className="space-y-4">
+          <EmailSettings />
         </TabsContent>
 
         <TabsContent value="appearance">
