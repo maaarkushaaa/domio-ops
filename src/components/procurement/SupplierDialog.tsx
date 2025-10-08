@@ -27,9 +27,9 @@ export function SupplierDialog({ trigger }: SupplierDialogProps) {
     createSupplier({
       name: name.trim(),
       category: category.trim() || undefined,
-      contact_person: contactPerson.trim() || undefined,
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
+      status: 'active',
     });
 
     setName('');

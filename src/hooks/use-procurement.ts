@@ -1,6 +1,6 @@
 import { useApp } from '@/contexts/AppContext';
 
-export const useSuppliers = () => {
+export const useProcurement = () => {
   const { suppliers, addSupplier } = useApp();
 
   return {
@@ -12,3 +12,5 @@ export const useSuppliers = () => {
     updateOrder: () => {},
   };
 };
+
+export const useSuppliers = useProcurement;

@@ -14,11 +14,13 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'todo' | 'in_progress' | 'review' | 'done';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
+  priority: 'low' | 'medium' | 'high';
   due_date?: string;
   assignee_id?: string;
+  assignee?: { id: string; full_name: string };
   project_id?: string;
+  project?: { id: string; name: string };
   created_at: string;
   updated_at: string;
 }
@@ -37,9 +39,11 @@ export interface Project {
 export interface Client {
   id: string;
   name: string;
+  contact_person?: string;
   email?: string;
   phone?: string;
   company?: string;
+  notes?: string;
   status: 'active' | 'inactive';
   created_at: string;
 }
@@ -49,8 +53,13 @@ export interface Product {
   name: string;
   sku?: string;
   description?: string;
-  unit_price: number;
-  quantity_in_stock: number;
+  status: 'planning' | 'in_progress' | 'quality_check' | 'completed' | 'on_hold';
+  progress: number;
+  assignee_id?: string;
+  assignee?: { id: string; full_name: string };
+  deadline?: string;
+  unit_price?: number;
+  quantity_in_stock?: number;
   created_at: string;
 }
 
@@ -58,6 +67,7 @@ export interface FinancialOperation {
   id: string;
   type: 'income' | 'expense';
   amount: number;
+  currency: string;
   category: string;
   description?: string;
   date: string;
@@ -68,9 +78,12 @@ export interface FinancialOperation {
 export interface Supplier {
   id: string;
   name: string;
+  category?: string;
   email?: string;
   phone?: string;
   address?: string;
+  rating?: number;
+  delivery_time?: string;
   status: 'active' | 'inactive';
   created_at: string;
 }
@@ -159,6 +172,8 @@ const generateMockData = (): AppState => {
         name: 'Premium Widget',
         sku: 'WDG-001',
         description: 'High-quality widget for industrial use',
+        status: 'in_progress',
+        progress: 60,
         unit_price: 299.99,
         quantity_in_stock: 150,
         created_at: now,
@@ -169,6 +184,7 @@ const generateMockData = (): AppState => {
         id: '1',
         type: 'income',
         amount: 5000,
+        currency: 'RUB',
         category: 'Sales',
         description: 'Product sale',
         date: now,

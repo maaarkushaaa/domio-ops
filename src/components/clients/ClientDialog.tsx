@@ -30,6 +30,7 @@ export function ClientDialog({ trigger }: ClientDialogProps) {
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
       notes: notes.trim() || undefined,
+      status: 'active',
     });
 
     setName('');

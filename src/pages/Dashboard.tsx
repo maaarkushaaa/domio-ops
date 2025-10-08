@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const userName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Пользователь';
+  const userName = user?.name || user?.email?.split('@')[0] || 'Пользователь';
   return (
     <div className="space-y-6">
       <div>

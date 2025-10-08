@@ -1,5 +1,8 @@
 import { useApp } from '@/contexts/AppContext';
 
+export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
+export type TaskPriority = 'low' | 'medium' | 'high';
+
 export const useTasks = () => {
   const { tasks, addTask, updateTask, deleteTask } = useApp();
 
