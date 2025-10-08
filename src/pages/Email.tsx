@@ -18,7 +18,8 @@ import {
   MoreVertical,
   Reply,
   Forward,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -81,6 +82,7 @@ export default function Email() {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [composing, setComposing] = useState(false);
   const [newEmail, setNewEmail] = useState({ to: '', subject: '', body: '' });
+  const [mobileView, setMobileView] = useState<'folders' | 'list' | 'content'>('folders');
 
   const filteredEmails = mockEmails.filter(email => {
     if (selectedFolder === 'starred') return email.starred;
@@ -115,8 +117,8 @@ export default function Email() {
   ];
 
   return (
-    <div className="h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Почта</h1>
           <p className="text-muted-foreground">Корпоративная почта DOMIO</p>
@@ -125,16 +127,16 @@ export default function Email() {
           <Button variant="outline" size="icon">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button onClick={() => setComposing(true)}>
+          <Button onClick={() => { setComposing(true); setMobileView('content'); }}>
             <Mail className="h-4 w-4 mr-2" />
             Написать
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[calc(100vh-12rem)]">
         {/* Folders Sidebar */}
-        <Card className="lg:col-span-3">
+        <Card className={`lg:col-span-3 ${mobileView !== 'folders' ? 'hidden lg:block' : 'block'}`}>
           <CardHeader>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -149,7 +151,10 @@ export default function Email() {
                   return (
                     <button
                       key={folder.id}
-                      onClick={() => setSelectedFolder(folder.id as any)}
+                      onClick={() => {
+                        setSelectedFolder(folder.id as any);
+                        setMobileView('list');
+                      }}
                       className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
                         selectedFolder === folder.id
                           ? 'bg-primary text-primary-foreground'
@@ -174,9 +179,17 @@ export default function Email() {
         </Card>
 
         {/* Email List */}
-        <Card className="lg:col-span-4">
+        <Card className={`lg:col-span-4 ${mobileView !== 'list' ? 'hidden lg:block' : 'block'}`}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="lg:hidden mr-2"
+                onClick={() => setMobileView('folders')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
               {folders.find(f => f.id === selectedFolder)?.label}
               <Badge variant="secondary">{filteredEmails.length}</Badge>
             </CardTitle>
@@ -187,7 +200,10 @@ export default function Email() {
                 {filteredEmails.map((email) => (
                   <div
                     key={email.id}
-                    onClick={() => setSelectedEmail(email)}
+                    onClick={() => {
+                      setSelectedEmail(email);
+                      setMobileView('content');
+                    }}
                     className={`p-4 rounded-lg cursor-pointer transition-colors ${
                       selectedEmail?.id === email.id
                         ? 'bg-muted'
@@ -217,11 +233,21 @@ export default function Email() {
         </Card>
 
         {/* Email Content or Compose */}
-        <Card className="lg:col-span-5">
+        <Card className={`lg:col-span-5 ${mobileView !== 'content' ? 'hidden lg:block' : 'block'}`}>
           {composing ? (
             <>
               <CardHeader>
-                <CardTitle>Новое письмо</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="lg:hidden"
+                    onClick={() => setMobileView('list')}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <CardTitle>Новое письмо</CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -266,12 +292,22 @@ export default function Email() {
             <>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle>{selectedEmail.subject}</CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>От: {selectedEmail.from}</span>
-                      <span>•</span>
-                      <span>{selectedEmail.date}</span>
+                  <div className="flex items-center gap-2 flex-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="lg:hidden"
+                      onClick={() => setMobileView('list')}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="space-y-1 flex-1">
+                      <CardTitle>{selectedEmail.subject}</CardTitle>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>От: {selectedEmail.from}</span>
+                        <span>•</span>
+                        <span>{selectedEmail.date}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-1">

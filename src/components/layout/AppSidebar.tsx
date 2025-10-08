@@ -14,6 +14,7 @@ import {
   Shield,
   Settings,
   Mail,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -41,6 +42,7 @@ const menuItems = [
   { title: "Документы", url: "/documents", icon: FileText },
   { title: "Почта", url: "/email", icon: Mail },
   { title: "База знаний", url: "/knowledge", icon: BookOpen },
+  { title: "Функции", url: "/features", icon: Sparkles },
 ];
 
 export function AppSidebar() {

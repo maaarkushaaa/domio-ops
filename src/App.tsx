@@ -9,6 +9,7 @@ import { ThemeProvider } from "./components/ui/theme-provider";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { GlobalSearch } from "./components/search/GlobalSearch";
 import { KeyboardShortcuts } from "./components/shortcuts/KeyboardShortcuts";
+import { AIAssistant } from "./components/ai/AIAssistant";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Production from "./pages/Production";
@@ -24,6 +25,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import Features from "./pages/Features";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +51,7 @@ const App = () => (
             <CommandPalette />
             <GlobalSearch />
             <KeyboardShortcuts />
+            <AIAssistant />
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/" element={
@@ -146,6 +149,13 @@ const App = () => (
             <ProtectedRoute>
               <AppLayout>
                 <Settings />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/features" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Features />
               </AppLayout>
             </ProtectedRoute>
           } />
