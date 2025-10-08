@@ -219,13 +219,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    // Mock authentication
+    // Mock authentication with hardcoded admin credentials
+    // NOTE: In production, use server-side validation with proper authentication
     await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Admin credentials
+    if (email === 'mknev' && password === '!A1q2q3q4qzxc') {
+      const user: User = {
+        id: 'admin-1',
+        email: 'mknev@domio.ops',
+        name: 'Admin MKNEV',
+        role: 'admin',
+        created_at: new Date().toISOString(),
+      };
+      setUser(user);
+      return;
+    }
+    
+    // Regular user login
     const user: User = {
-      id: '1',
+      id: Date.now().toString(),
       email,
       name: email.split('@')[0],
-      role: 'admin',
+      role: 'member',
       created_at: new Date().toISOString(),
     };
     setUser(user);

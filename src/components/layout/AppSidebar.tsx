@@ -11,7 +11,9 @@ import {
   Calendar,
   BarChart,
   FileBarChart,
+  Shield,
 } from "lucide-react";
+import { useAuth } from '@/hooks/use-auth';
 import {
   Sidebar,
   SidebarContent,
@@ -39,6 +41,9 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
@@ -75,6 +80,29 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Администрирование</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/admin"
+                      className={({ isActive }) =>
+                        isActive ? 'bg-accent text-accent-foreground' : ''
+                      }
+                    >
+                      <Shield className="h-4 w-4" />
+                      <span>Админ панель</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );

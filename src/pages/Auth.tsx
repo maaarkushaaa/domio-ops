@@ -78,14 +78,15 @@ export default function Auth() {
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+                  <Label htmlFor="signin-email">Логин или Email</Label>
                   <Input
                     id="signin-email"
-                    type="email"
-                    placeholder="your@email.com"
+                    type="text"
+                    placeholder="Введите логин или email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    className="interactive focus-elegant"
                   />
                 </div>
                 <div className="space-y-2">

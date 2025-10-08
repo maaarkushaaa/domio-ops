@@ -18,6 +18,7 @@ import Calendar from "./pages/Calendar";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -116,6 +117,13 @@ const App = () => (
             <ProtectedRoute>
               <AppLayout>
                 <Reports />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Admin />
               </AppLayout>
             </ProtectedRoute>
           } />
