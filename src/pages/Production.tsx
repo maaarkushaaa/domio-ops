@@ -196,11 +196,14 @@ export default function Production() {
               ].map((check, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => {
+                    // Toggle logic would be here in real implementation
+                  }}
                 >
                   <div
-                    className={`h-5 w-5 rounded-full flex items-center justify-center ${
-                      check.checked ? "bg-success" : "bg-muted"
+                    className={`h-5 w-5 rounded-full flex items-center justify-center transition-colors ${
+                      check.checked ? "bg-success" : "bg-muted-foreground/30"
                     }`}
                   >
                     {check.checked && <CheckCircle2 className="h-4 w-4 text-success-foreground" />}

@@ -16,6 +16,11 @@ export default function Calendar() {
     { id: 2, title: "Дедлайн проекта", date: new Date(2025, 9, 20), type: "deadline" },
     { id: 3, title: "Доставка материалов", date: new Date(2025, 9, 18), type: "delivery" },
   ]);
+  const [newEventName, setNewEventName] = useState('');
+  const [newEventDate, setNewEventDate] = useState('');
+  const [newEventType, setNewEventType] = useState('');
+  const [newEventDescription, setNewEventDescription] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -54,7 +59,7 @@ export default function Calendar() {
           <h1 className="text-3xl font-bold">Календарь</h1>
           <p className="text-muted-foreground">Планирование и события</p>
         </div>
-        <Dialog>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -65,18 +70,43 @@ export default function Calendar() {
             <DialogHeader>
               <DialogTitle>Новое событие</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!newEventName || !newEventDate || !newEventType) return;
+              const newEvent = {
+                id: events.length + 1,
+                title: newEventName,
+                date: new Date(newEventDate),
+                type: newEventType
+              };
+              setEvents([...events, newEvent]);
+              setNewEventName('');
+              setNewEventDate('');
+              setNewEventType('');
+              setNewEventDescription('');
+              setDialogOpen(false);
+            }} className="space-y-4">
               <div className="space-y-2">
                 <Label>Название</Label>
-                <Input placeholder="Название события" />
+                <Input 
+                  placeholder="Название события" 
+                  value={newEventName}
+                  onChange={(e) => setNewEventName(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Дата</Label>
-                <Input type="datetime-local" />
+                <Input 
+                  type="datetime-local" 
+                  value={newEventDate}
+                  onChange={(e) => setNewEventDate(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Тип</Label>
-                <Select>
+                <Select value={newEventType} onValueChange={setNewEventType} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите тип" />
                   </SelectTrigger>
@@ -84,16 +114,24 @@ export default function Calendar() {
                     <SelectItem value="meeting">Встреча</SelectItem>
                     <SelectItem value="deadline">Дедлайн</SelectItem>
                     <SelectItem value="delivery">Доставка</SelectItem>
+                    <SelectItem value="inspection">Проверка</SelectItem>
+                    <SelectItem value="payment">Оплата</SelectItem>
+                    <SelectItem value="call">Звонок</SelectItem>
+                    <SelectItem value="training">Обучение</SelectItem>
                     <SelectItem value="other">Другое</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Описание</Label>
-                <Textarea placeholder="Описание события" />
+                <Textarea 
+                  placeholder="Описание события" 
+                  value={newEventDescription}
+                  onChange={(e) => setNewEventDescription(e.target.value)}
+                />
               </div>
-              <Button className="w-full">Создать</Button>
-            </div>
+              <Button type="submit" className="w-full">Создать</Button>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

@@ -2,8 +2,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, FileText, Download, Eye } from "lucide-react";
+import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Documents() {
+  const { toast } = useToast();
+
+  const handleView = (docName: string) => {
+    toast({
+      title: 'Просмотр документа',
+      description: `Открытие документа: ${docName}`,
+    });
+  };
+
+  const handleDownload = (docName: string) => {
+    toast({
+      title: 'Загрузка документа',
+      description: `Скачивание: ${docName}`,
+    });
+  };
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -11,10 +28,12 @@ export default function Documents() {
           <h1 className="text-3xl font-bold">Документы</h1>
           <p className="text-muted-foreground">Юридические документы и контракты</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Загрузить документ
-        </Button>
+        <DocumentUploadDialog trigger={
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Загрузить документ
+          </Button>
+        } />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -109,10 +128,10 @@ export default function Documents() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" onClick={() => handleView(doc.name)}>
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" onClick={() => handleDownload(doc.name)}>
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>

@@ -18,6 +18,7 @@ import {
   Settings
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
+import { UserCreateDialog } from '@/components/admin/UserCreateDialog';
 
 export default function Admin() {
   const { user } = useAuth();
@@ -180,9 +181,12 @@ export default function Admin() {
 
         <TabsContent value="users">
           <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Управление пользователями</CardTitle>
-              <CardDescription>Список всех пользователей системы</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Управление пользователями</CardTitle>
+                <CardDescription>Список всех пользователей системы</CardDescription>
+              </div>
+              <UserCreateDialog />
             </CardHeader>
             <CardContent>
               <Table>

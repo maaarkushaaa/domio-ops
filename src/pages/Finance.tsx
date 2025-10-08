@@ -15,6 +15,8 @@ import {
 import { useFinance } from "@/hooks/use-finance";
 import { useAccounts } from "@/hooks/use-accounts";
 import { OperationDialog } from "@/components/finance/OperationDialog";
+import { BudgetEditDialog } from "@/components/finance/BudgetEditDialog";
+import { SubscriptionDialog } from "@/components/finance/SubscriptionDialog";
 
 export default function Finance() {
   const { operations, invoices } = useFinance();
@@ -205,8 +207,9 @@ export default function Finance() {
 
         <TabsContent value="subscriptions" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Активные подписки</CardTitle>
+              <SubscriptionDialog />
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -266,7 +269,17 @@ export default function Finance() {
                 ].map((item, i) => (
                   <div key={i} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium">{item.category}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{item.category}</p>
+                        <BudgetEditDialog 
+                          category={item.category}
+                          planned={item.planned}
+                          onSave={(newPlanned) => {
+                            // In real app, this would update state
+                            console.log('Updated budget:', item.category, newPlanned);
+                          }}
+                        />
+                      </div>
                       <div className="text-right">
                         <p className="text-sm font-medium">
                           {item.actual.toLocaleString('ru-RU')} ₽ / {item.planned.toLocaleString('ru-RU')} ₽

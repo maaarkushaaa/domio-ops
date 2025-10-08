@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Building2, Package, TrendingUp, AlertTriangle } from "lucide-react";
 import { useProcurement } from "@/hooks/use-procurement";
 import { SupplierDialog } from "@/components/procurement/SupplierDialog";
+import { OrderDialog } from "@/components/procurement/OrderDialog";
 
 export default function Procurement() {
   const { suppliers, orders, warehouseItems } = useProcurement();
@@ -34,15 +35,17 @@ export default function Procurement() {
         </div>
         <div className="flex gap-2">
           <SupplierDialog trigger={
-            <Button variant="outline">
+          <Button variant="outline">
               <Building2 className="h-4 w-4 mr-2" />
               Поставщики
             </Button>
           } />
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Новый заказ
-          </Button>
+          <OrderDialog trigger={
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Новый заказ
+            </Button>
+          } />
         </div>
       </div>
 

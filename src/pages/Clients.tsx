@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Mail, Phone, TrendingUp } from "lucide-react";
 import { useClients } from "@/hooks/use-clients";
 import { ClientDialog } from "@/components/clients/ClientDialog";
+import { ClientDetailsDialog } from "@/components/clients/ClientDetailsDialog";
 
 export default function Clients() {
   const { clients, deals, isLoading } = useClients();
@@ -107,7 +108,10 @@ export default function Clients() {
                           <TrendingUp className="h-4 w-4 text-success" />
                         </p>
                       </div>
-                      <Button>Открыть</Button>
+                      <ClientDetailsDialog 
+                        client={client}
+                        trigger={<Button>Открыть</Button>}
+                      />
                     </div>
                   </div>
                 </CardContent>
