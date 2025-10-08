@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -82,7 +81,7 @@ export default function Email() {
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [composing, setComposing] = useState(false);
   const [newEmail, setNewEmail] = useState({ to: '', subject: '', body: '' });
-  const [mobileView, setMobileView] = useState<'folders' | 'list' | 'content'>('folders');
+  const [mobileView, setMobileView] = useState<'folders' | 'list' | 'content'>('list');
 
   const filteredEmails = mockEmails.filter(email => {
     if (selectedFolder === 'starred') return email.starred;
@@ -106,6 +105,7 @@ export default function Email() {
 
     setNewEmail({ to: '', subject: '', body: '' });
     setComposing(false);
+    setMobileView('list');
   };
 
   const folders = [
@@ -117,8 +117,9 @@ export default function Email() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="h-[calc(100vh-5rem)] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-3xl font-bold">Почта</h1>
           <p className="text-muted-foreground">Корпоративная почта DOMIO</p>
@@ -127,203 +128,216 @@ export default function Email() {
           <Button variant="outline" size="icon">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button onClick={() => { setComposing(true); setMobileView('content'); }}>
+          <Button onClick={() => { 
+            setComposing(true); 
+            setSelectedEmail(null);
+            setMobileView('content'); 
+          }}>
             <Mail className="h-4 w-4 mr-2" />
             Написать
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[calc(100vh-12rem)]">
+      {/* Email Interface */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 bg-card border rounded-lg overflow-hidden">
         {/* Folders Sidebar */}
-        <Card className={`lg:col-span-3 ${mobileView !== 'folders' ? 'hidden lg:block' : 'block'}`}>
-          <CardHeader>
+        <div className={`lg:col-span-2 border-r bg-card ${mobileView !== 'folders' ? 'hidden lg:block' : 'block'}`}>
+          <div className="p-4 border-b">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Поиск..." className="pl-9" />
+              <Input placeholder="Поиск..." className="pl-9 h-9" />
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-20rem)]">
-              <div className="space-y-1 p-4">
-                {folders.map((folder) => {
-                  const Icon = folder.icon;
-                  return (
-                    <button
-                      key={folder.id}
-                      onClick={() => {
-                        setSelectedFolder(folder.id as any);
-                        setMobileView('list');
-                      }}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                        selectedFolder === folder.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4" />
-                        <span className="text-sm font-medium">{folder.label}</span>
-                      </div>
-                      {folder.count > 0 && (
-                        <Badge variant={selectedFolder === folder.id ? "secondary" : "outline"}>
-                          {folder.count}
-                        </Badge>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+          </div>
+          <ScrollArea className="h-[calc(100vh-16rem)]">
+            <div className="p-2">
+              {folders.map((folder) => {
+                const Icon = folder.icon;
+                return (
+                  <button
+                    key={folder.id}
+                    onClick={() => {
+                      setSelectedFolder(folder.id as any);
+                      setSelectedEmail(null);
+                      setMobileView('list');
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md transition-colors text-left ${
+                      selectedFolder === folder.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-muted'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-4 w-4" />
+                      <span className="text-sm font-medium">{folder.label}</span>
+                    </div>
+                    {folder.count > 0 && (
+                      <Badge 
+                        variant={selectedFolder === folder.id ? "secondary" : "outline"}
+                        className="text-xs"
+                      >
+                        {folder.count}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
 
         {/* Email List */}
-        <Card className={`lg:col-span-4 ${mobileView !== 'list' ? 'hidden lg:block' : 'block'}`}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className={`lg:col-span-4 border-r bg-card ${mobileView !== 'list' ? 'hidden lg:block' : 'block'}`}>
+          <div className="p-4 border-b">
+            <div className="flex items-center gap-2">
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="lg:hidden mr-2"
+                className="lg:hidden h-8 w-8"
                 onClick={() => setMobileView('folders')}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              {folders.find(f => f.id === selectedFolder)?.label}
-              <Badge variant="secondary">{filteredEmails.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-20rem)]">
-              <div className="space-y-1 p-2">
-                {filteredEmails.map((email) => (
-                  <div
-                    key={email.id}
-                    onClick={() => {
-                      setSelectedEmail(email);
-                      setMobileView('content');
-                    }}
-                    className={`p-4 rounded-lg cursor-pointer transition-colors ${
-                      selectedEmail?.id === email.id
-                        ? 'bg-muted'
-                        : 'hover:bg-muted/50'
-                    } ${!email.read ? 'border-l-4 border-primary' : ''}`}
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <span className={`text-sm ${!email.read ? 'font-bold' : 'font-medium'}`}>
-                        {email.from}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{email.date}</span>
-                        {email.starred && <Star className="h-3 w-3 fill-warning text-warning" />}
-                      </div>
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                {folders.find(f => f.id === selectedFolder)?.label}
+                <Badge variant="secondary" className="rounded-full">
+                  {filteredEmails.length}
+                </Badge>
+              </h2>
+            </div>
+          </div>
+          <ScrollArea className="h-[calc(100vh-16rem)]">
+            <div className="divide-y">
+              {filteredEmails.map((email) => (
+                <button
+                  key={email.id}
+                  onClick={() => {
+                    setSelectedEmail(email);
+                    setComposing(false);
+                    setMobileView('content');
+                  }}
+                  className={`w-full p-4 text-left transition-colors relative ${
+                    selectedEmail?.id === email.id
+                      ? 'bg-muted'
+                      : 'hover:bg-muted/50'
+                  }`}
+                >
+                  {!email.read && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+                  )}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className={`text-sm ${!email.read ? 'font-bold' : 'font-medium'}`}>
+                      {email.from}
+                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs text-muted-foreground">{email.date}</span>
+                      {email.starred && <Star className="h-3 w-3 fill-warning text-warning" />}
                     </div>
-                    <p className={`text-sm mb-1 ${!email.read ? 'font-semibold' : ''}`}>
-                      {email.subject}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {email.preview}
-                    </p>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                  <p className={`text-sm mb-1 ${!email.read ? 'font-semibold' : 'font-normal'}`}>
+                    {email.subject}
+                  </p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {email.preview}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
 
         {/* Email Content or Compose */}
-        <Card className={`lg:col-span-5 ${mobileView !== 'content' ? 'hidden lg:block' : 'block'}`}>
+        <div className={`lg:col-span-6 bg-card ${mobileView !== 'content' ? 'hidden lg:flex' : 'flex'} flex-col`}>
           {composing ? (
             <>
-              <CardHeader>
+              <div className="p-4 border-b">
                 <div className="flex items-center gap-2">
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="lg:hidden"
+                    className="lg:hidden h-8 w-8"
                     onClick={() => setMobileView('list')}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <CardTitle>Новое письмо</CardTitle>
+                  <h2 className="text-xl font-semibold">Новое письмо</h2>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Input
-                    placeholder="Кому"
-                    value={newEmail.to}
-                    onChange={(e) => setNewEmail({ ...newEmail, to: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Input
-                    placeholder="Тема"
-                    value={newEmail.subject}
-                    onChange={(e) => setNewEmail({ ...newEmail, subject: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Textarea
-                    placeholder="Сообщение..."
-                    rows={12}
-                    value={newEmail.body}
-                    onChange={(e) => setNewEmail({ ...newEmail, body: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Button variant="outline" size="icon">
-                    <Paperclip className="h-4 w-4" />
+              </div>
+              <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+                <Input
+                  placeholder="Кому"
+                  value={newEmail.to}
+                  onChange={(e) => setNewEmail({ ...newEmail, to: e.target.value })}
+                  className="h-10"
+                />
+                <Input
+                  placeholder="Тема"
+                  value={newEmail.subject}
+                  onChange={(e) => setNewEmail({ ...newEmail, subject: e.target.value })}
+                  className="h-10"
+                />
+                <Textarea
+                  placeholder="Сообщение..."
+                  value={newEmail.body}
+                  onChange={(e) => setNewEmail({ ...newEmail, body: e.target.value })}
+                  className="min-h-[400px] resize-none"
+                />
+              </div>
+              <div className="p-4 border-t flex items-center justify-between">
+                <Button variant="outline" size="icon">
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => {
+                    setComposing(false);
+                    setMobileView('list');
+                  }}>
+                    Отмена
                   </Button>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setComposing(false)}>
-                      Отмена
-                    </Button>
-                    <Button onClick={handleSendEmail}>
-                      <Send className="h-4 w-4 mr-2" />
-                      Отправить
-                    </Button>
-                  </div>
+                  <Button onClick={handleSendEmail}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Отправить
+                  </Button>
                 </div>
-              </CardContent>
+              </div>
             </>
           ) : selectedEmail ? (
             <>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2 flex-1">
+              <div className="p-4 border-b">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="lg:hidden"
+                      className="lg:hidden h-8 w-8 flex-shrink-0"
                       onClick={() => setMobileView('list')}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <div className="space-y-1 flex-1">
-                      <CardTitle>{selectedEmail.subject}</CardTitle>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-xl font-semibold mb-2 break-words">
+                        {selectedEmail.subject}
+                      </h2>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>От: {selectedEmail.from}</span>
+                        <span className="font-medium">От: {selectedEmail.from}</span>
                         <span>•</span>
                         <span>{selectedEmail.date}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon">
-                      <Star className={selectedEmail.starred ? "fill-warning text-warning" : ""} />
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Star className={`h-4 w-4 ${selectedEmail.starred ? "fill-warning text-warning" : ""}`} />
                     </Button>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-6">
-                <ScrollArea className="h-[calc(100vh-28rem)]">
-                  <p className="text-sm whitespace-pre-wrap">
+              </div>
+              <ScrollArea className="flex-1 p-6">
+                <div className="prose prose-sm max-w-none">
+                  <p className="whitespace-pre-wrap">
                     {selectedEmail.preview}
                     {'\n\n'}
                     Это демонстрационное письмо. Полный текст письма будет отображаться здесь.
@@ -331,37 +345,38 @@ export default function Email() {
                     С уважением,{'\n'}
                     {selectedEmail.from}
                   </p>
-                </ScrollArea>
-                <Separator className="my-4" />
-                <div className="flex gap-2">
-                  <Button variant="outline">
+                </div>
+              </ScrollArea>
+              <div className="p-4 border-t">
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm">
                     <Reply className="h-4 w-4 mr-2" />
                     Ответить
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" size="sm">
                     <Forward className="h-4 w-4 mr-2" />
                     Переслать
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" size="sm">
                     <Archive className="h-4 w-4 mr-2" />
                     Архивировать
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" size="sm">
                     <Trash2 className="h-4 w-4 mr-2" />
                     Удалить
                   </Button>
                 </div>
-              </CardContent>
+              </div>
             </>
           ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center space-y-2">
-                <Mail className="h-12 w-12 mx-auto opacity-20" />
-                <p>Выберите письмо для просмотра</p>
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center space-y-3">
+                <Mail className="h-16 w-16 mx-auto opacity-20" />
+                <p className="text-lg">Выберите письмо для просмотра</p>
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );
