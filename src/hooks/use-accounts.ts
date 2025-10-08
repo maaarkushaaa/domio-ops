@@ -1,32 +1,34 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase';
+import { useState } from 'react';
 
-export interface FinancialAccount {
+export interface Account {
   id: string;
   name: string;
-  type: string;
-  currency: string;
+  type: 'bank' | 'cash' | 'credit';
   balance: number;
-  created_at: string;
+  currency: string;
 }
 
 export const useAccounts = () => {
-  const { data: accounts, isLoading } = useQuery({
-    queryKey: ['financial_accounts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('financial_accounts')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      return data as FinancialAccount[];
+  const [accounts] = useState<Account[]>([
+    {
+      id: '1',
+      name: 'Main Account',
+      type: 'bank',
+      balance: 50000,
+      currency: 'USD',
     },
-  });
+    {
+      id: '2',
+      name: 'Petty Cash',
+      type: 'cash',
+      balance: 2000,
+      currency: 'USD',
+    },
+  ]);
 
   return {
-    accounts: accounts || [],
-    isLoading,
-    defaultAccount: accounts?.[0],
+    accounts,
+    isLoading: false,
+    defaultAccount: accounts[0],
   };
 };

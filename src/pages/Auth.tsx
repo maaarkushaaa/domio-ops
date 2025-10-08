@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,55 +11,28 @@ import { Loader2 } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/");
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          }
-        }
-      });
-
-      if (error) throw error;
-
+      await signUp(email, password, `${firstName} ${lastName}`);
       toast({
         title: "Регистрация успешна!",
-        description: "Проверьте email для подтверждения аккаунта",
+        description: "Добро пожаловать в DOMIO Ops",
       });
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Ошибка регистрации",
-        description: error.message,
+        description: error.message || "Проверьте введенные данные",
         variant: "destructive",
       });
     } finally {
@@ -72,20 +45,15 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
+      await signIn(email, password);
       toast({
         title: "Вход выполнен!",
       });
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Ошибка входа",
-        description: error.message,
+        description: error.message || "Неверный email или пароль",
         variant: "destructive",
       });
     } finally {
@@ -94,8 +62,8 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/5 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-mesh p-4 animate-fade-in">
+      <Card className="w-full max-w-md glass-card hover-lift animate-scale-in">
         <CardHeader>
           <CardTitle className="text-2xl">DOMIO Ops</CardTitle>
           <CardDescription>Система управления операциями</CardDescription>
