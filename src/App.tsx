@@ -17,6 +17,7 @@ import Knowledge from "./pages/Knowledge";
 import Calendar from "./pages/Calendar";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -124,6 +125,13 @@ const App = () => (
             <ProtectedRoute>
               <AppLayout>
                 <Admin />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Settings />
               </AppLayout>
             </ProtectedRoute>
           } />

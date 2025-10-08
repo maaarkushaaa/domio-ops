@@ -14,19 +14,22 @@ import { useAuth } from "@/hooks/use-auth";
 export default function Dashboard() {
   const { user } = useAuth();
   const userName = user?.name || user?.email?.split('@')[0] || 'Пользователь';
+  
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Добро пожаловать, {userName}!</h1>
-        <p className="text-muted-foreground">Обзор операций DOMIO</p>
+    <div className="space-y-6 animate-fade-in">
+      <div className="glass-card p-6 rounded-xl hover-lift animate-scale-in">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
+          Добро пожаловать, {userName}!
+        </h1>
+        <p className="text-muted-foreground mt-1">Обзор операций DOMIO</p>
       </div>
 
       {/* Статистика */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '0ms' }}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Задачи на сегодня</CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
+            <CheckSquare className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">12</div>
@@ -36,7 +39,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '100ms' }}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Просрочено</CardTitle>
             <AlertCircle className="h-4 w-4 text-destructive" />
@@ -49,24 +52,24 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '200ms' }}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Баланс</CardTitle>
-            <DollarSign className="h-4 w-4 text-success" />
+            <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">1 234 567 ₽</div>
-            <p className="text-xs text-success flex items-center gap-1">
+            <p className="text-xs text-green-500 flex items-center gap-1">
               <TrendingUp className="h-3 w-3" />
               +12.3% за месяц
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '300ms' }}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">В производстве</CardTitle>
-            <Package className="h-4 w-4 text-accent" />
+            <Package className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">8</div>
@@ -79,7 +82,7 @@ export default function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Активные задачи */}
-        <Card>
+        <Card className="glass-card hover-lift">
           <CardHeader>
             <CardTitle>Активные задачи</CardTitle>
           </CardHeader>
@@ -90,7 +93,7 @@ export default function Dashboard() {
               { title: "Закупка фурнитуры", project: "Закупки", priority: "medium", progress: 40 },
               { title: "Оплата поставщику Мебель+", project: "Финансы", priority: "high", progress: 90 },
             ].map((task, i) => (
-              <div key={i} className="space-y-2">
+              <div key={i} className="space-y-2 animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="font-medium">{task.title}</p>
@@ -108,14 +111,14 @@ export default function Dashboard() {
                   </div>
                   <span className="text-sm font-medium">{task.progress}%</span>
                 </div>
-                <Progress value={task.progress} />
+                <Progress value={task.progress} className="interactive" />
               </div>
             ))}
           </CardContent>
         </Card>
 
         {/* Уведомления */}
-        <Card>
+        <Card className="glass-card hover-lift">
           <CardHeader>
             <CardTitle>Важные уведомления</CardTitle>
           </CardHeader>
@@ -126,7 +129,7 @@ export default function Dashboard() {
                 title: "Инвойс #1234 просрочен на 3 дня",
                 time: "2 часа назад",
                 icon: AlertCircle,
-                color: "text-warning",
+                color: "text-yellow-500",
               },
               {
                 type: "info",
@@ -147,10 +150,10 @@ export default function Dashboard() {
                 title: "Получена оплата от клиента А123",
                 time: "Вчера",
                 icon: DollarSign,
-                color: "text-success",
+                color: "text-green-500",
               },
             ].map((notification, i) => (
-              <div key={i} className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+              <div key={i} className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-all interactive hover-lift animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
                 <notification.icon className={`h-5 w-5 mt-0.5 ${notification.color}`} />
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-medium">{notification.title}</p>
@@ -163,7 +166,7 @@ export default function Dashboard() {
       </div>
 
       {/* Производственный план */}
-      <Card>
+      <Card className="glass-card hover-lift">
         <CardHeader>
           <CardTitle>План производства на неделю</CardTitle>
         </CardHeader>
@@ -175,7 +178,7 @@ export default function Dashboard() {
               { name: "Комод Классик", status: "Ожидание материалов", stage: "Закупка", deadline: "20 Окт" },
               { name: "Тумба Лофт", status: "Планирование", stage: "BOM", deadline: "22 Окт" },
             ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border">
+              <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border hover-lift interactive animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
                 <div className="space-y-1">
                   <p className="font-medium">{item.name}</p>
                   <div className="flex items-center gap-2">

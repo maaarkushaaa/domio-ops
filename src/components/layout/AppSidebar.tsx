@@ -12,6 +12,7 @@ import {
   BarChart,
   FileBarChart,
   Shield,
+  Settings,
 } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -91,7 +92,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/admin"
                       className={({ isActive }) =>
-                        isActive ? 'bg-accent text-accent-foreground' : ''
+                        isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
                       }
                     >
                       <Shield className="h-4 w-4" />
@@ -103,6 +104,27 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Система</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/settings"
+                    className={({ isActive }) =>
+                      isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                    }
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Настройки</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   );
