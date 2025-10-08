@@ -9,12 +9,15 @@ import {
   Package,
   Clock,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const userName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Пользователь';
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Дашборд</h1>
+        <h1 className="text-3xl font-bold">Добро пожаловать, {userName}!</h1>
         <p className="text-muted-foreground">Обзор операций DOMIO</p>
       </div>
 

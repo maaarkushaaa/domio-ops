@@ -8,6 +8,9 @@ import {
   Users,
   FileText,
   BookOpen,
+  Calendar,
+  BarChart,
+  FileBarChart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,10 +27,13 @@ import {
 const menuItems = [
   { title: "Дашборд", url: "/", icon: LayoutDashboard },
   { title: "Задачи", url: "/tasks", icon: CheckSquare },
+  { title: "Календарь", url: "/calendar", icon: Calendar },
   { title: "Производство", url: "/production", icon: Factory },
   { title: "Финансы", url: "/finance", icon: DollarSign },
   { title: "Закупки", url: "/procurement", icon: ShoppingCart },
   { title: "Клиенты", url: "/clients", icon: Users },
+  { title: "Аналитика", url: "/analytics", icon: BarChart },
+  { title: "Отчеты", url: "/reports", icon: FileBarChart },
   { title: "Документы", url: "/documents", icon: FileText },
   { title: "База знаний", url: "/knowledge", icon: BookOpen },
 ];
