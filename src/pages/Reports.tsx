@@ -180,7 +180,8 @@ export default function Reports() {
             {filteredReports.map(report => (
               <div 
                 key={report.id} 
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer interactive hover-lift"
+                onClick={() => report.status === 'ready' && handleDownloadReport(report)}
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-lg bg-primary/10">

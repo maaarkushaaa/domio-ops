@@ -46,7 +46,13 @@ import { InvoiceAutomation } from "@/components/modern/InvoiceAutomation";
 import { PredictiveMaintenance } from "@/components/modern/PredictiveMaintenancе";
 import { CompetitorAnalysis } from "@/components/modern/CompetitorAnalysis";
 import { SocialMediaIntegration } from "@/components/modern/SocialMediaIntegration";
-import { 
+import { VideoConferencing } from "@/components/modern/VideoConferencing";
+import { AdvancedNotifications } from "@/components/modern/AdvancedNotifications";
+import { ProjectTemplates } from "@/components/modern/ProjectTemplates";
+import { ContractManagement } from "@/components/modern/ContractManagement";
+import { RiskManagement } from "@/components/modern/RiskManagement";
+import { PerformanceDashboard } from "@/components/modern/PerformanceDashboard";
+import {
   Bell,
   Upload,
   QrCode, 
@@ -367,6 +373,12 @@ export default function Features() {
             <PredictiveMaintenance />
             <CompetitorAnalysis />
             <SocialMediaIntegration />
+            <VideoConferencing />
+            <AdvancedNotifications />
+            <ProjectTemplates />
+            <ContractManagement />
+            <RiskManagement />
+            <PerformanceDashboard />
           </div>
         </TabsContent>
       </Tabs>

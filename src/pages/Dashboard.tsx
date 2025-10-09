@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   CheckSquare,
   AlertCircle,
@@ -10,12 +11,23 @@ import {
   Clock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useTasks } from "@/hooks/use-tasks";
+import { useProducts } from "@/hooks/use-products";
 import { ProjectTimeline } from "@/components/timeline/ProjectTimeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { tasks } = useTasks();
+  const { products } = useProducts();
+  const navigate = useNavigate();
   const userName = user?.name || user?.email?.split('@')[0] || 'Пользователь';
+  
+  const todayTasks = tasks.filter(t => t.status !== 'done').length;
+  const overdueTasks = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length;
+  const inProduction = products.filter(p => p.status === 'in_progress').length;
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -36,35 +48,35 @@ export default function Dashboard() {
 
       {/* Статистика */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '0ms' }}>
+        <Card className="glass-card hover-lift animate-scale-in interactive" style={{ animationDelay: '0ms' }} onClick={() => navigate('/tasks')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Задачи на сегодня</CardTitle>
             <CheckSquare className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{todayTasks}</div>
             <p className="text-xs text-muted-foreground">
-              +2 с вчерашнего дня
+              Нажмите для перехода
             </p>
           </CardContent>
         </Card>
 
-        <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '100ms' }}>
+        <Card className="glass-card hover-lift animate-scale-in interactive" style={{ animationDelay: '100ms' }} onClick={() => navigate('/tasks')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Просрочено</CardTitle>
             <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">3</div>
+            <div className="text-2xl font-bold text-destructive">{overdueTasks}</div>
             <p className="text-xs text-muted-foreground">
               Требуют внимания
             </p>
           </CardContent>
         </Card>
 
-        <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '200ms' }}>
+        <Card className="glass-card hover-lift animate-scale-in interactive" style={{ animationDelay: '200ms' }} onClick={() => navigate('/finance')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Баланс (Взлётная полоса: 8 мес)</CardTitle>
+            <CardTitle className="text-sm font-medium">Баланс (Взлётка: 8 мес)</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -76,13 +88,13 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card hover-lift animate-scale-in" style={{ animationDelay: '300ms' }}>
+        <Card className="glass-card hover-lift animate-scale-in interactive" style={{ animationDelay: '300ms' }} onClick={() => navigate('/production')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">В производстве</CardTitle>
             <Package className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
+            <div className="text-2xl font-bold">{inProduction}</div>
             <p className="text-xs text-muted-foreground">
               изделий
             </p>

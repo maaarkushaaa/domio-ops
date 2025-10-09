@@ -113,7 +113,8 @@ export default function Procurement() {
                 {orders.map((order) => (
                   <div
                     key={order.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer interactive hover-lift"
+                    onClick={() => {}}
                   >
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2">
@@ -158,7 +159,8 @@ export default function Procurement() {
                 {suppliers.map((supplier) => (
                   <div
                     key={supplier.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer interactive hover-lift"
+                    onClick={() => {}}
                   >
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2">

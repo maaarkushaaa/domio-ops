@@ -13,7 +13,7 @@ interface Column {
 }
 
 const columns: Column[] = [
-  { id: 'backlog', title: 'Backlog', color: 'bg-muted' },
+  { id: 'backlog', title: 'Бэклог', color: 'bg-muted' },
   { id: 'todo', title: 'К выполнению', color: 'bg-primary/10' },
   { id: 'in_progress', title: 'В работе', color: 'bg-warning/10' },
   { id: 'review', title: 'На ревью', color: 'bg-accent/10' },

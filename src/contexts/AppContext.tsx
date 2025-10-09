@@ -209,19 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const [state, setState] = useState<AppState>(() => {
     const saved = localStorage.getItem('appState');
-    let initialState = saved ? JSON.parse(saved) : generateMockData();
-    
-    // Auto-login demo user if no user exists
-    if (!initialState.user) {
-      initialState.user = {
-        id: 'demo-user',
-        email: 'demo@domio.ops',
-        name: 'Демо Пользователь',
-        role: 'admin',
-        created_at: new Date().toISOString(),
-      };
-    }
-    
+    const initialState = saved ? JSON.parse(saved) : generateMockData();
     console.log('📊 Initial state:', initialState.user ? 'User logged in' : 'No user');
     return initialState;
   });
