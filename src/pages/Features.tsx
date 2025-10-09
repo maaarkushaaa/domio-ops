@@ -40,9 +40,15 @@ import { TeamAnalytics } from "@/components/modern/TeamAnalytics";
 import { GoalsKPI } from "@/components/modern/GoalsKPI";
 import { AutomatedMarketing } from "@/components/modern/AutomatedMarketing";
 import { SystemMonitoring } from "@/components/modern/SystemMonitoring";
+import { CRMSystem } from "@/components/modern/CRMSystem";
+import { ResourcePlanning } from "@/components/modern/ResourcePlanning";
+import { InvoiceAutomation } from "@/components/modern/InvoiceAutomation";
+import { PredictiveMaintenance } from "@/components/modern/PredictiveMaintenancе";
+import { CompetitorAnalysis } from "@/components/modern/CompetitorAnalysis";
+import { SocialMediaIntegration } from "@/components/modern/SocialMediaIntegration";
 import { 
   Bell,
-  Upload, 
+  Upload,
   QrCode, 
   Trophy, 
   Mic, 
@@ -355,6 +361,12 @@ export default function Features() {
             <GoalsKPI />
             <AutomatedMarketing />
             <SystemMonitoring />
+            <CRMSystem />
+            <ResourcePlanning />
+            <InvoiceAutomation />
+            <PredictiveMaintenance />
+            <CompetitorAnalysis />
+            <SocialMediaIntegration />
           </div>
         </TabsContent>
       </Tabs>
