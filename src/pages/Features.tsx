@@ -19,6 +19,10 @@ import { DigitalSignature } from "@/components/modern/DigitalSignature";
 import { KanbanAutomation } from "@/components/modern/KanbanAutomation";
 import { AIAssistantPanel } from "@/components/modern/AIAssistantPanel";
 import { DocumentVersioning } from "@/components/modern/DocumentVersioning";
+import { OneCIntegration } from "@/components/modern/OneCIntegration";
+import { APIManagement } from "@/components/modern/APIManagement";
+import { AdvancedAnalytics } from "@/components/modern/AdvancedAnalytics";
+import { WebRTCVideoCall } from "@/components/modern/WebRTCVideoCall";
 import { 
   Bell,
   Upload, 
@@ -281,6 +285,13 @@ export default function Features() {
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+            <OneCIntegration />
+            <APIManagement />
+            <AdvancedAnalytics />
+            <WebRTCVideoCall />
+          </div>
+          
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <AIAssistantPanel />
             <VideoCallWidget />
