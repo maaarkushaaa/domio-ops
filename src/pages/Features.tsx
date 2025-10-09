@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { PushNotifications } from "@/components/notifications/PushNotifications";
 import { DragDropZone } from "@/components/files/DragDropZone";
 import { QRCodeGenerator } from "@/components/qr/QRCodeGenerator";
@@ -23,6 +24,12 @@ import { OneCIntegration } from "@/components/modern/OneCIntegration";
 import { APIManagement } from "@/components/modern/APIManagement";
 import { AdvancedAnalytics } from "@/components/modern/AdvancedAnalytics";
 import { WebRTCVideoCall } from "@/components/modern/WebRTCVideoCall";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { ReportBuilder } from "@/components/reports/ReportBuilder";
+import { InteractiveTour } from "@/components/onboarding/InteractiveTour";
+import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
+import { PWAManager } from "@/components/pwa/PWAManager";
+import { AdvancedSearch } from "@/components/search/AdvancedSearch";
 import { 
   Bell,
   Upload, 
@@ -49,12 +56,30 @@ import { useToast } from "@/hooks/use-toast";
 export default function Features() {
   const { toast } = useToast();
   const [voiceText, setVoiceText] = useState('');
+  const [showTour, setShowTour] = useState(false);
+
+  const handleTourComplete = () => {
+    setShowTour(false);
+    toast({
+      title: 'Тур завершен',
+      description: 'Теперь вы знаете все основные возможности системы!',
+    });
+  };
 
   return (
     <div className="space-y-6">
+      {showTour && <InteractiveTour onComplete={handleTourComplete} />}
+      
       <div>
-        <h1 className="text-3xl font-bold">Современные функции</h1>
-        <p className="text-muted-foreground">Инновационные инструменты для эффективной работы</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Современные функции</h1>
+            <p className="text-muted-foreground">Инновационные инструменты для эффективной работы</p>
+          </div>
+          <Button onClick={() => setShowTour(true)} variant="outline">
+            Начать тур
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="notifications" className="space-y-4">
@@ -286,6 +311,11 @@ export default function Features() {
 
         <TabsContent value="advanced" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+            <NotificationCenter />
+            <ReportBuilder />
+            <PWAManager />
+            <AdvancedSearch />
+            <WorkflowBuilder />
             <OneCIntegration />
             <APIManagement />
             <AdvancedAnalytics />
