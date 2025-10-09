@@ -30,6 +30,16 @@ import { InteractiveTour } from "@/components/onboarding/InteractiveTour";
 import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
 import { PWAManager } from "@/components/pwa/PWAManager";
 import { AdvancedSearch } from "@/components/search/AdvancedSearch";
+import { Blockchain } from "@/components/modern/Blockchain";
+import { MachineLearning } from "@/components/modern/MachineLearning";
+import { SupplyChain } from "@/components/modern/SupplyChain";
+import { CustomerPortal } from "@/components/modern/CustomerPortal";
+import { QualityControl } from "@/components/modern/QualityControl";
+import { InventoryTracking } from "@/components/modern/InventoryTracking";
+import { TeamAnalytics } from "@/components/modern/TeamAnalytics";
+import { GoalsKPI } from "@/components/modern/GoalsKPI";
+import { AutomatedMarketing } from "@/components/modern/AutomatedMarketing";
+import { SystemMonitoring } from "@/components/modern/SystemMonitoring";
 import { 
   Bell,
   Upload, 
@@ -335,6 +345,16 @@ export default function Features() {
             <AIAutomation />
             <DigitalSignature />
             <KanbanAutomation />
+            <Blockchain />
+            <MachineLearning />
+            <SupplyChain />
+            <CustomerPortal />
+            <QualityControl />
+            <InventoryTracking />
+            <TeamAnalytics />
+            <GoalsKPI />
+            <AutomatedMarketing />
+            <SystemMonitoring />
           </div>
         </TabsContent>
       </Tabs>
