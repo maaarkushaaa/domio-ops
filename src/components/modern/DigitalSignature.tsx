@@ -11,8 +11,51 @@ export function DigitalSignature() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
+  const [isDrawing, setIsDrawing] = useState(false);
+
   const startSigning = () => {
     setIsSigning(true);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+      }
+    }
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isSigning) return;
+    setIsDrawing(true);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      if (ctx) {
+        ctx.beginPath();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+      }
+    }
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !isSigning) return;
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      if (ctx) {
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        ctx.stroke();
+      }
+    }
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
   };
 
   const clearSignature = () => {
@@ -53,7 +96,11 @@ export function DigitalSignature() {
               ref={canvasRef}
               width={400}
               height={200}
-              className="border-2 border-dashed rounded-lg w-full bg-muted/30"
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              className="border-2 border-dashed rounded-lg w-full bg-muted/30 cursor-crosshair"
             />
             {!isSigning && !isSigned && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

@@ -17,8 +17,10 @@ import { ARViewer } from "@/components/modern/ARViewer";
 import { AIAutomation } from "@/components/modern/AIAutomation";
 import { DigitalSignature } from "@/components/modern/DigitalSignature";
 import { KanbanAutomation } from "@/components/modern/KanbanAutomation";
+import { AIAssistantPanel } from "@/components/modern/AIAssistantPanel";
+import { DocumentVersioning } from "@/components/modern/DocumentVersioning";
 import { 
-  Bell, 
+  Bell,
   Upload, 
   QrCode, 
   Trophy, 
@@ -280,9 +282,11 @@ export default function Features() {
 
         <TabsContent value="advanced" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <AIAssistantPanel />
             <VideoCallWidget />
             <TimeTracker />
             <SmartSearch />
+            <DocumentVersioning />
             <CollaborativeWhiteboard />
             <BiometricAuth />
             <BlockchainContracts />
