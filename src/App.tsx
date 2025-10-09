@@ -45,142 +45,133 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
-  console.log('🎯 App component rendering');
-  
-  // Временная диагностика - рендерим простой элемент
-  try {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="dark">
-          <AppProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Dashboard />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/tasks" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Tasks />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/production" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Production />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/finance" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Finance />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/procurement" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Procurement />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/clients" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Clients />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/documents" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Documents />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/email" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Email />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/knowledge" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Knowledge />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/calendar" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Calendar />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/analytics" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Analytics />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/reports" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Reports />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Admin />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/settings" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Settings />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/features" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Features />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </AppProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    );
-  } catch (error) {
-    console.error('❌ App rendering error:', error);
-    return (
-      <div style={{ padding: '20px', color: 'white', backgroundColor: '#1a1a1a' }}>
-        <h1>Error loading application</h1>
-        <pre>{String(error)}</pre>
-      </div>
-    );
-  }
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="dark">
+        <AppProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <CommandPalette />
+              <GlobalSearch />
+              <KeyboardShortcuts />
+              <AIAssistant />
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Dashboard />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/tasks" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Tasks />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/production" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Production />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/finance" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Finance />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/procurement" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Procurement />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/clients" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Clients />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/documents" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Documents />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/email" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Email />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/knowledge" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Knowledge />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/calendar" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Calendar />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/analytics" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Analytics />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/reports" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Reports />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Admin />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Settings />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/features" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Features />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AppProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
 };
 
 export default App;
