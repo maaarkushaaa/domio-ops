@@ -33,27 +33,34 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user } = useApp();
   
+  console.log('🔐 ProtectedRoute check - User:', user ? 'Authenticated' : 'Not authenticated');
+  
   if (!user) {
+    console.log('🚪 Redirecting to /auth');
     return <Navigate to="/auth" replace />;
   }
   
+  console.log('✅ Access granted');
   return <>{children}</>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system">
-      <AppProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <CommandPalette />
-            <GlobalSearch />
-            <KeyboardShortcuts />
-            <AIAssistant />
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
+const App = () => {
+  console.log('🎯 App component rendering');
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="system">
+        <AppProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <CommandPalette />
+              <GlobalSearch />
+              <KeyboardShortcuts />
+              <AIAssistant />
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
           <Route path="/" element={
             <ProtectedRoute>
               <AppLayout>
@@ -166,6 +173,7 @@ const App = () => (
       </AppProvider>
     </ThemeProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

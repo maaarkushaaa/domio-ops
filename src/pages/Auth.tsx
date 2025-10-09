@@ -10,6 +10,8 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 export default function Auth() {
+  console.log('🔑 Auth page rendering');
+  
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
   const [loading, setLoading] = useState(false);

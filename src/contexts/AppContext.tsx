@@ -205,9 +205,13 @@ const generateMockData = (): AppState => {
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  console.log('🏗️ AppProvider initializing');
+  
   const [state, setState] = useState<AppState>(() => {
     const saved = localStorage.getItem('appState');
-    return saved ? JSON.parse(saved) : generateMockData();
+    const initialState = saved ? JSON.parse(saved) : generateMockData();
+    console.log('📊 Initial state:', initialState.user ? 'User logged in' : 'No user');
+    return initialState;
   });
 
   useEffect(() => {
