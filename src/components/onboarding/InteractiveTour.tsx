@@ -69,31 +69,36 @@ export function InteractiveTour({ onComplete }: InteractiveTourProps) {
       let top = rect.top;
       let left = rect.left;
 
+      // Position card near element
       switch (step.position) {
         case 'top':
-          top = rect.top - 200;
-          left = rect.left + rect.width / 2 - 200;
+          top = rect.top - 220;
+          left = Math.max(10, Math.min(rect.left + rect.width / 2 - 200, window.innerWidth - 410));
           break;
         case 'bottom':
-          top = rect.bottom + 10;
-          left = rect.left + rect.width / 2 - 200;
+          top = rect.bottom + 20;
+          left = Math.max(10, Math.min(rect.left + rect.width / 2 - 200, window.innerWidth - 410));
           break;
         case 'left':
-          top = rect.top + rect.height / 2 - 100;
-          left = rect.left - 420;
+          top = Math.max(10, rect.top + rect.height / 2 - 100);
+          left = Math.max(10, rect.left - 420);
           break;
         case 'right':
-          top = rect.top + rect.height / 2 - 100;
-          left = rect.right + 10;
+          top = Math.max(10, rect.top + rect.height / 2 - 100);
+          left = Math.min(rect.right + 20, window.innerWidth - 410);
           break;
       }
 
       setPosition({ top, left });
 
-      // Highlight element
-      element.classList.add('tour-highlight');
+      // Scroll element into view if needed
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Add spotlight to element
+      element.classList.add('tour-spotlight');
+      
       return () => {
-        element.classList.remove('tour-highlight');
+        element.classList.remove('tour-spotlight');
       };
     }
   }, [currentStep, isActive]);
@@ -125,12 +130,18 @@ export function InteractiveTour({ onComplete }: InteractiveTourProps) {
 
   return (
     <>
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50" />
+      {/* Spotlight overlay with cutout */}
+      <div 
+        className="fixed inset-0 z-[100] pointer-events-none"
+        style={{
+          background: 'rgba(0, 0, 0, 0.7)',
+          mixBlendMode: 'hard-light'
+        }}
+      />
 
-      {/* Tour Card */}
+      {/* Tour Card - clickable */}
       <Card
-        className="fixed z-50 w-[400px] shadow-xl animate-scale-in"
+        className="fixed z-[101] w-[400px] shadow-2xl animate-scale-in pointer-events-auto"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
@@ -204,12 +215,21 @@ export function InteractiveTour({ onComplete }: InteractiveTourProps) {
       </Card>
 
       <style>{`
-        .tour-highlight {
+        .tour-spotlight {
           position: relative;
-          z-index: 51;
-          box-shadow: 0 0 0 4px hsl(var(--primary)), 0 0 0 8px hsl(var(--primary) / 0.3);
-          border-radius: 0.5rem;
-          transition: all 0.3s ease;
+          z-index: 101;
+          box-shadow: 
+            0 0 0 4px hsl(var(--primary)),
+            0 0 0 8px hsl(var(--primary) / 0.5),
+            0 0 0 9999px rgba(0, 0, 0, 0.7);
+          border-radius: 0.75rem;
+          transition: box-shadow 0.3s ease;
+          pointer-events: auto;
+        }
+        
+        /* Allow interaction with spotlighted element */
+        .tour-spotlight * {
+          pointer-events: auto;
         }
       `}</style>
     </>
