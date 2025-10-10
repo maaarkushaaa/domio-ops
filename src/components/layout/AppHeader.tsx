@@ -35,16 +35,20 @@ export function AppHeader() {
       
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <NotificationPopover data-tour="notifications" />
+        <div data-tour="notifications">
+          <NotificationPopover />
+        </div>
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full interactive hover-glow" data-tour="ai-assistant">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-gradient-primary text-white font-semibold">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full interactive hover-glow">
+              <div data-tour="ai-assistant">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-gradient-primary text-white font-semibold">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="glass-card animate-scale-in w-56">

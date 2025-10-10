@@ -149,13 +149,17 @@ serve(async (req) => {
       result = { text: data.choices?.[0]?.message?.content || "No response" };
     }
 
-    // Save analysis to database
-    await supabase.from('ai_analysis').insert({
-      user_id: user.id,
-      input_text: text,
-      analysis_type: type,
-      result: result
-    });
+    // Save analysis to database (optional - table may not exist)
+    try {
+      await supabase.from('ai_analysis').insert({
+        user_id: user.id,
+        input_text: text,
+        analysis_type: type,
+        result: result
+      });
+    } catch (dbError) {
+      console.log('AI analysis logging skipped (table may not exist)');
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
