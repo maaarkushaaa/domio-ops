@@ -44,6 +44,7 @@ const menuItems = [
   { title: "Документы", url: "/documents", icon: FileText },
   { title: "Почта", url: "/email", icon: Mail },
   { title: "Видеозвонки", url: "/video-calls", icon: Video },
+  { title: "Автоматизация", url: "/automation", icon: Sparkles },
   { title: "База знаний", url: "/knowledge", icon: BookOpen },
   { title: "Функции", url: "/features", icon: Sparkles },
 ];

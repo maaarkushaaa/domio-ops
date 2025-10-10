@@ -1,4 +1,40 @@
-# Welcome to your Lovable project
+# 🏢 DOMIO Ops - Enterprise Management System
+
+**Современная корпоративная система управления для мебельного производства и бизнес-операций.**
+
+![React](https://img.shields.io/badge/react-18.3+-61DAFB.svg)
+![TypeScript](https://img.shields.io/badge/typescript-5.0+-3178C6.svg)
+
+## 🚀 Быстрый старт
+
+```bash
+npm install
+npm run dev
+```
+
+## 📚 Документация
+
+- **[FINAL_DEPLOYMENT_GUIDE.md](./FINAL_DEPLOYMENT_GUIDE.md)** - Полное руководство по деплою
+- **[USER_GUIDE.md](./USER_GUIDE.md)** - Руководство пользователя
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Техническая архитектура
+- **[ENTERPRISE_FEATURES.md](./ENTERPRISE_FEATURES.md)** - Enterprise функции
+
+## ✨ Ключевые возможности
+
+- 🤖 **AI-ассистент** (Lovable AI - Gemini 2.5 Flash)
+- 🎥 **Видеоконференции** (WebRTC)
+- 📊 **Продвинутая аналитика** с интерактивными графиками
+- ⚡ **Автоматизация Workflows**
+- 📧 **Email-клиент** (IMAP/SMTP)
+- 💼 **CRM** система
+- 🏭 **Управление производством**
+- 💰 **Финансовый учет**
+
+## 🛠️ Tech Stack
+
+React 18.3 • TypeScript • Vite • Tailwind CSS • Supabase • Vercel
+
+---
 
 ## Project info
 

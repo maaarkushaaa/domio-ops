@@ -29,6 +29,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Features from "./pages/Features";
 import VideoCalls from "./pages/VideoCalls";
+import Automation from "./pages/Automation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,22 +49,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
-  const [showTour, setShowTour] = useState(false);
-
-  useEffect(() => {
-    // Показать тур только для новых пользователей
-    const tourCompleted = localStorage.getItem('tourCompleted');
-    if (!tourCompleted) {
-      // Задержка для загрузки интерфейса
-      setTimeout(() => setShowTour(true), 1000);
-    }
-  }, []);
-
-  const handleTourComplete = () => {
-    localStorage.setItem('tourCompleted', 'true');
-    setShowTour(false);
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
@@ -76,7 +61,6 @@ const App = () => {
               <GlobalSearch />
               <KeyboardShortcuts />
               <AIAssistantAdvanced />
-              {showTour && <InteractiveTour onComplete={handleTourComplete} />}
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/" element={
@@ -188,6 +172,13 @@ const App = () => {
                   <ProtectedRoute>
                     <AppLayout>
                       <VideoCalls />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/automation" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Automation />
                     </AppLayout>
                   </ProtectedRoute>
                 } />

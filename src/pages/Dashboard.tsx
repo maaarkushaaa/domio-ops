@@ -16,7 +16,8 @@ import { useProducts } from "@/hooks/use-products";
 import { ProjectTimeline } from "@/components/timeline/ProjectTimeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { InteractiveTour } from "@/components/onboarding/InteractiveTour";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -24,6 +25,20 @@ export default function Dashboard() {
   const { products } = useProducts();
   const navigate = useNavigate();
   const userName = user?.name || user?.email?.split('@')[0] || 'Пользователь';
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    // Показать тур только для новых пользователей на Dashboard
+    const tourCompleted = localStorage.getItem('tourCompleted');
+    if (!tourCompleted && user) {
+      setTimeout(() => setShowTour(true), 1500);
+    }
+  }, [user]);
+
+  const handleTourComplete = () => {
+    localStorage.setItem('tourCompleted', 'true');
+    setShowTour(false);
+  };
   
   const todayTasks = tasks.filter(t => t.status !== 'done').length;
   const overdueTasks = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length;
@@ -225,6 +240,8 @@ export default function Dashboard() {
           <ProjectTimeline />
         </TabsContent>
       </Tabs>
+
+      {showTour && <InteractiveTour onComplete={handleTourComplete} />}
     </div>
   );
 }
