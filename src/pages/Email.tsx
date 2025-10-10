@@ -83,6 +83,26 @@ const mockEmails: Email[] = [
     read: true,
     starred: false,
     folder: 'sent' as const
+  })),
+  ...Array.from({ length: 23 }, (_, i) => ({
+    id: i + 17,
+    from: 'archive@domio.ru',
+    subject: `Архивное письмо ${i + 1}`,
+    preview: 'Это письмо из архива, сохранено для истории...',
+    date: `${i + 5} дн. назад`,
+    read: true,
+    starred: false,
+    folder: 'archive' as const
+  })),
+  ...Array.from({ length: 5 }, (_, i) => ({
+    id: i + 40,
+    from: 'trash@domio.ru',
+    subject: `Удаленное письмо ${i + 1}`,
+    preview: 'Это письмо было удалено и находится в корзине...',
+    date: `${i + 2} дн. назад`,
+    read: true,
+    starred: false,
+    folder: 'trash' as const
   }))
 ];
 

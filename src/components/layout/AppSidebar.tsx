@@ -15,6 +15,7 @@ import {
   Settings,
   Mail,
   Sparkles,
+  Video,
 } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -27,6 +28,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const menuItems = [
@@ -41,6 +43,7 @@ const menuItems = [
   { title: "Отчеты", url: "/reports", icon: FileBarChart },
   { title: "Документы", url: "/documents", icon: FileText },
   { title: "Почта", url: "/email", icon: Mail },
+  { title: "Видеозвонки", url: "/video-calls", icon: Video },
   { title: "База знаний", url: "/knowledge", icon: BookOpen },
   { title: "Функции", url: "/features", icon: Sparkles },
 ];
@@ -48,10 +51,15 @@ const menuItems = [
 export function AppSidebar() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { setOpenMobile } = useSidebar();
+
+  const handleNavClick = () => {
+    setOpenMobile(false);
+  };
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border p-4">
+      <SidebarHeader className="border-b border-sidebar-border p-4" data-tour="sidebar">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-sm">DO</span>
@@ -70,6 +78,7 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url}
                       end={item.url === "/"}
+                      onClick={handleNavClick}
                       className={({ isActive }) =>
                         isActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -95,6 +104,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/admin"
+                      onClick={handleNavClick}
                       className={({ isActive }) =>
                         isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
                       }
@@ -117,6 +127,7 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <NavLink
                     to="/settings"
+                    onClick={handleNavClick}
                     className={({ isActive }) =>
                       isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
                     }

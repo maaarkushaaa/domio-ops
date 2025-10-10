@@ -26,6 +26,7 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Features from "./pages/Features";
+import VideoCalls from "./pages/VideoCalls";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,7 +48,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="light">
         <AppProvider>
           <TooltipProvider>
             <Toaster />
@@ -161,6 +162,13 @@ const App = () => {
                   <ProtectedRoute>
                     <AppLayout>
                       <Features />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/video-calls" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <VideoCalls />
                     </AppLayout>
                   </ProtectedRoute>
                 } />

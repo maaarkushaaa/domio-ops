@@ -28,17 +28,18 @@ export function AppHeader() {
           <Input
             placeholder="Быстрый поиск..."
             className="pl-9 focus-elegant"
+            data-tour="search"
           />
         </div>
       </div>
       
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <NotificationPopover />
+        <NotificationPopover data-tour="notifications" />
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full interactive hover-glow">
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full interactive hover-glow" data-tour="ai-assistant">
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-gradient-primary text-white font-semibold">
                   {userInitials}
