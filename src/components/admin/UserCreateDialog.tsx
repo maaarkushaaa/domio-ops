@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserCreateDialogProps {
   trigger?: React.ReactNode;
@@ -15,22 +16,50 @@ export function UserCreateDialog({ trigger }: UserCreateDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState('');
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !role) return;
+    if (!name || !email || !password || !role) {
+      toast({
+        title: 'Ошибка',
+        description: 'Заполните все поля',
+        variant: 'destructive'
+      });
+      return;
+    }
 
-    toast({
-      title: 'Пользователь создан',
-      description: `Пользователь ${name} успешно добавлен в систему`,
-    });
+    setLoading(true);
 
-    setName('');
-    setEmail('');
-    setRole('');
-    setOpen(false);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: { email, password, name, role }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Пользователь создан',
+        description: `Пользователь ${name} успешно добавлен в систему`,
+      });
+
+      setName('');
+      setEmail('');
+      setPassword('');
+      setRole('');
+      setOpen(false);
+    } catch (error: any) {
+      toast({
+        title: 'Ошибка',
+        description: error.message || 'Не удалось создать пользователя',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,6 +104,19 @@ export function UserCreateDialog({ trigger }: UserCreateDialogProps) {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="password">Пароль</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              minLength={6}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label>Роль</Label>
             <Select value={role} onValueChange={setRole} required>
               <SelectTrigger>
@@ -90,10 +132,12 @@ export function UserCreateDialog({ trigger }: UserCreateDialogProps) {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
               Отмена
             </Button>
-            <Button type="submit">Создать пользователя</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Создание...' : 'Создать пользователя'}
+            </Button>
           </div>
         </form>
       </DialogContent>

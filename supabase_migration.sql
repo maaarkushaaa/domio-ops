@@ -51,7 +51,7 @@ create table public.user_roles (
 
 alter table public.user_roles enable row level security;
 
--- Функция проверки роли
+-- Security definer function for role checking
 create or replace function public.has_role(_user_id uuid, _role app_role)
 returns boolean
 language sql
@@ -65,6 +65,42 @@ as $$
     where user_id = _user_id and role = _role
   )
 $$;
+
+-- Email accounts table
+create table public.email_accounts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  email text not null,
+  imap_server text not null,
+  imap_port integer not null default 993,
+  smtp_server text not null,
+  smtp_port integer not null default 587,
+  password text not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(user_id)
+);
+
+alter table public.email_accounts enable row level security;
+
+-- Emails table
+create table public.emails (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid references public.email_accounts(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  from_address text not null,
+  to_address text not null,
+  subject text not null,
+  body text not null,
+  preview text,
+  folder text not null default 'inbox',
+  is_read boolean default false,
+  is_starred boolean default false,
+  received_at timestamptz default now(),
+  created_at timestamptz default now()
+);
+
+alter table public.emails enable row level security;
 
 -- Таблица проектов
 create table public.projects (
@@ -424,6 +460,33 @@ create policy "Users can delete own events"
   on public.calendar_events for delete
   to authenticated
   using (created_by = auth.uid() or public.has_role(auth.uid(), 'admin'));
+
+-- RLS политики для user_roles
+create policy "Users can view their own roles"
+  on public.user_roles for select
+  using (auth.uid() = user_id);
+
+create policy "Admins can view all roles"
+  on public.user_roles for select
+  using (public.has_role(auth.uid(), 'admin'));
+
+create policy "Admins can manage all roles"
+  on public.user_roles for all
+  using (public.has_role(auth.uid(), 'admin'));
+
+-- RLS политики для email_accounts
+create policy "Users can manage their email accounts"
+  on public.email_accounts for all
+  using (auth.uid() = user_id);
+
+-- RLS политики для emails
+create policy "Users can view their emails"
+  on public.emails for select
+  using (auth.uid() = user_id);
+
+create policy "Users can manage their emails"
+  on public.emails for all
+  using (auth.uid() = user_id);
 
 -- Создание индексов для производительности
 create index idx_tasks_project_id on public.tasks(project_id);

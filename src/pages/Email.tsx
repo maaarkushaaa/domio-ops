@@ -73,7 +73,17 @@ const mockEmails: Email[] = [
     read: false,
     starred: false,
     folder: 'inbox'
-  }
+  },
+  ...Array.from({ length: 12 }, (_, i) => ({
+    id: i + 5,
+    from: 'domio@example.com',
+    subject: `Отправленное письмо ${i + 1}`,
+    preview: 'Это отправленное письмо из архива...',
+    date: `${i + 1} дн. назад`,
+    read: true,
+    starred: false,
+    folder: 'sent' as const
+  }))
 ];
 
 export default function Email() {
@@ -361,7 +371,18 @@ export default function Email() {
                     <Archive className="h-4 w-4 mr-2" />
                     Архивировать
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedEmail(null);
+                      setMobileView('list');
+                      toast({
+                        title: 'Письмо удалено',
+                        description: 'Письмо перемещено в корзину'
+                      });
+                    }}
+                  >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Удалить
                   </Button>

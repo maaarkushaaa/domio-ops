@@ -1,19 +1,44 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, Server } from "lucide-react";
+import { useEmailSettings } from '@/hooks/use-email-settings';
 
 export function EmailSettings() {
-  const { toast } = useToast();
+  const { settings, loading, saveSettings } = useEmailSettings();
+  const [email, setEmail] = useState('');
+  const [imapServer, setImapServer] = useState('');
+  const [imapPort, setImapPort] = useState('993');
+  const [smtpServer, setSmtpServer] = useState('');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [password, setPassword] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    toast({
-      title: "Настройки сохранены",
-      description: "Настройки почты успешно обновлены",
+  useEffect(() => {
+    if (settings) {
+      setEmail(settings.email);
+      setImapServer(settings.imapServer);
+      setImapPort(settings.imapPort.toString());
+      setSmtpServer(settings.smtpServer);
+      setSmtpPort(settings.smtpPort.toString());
+      setPassword(settings.password);
+    }
+  }, [settings]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await saveSettings({
+      email,
+      imapServer,
+      imapPort: parseInt(imapPort),
+      smtpServer,
+      smtpPort: parseInt(smtpPort),
+      password,
     });
+    setSaving(false);
   };
 
   return (
@@ -34,7 +59,8 @@ export function EmailSettings() {
             <Input
               id="imap-server"
               placeholder="imap.gmail.com"
-              defaultValue="imap.domio.ru"
+              value={imapServer}
+              onChange={(e) => setImapServer(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -44,7 +70,8 @@ export function EmailSettings() {
                 id="imap-port"
                 type="number"
                 placeholder="993"
-                defaultValue="993"
+                value={imapPort}
+                onChange={(e) => setImapPort(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -77,7 +104,8 @@ export function EmailSettings() {
               id="email"
               type="email"
               placeholder="you@domio.ru"
-              defaultValue="manager@domio.ru"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="grid gap-2">
@@ -86,6 +114,8 @@ export function EmailSettings() {
               id="password"
               type="password"
               placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
         </CardContent>
@@ -107,7 +137,8 @@ export function EmailSettings() {
             <Input
               id="smtp-server"
               placeholder="smtp.gmail.com"
-              defaultValue="smtp.domio.ru"
+              value={smtpServer}
+              onChange={(e) => setSmtpServer(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -117,7 +148,8 @@ export function EmailSettings() {
                 id="smtp-port"
                 type="number"
                 placeholder="587"
-                defaultValue="587"
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -144,7 +176,9 @@ export function EmailSettings() {
 
       <div className="flex justify-end gap-2">
         <Button variant="outline">Проверить подключение</Button>
-        <Button onClick={handleSave}>Сохранить настройки</Button>
+        <Button onClick={handleSave} disabled={saving || loading}>
+          {saving ? 'Сохранение...' : 'Сохранить настройки'}
+        </Button>
       </div>
     </div>
   );
