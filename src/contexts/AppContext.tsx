@@ -312,6 +312,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
+    // Temporary: Always use fallback for mknev to ensure admin access
+    if (email === 'mknev' && password === '!A1q2q3q4qzxc') {
+      const user: User = {
+        id: 'admin-1',
+        email: 'mknev@domio.ops',
+        name: 'Admin MKNEV',
+        role: 'admin',
+        created_at: new Date().toISOString(),
+      };
+      setUser(user);
+      console.log('✅ Admin login successful (fallback)');
+      return;
+    }
+
     try {
       // Try Supabase authentication first
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -353,20 +367,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.error('Authentication failed:', error);
       
       // Fallback to mock authentication for development
-      // Admin credentials fallback
-      if (email === 'mknev' && password === '!A1q2q3q4qzxc') {
-        const user: User = {
-          id: 'admin-1',
-          email: 'mknev@domio.ops',
-          name: 'Admin MKNEV',
-          role: 'admin',
-          created_at: new Date().toISOString(),
-        };
-        setUser(user);
-        console.log('✅ Fallback admin login successful');
-        return;
-      }
-      
       // Regular user fallback
       const user: User = {
         id: Date.now().toString(),
