@@ -1,55 +1,36 @@
-const CACHE_NAME = 'domio-ops-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+// SERVICE WORKER TEMPORARILY DISABLED TO FIX DEMO USER CACHING ISSUE
+console.log('🚫 Service Worker loaded - DISABLED for debugging');
 
-// Install service worker and cache resources
+// Install service worker
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
-  );
+  console.log('🚫 Service Worker install - DISABLED');
+  // Skip waiting to prevent caching
+  self.skipWaiting();
 });
 
-// Fetch from cache first, then network
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request).then((response) => {
-          // Don't cache if not a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-
-          return response;
-        });
-      })
-  );
-});
-
-// Clean up old caches
+// Activate service worker
 self.addEventListener('activate', (event) => {
+  console.log('🚫 Service Worker activate - DISABLED');
+  // Clear all caches
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
+          console.log('🗑️ Deleting cache:', cacheName);
+          return caches.delete(cacheName);
         })
       );
     })
+  );
+  // Take control immediately
+  self.clients.claim();
+});
+
+// Fetch from network only (no caching)
+self.addEventListener('fetch', (event) => {
+  // Always fetch from network, never from cache
+  console.log('🌐 Service Worker fetch - bypassing cache for:', event.request.url);
+  event.respondWith(
+    fetch(event.request)
   );
 });

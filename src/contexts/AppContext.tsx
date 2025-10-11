@@ -223,6 +223,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }
     
+    // Unregister service worker if it exists
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(registration => {
+          console.log('🚫 Unregistering Service Worker:', registration.scope);
+          registration.unregister();
+        });
+      });
+    }
+    
     // Force reload if demo user detected
     const saved = localStorage.getItem('appState');
     if (saved) {
