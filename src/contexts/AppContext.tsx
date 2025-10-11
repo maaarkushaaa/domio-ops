@@ -248,9 +248,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
           };
 
           setUser(user);
+        } else {
+          // If no Supabase session, check if we have a saved user in localStorage
+          const saved = localStorage.getItem('appState');
+          if (saved) {
+            const savedState = JSON.parse(saved);
+            if (savedState.user && savedState.user.role === 'admin') {
+              // Keep the admin user from localStorage if it was set via fallback
+              setUser(savedState.user);
+            }
+          }
         }
       } catch (error) {
         console.error('Error initializing user:', error);
+        // Fallback to localStorage if Supabase fails
+        const saved = localStorage.getItem('appState');
+        if (saved) {
+          const savedState = JSON.parse(saved);
+          if (savedState.user) {
+            setUser(savedState.user);
+          }
+        }
       }
     };
 
@@ -345,6 +363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           created_at: new Date().toISOString(),
         };
         setUser(user);
+        console.log('✅ Fallback admin login successful');
         return;
       }
       
