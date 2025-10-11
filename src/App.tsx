@@ -35,7 +35,14 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user } = useApp();
   
-  console.log('🔐 ProtectedRoute check - User:', user ? 'Authenticated' : 'Not authenticated');
+  console.log('🔐 ProtectedRoute check - User:', user ? `${user.email} (${user.role})` : 'Not authenticated');
+  
+  // ULTRA AGGRESSIVE: Block demo users
+  if (user && (user.email === 'mknev@domio.ops' || user.id === 'admin-1')) {
+    console.log('🚨 BLOCKING DEMO USER IN PROTECTED ROUTE:', user.email, user.id);
+    console.log('🚪 Redirecting to /auth');
+    return <Navigate to="/auth" replace />;
+  }
   
   if (!user) {
     console.log('🚪 Redirecting to /auth');

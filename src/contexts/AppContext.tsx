@@ -257,6 +257,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    // ULTRA AGGRESSIVE: Block saving demo users
+    if (state.user && (state.user.email === 'mknev@domio.ops' || state.user.id === 'admin-1')) {
+      console.log('🚨 BLOCKING SAVE OF DEMO USER:', state.user.email, state.user.id);
+      return;
+    }
+    
     localStorage.setItem('appState', JSON.stringify(state));
   }, [state]);
 
@@ -361,6 +367,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setUser = (user: User | null) => {
+    // ULTRA AGGRESSIVE: Block demo users
+    if (user && (user.email === 'mknev@domio.ops' || user.id === 'admin-1')) {
+      console.log('🚨 BLOCKING DEMO USER:', user.email, user.id);
+      console.log('🧹 FORCING CLEAR AND RELOAD');
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
+      return;
+    }
+    
     console.log('👤 Setting user:', user ? `${user.email} (${user.role})` : 'null');
     setState(prev => ({ ...prev, user }));
   };
