@@ -211,7 +211,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
     // Force clear localStorage to prevent demo user loading
     console.log('🧹 Clearing localStorage to prevent demo user loading');
-    localStorage.removeItem('appState');
+    localStorage.clear(); // Clear all localStorage
     
     // Always start with clean state
     const initialState = generateMockData();
