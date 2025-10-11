@@ -26,7 +26,6 @@ import { AdvancedAnalytics } from "@/components/modern/AdvancedAnalytics";
 import { WebRTCVideoCall } from "@/components/modern/WebRTCVideoCall";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { ReportBuilder } from "@/components/reports/ReportBuilder";
-import { InteractiveTour } from "@/components/onboarding/InteractiveTour";
 import { WorkflowBuilder } from "@/components/workflow/WorkflowBuilder";
 import { PWAManager } from "@/components/pwa/PWAManager";
 import { AdvancedSearch } from "@/components/search/AdvancedSearch";
@@ -52,6 +51,11 @@ import { ProjectTemplates } from "@/components/modern/ProjectTemplates";
 import { ContractManagement } from "@/components/modern/ContractManagement";
 import { RiskManagement } from "@/components/modern/RiskManagement";
 import { PerformanceDashboard } from "@/components/modern/PerformanceDashboard";
+import { RealTimeCollaboration } from "@/components/modern/RealTimeCollaboration";
+import { SmartNotifications } from "@/components/modern/SmartNotifications";
+import { AdvancedSecurity } from "@/components/modern/AdvancedSecurity";
+import { MultiCloudSync } from "@/components/modern/MultiCloudSync";
+import { AIDocumentAnalysis } from "@/components/modern/AIDocumentAnalysis";
 import {
   Bell,
   Upload,
@@ -78,30 +82,12 @@ import { useToast } from "@/hooks/use-toast";
 export default function Features() {
   const { toast } = useToast();
   const [voiceText, setVoiceText] = useState('');
-  const [showTour, setShowTour] = useState(false);
-
-  const handleTourComplete = () => {
-    setShowTour(false);
-    toast({
-      title: 'Тур завершен',
-      description: 'Теперь вы знаете все основные возможности системы!',
-    });
-  };
 
   return (
     <div className="space-y-6">
-      {showTour && <InteractiveTour onComplete={handleTourComplete} />}
-      
-      <div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Современные функции</h1>
-            <p className="text-muted-foreground">Инновационные инструменты для эффективной работы</p>
-          </div>
-          <Button onClick={() => setShowTour(true)} variant="outline">
-            Начать тур
-          </Button>
-        </div>
+      <div className="glass-card p-6 rounded-xl">
+        <h1 className="text-3xl font-bold">Современные функции</h1>
+        <p className="text-muted-foreground mt-2">Инновационные инструменты для эффективной работы</p>
       </div>
 
       <Tabs defaultValue="notifications" className="space-y-4">
@@ -331,8 +317,13 @@ export default function Features() {
           </div>
         </TabsContent>
 
-        <TabsContent value="advanced" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
+        <TabsContent value="advanced" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <RealTimeCollaboration />
+            <SmartNotifications />
+            <AdvancedSecurity />
+            <MultiCloudSync />
+            <AIDocumentAnalysis />
             <NotificationCenter />
             <ReportBuilder />
             <PWAManager />
@@ -342,9 +333,6 @@ export default function Features() {
             <APIManagement />
             <AdvancedAnalytics />
             <WebRTCVideoCall />
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <AIAssistantPanel />
             <VideoCallWidget />
             <TimeTracker />

@@ -10,7 +10,6 @@ import { CommandPalette } from "./components/common/CommandPalette";
 import { GlobalSearch } from "./components/search/GlobalSearch";
 import { KeyboardShortcuts } from "./components/shortcuts/KeyboardShortcuts";
 import { AIAssistantAdvanced } from "./components/ai/AIAssistantAdvanced";
-import { InteractiveTour } from "./components/onboarding/InteractiveTour";
 import { useState, useEffect } from "react";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";

@@ -1,12 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Bell, BellOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Bell } from 'lucide-react';
 
 export function PushNotifications() {
   const { toast } = useToast();
+  const [enabled, setEnabled] = useState(
+    'Notification' in window && Notification.permission === 'granted'
+  );
 
-  const requestPermission = async () => {
+  const toggleNotifications = async (checked: boolean) => {
+    if (!checked) {
+      setEnabled(false);
+      toast({
+        title: 'Уведомления отключены',
+        description: 'Вы больше не будете получать push-уведомления',
+      });
+      return;
+    }
+
     if (!('Notification' in window)) {
       toast({
         title: 'Уведомления не поддерживаются',
@@ -19,6 +32,7 @@ export function PushNotifications() {
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
+      setEnabled(true);
       toast({
         title: 'Уведомления включены',
         description: 'Вы будете получать важные обновления',
@@ -31,9 +45,10 @@ export function PushNotifications() {
         badge: '/icon-192.png',
       });
     } else {
+      setEnabled(false);
       toast({
         title: 'Уведомления отклонены',
-        description: 'Вы не будете получать push-уведомления',
+        description: 'Разрешите уведомления в настройках браузера',
         variant: 'destructive',
       });
     }
@@ -59,26 +74,24 @@ export function PushNotifications() {
     }
   }, []);
 
-  const currentPermission = 'Notification' in window ? Notification.permission : 'unsupported';
-
   return (
-    <div className="flex items-center gap-2">
-      {currentPermission === 'granted' ? (
-        <Button variant="ghost" size="sm" className="gap-2" disabled>
-          <Bell className="h-4 w-4" />
-          Уведомления включены
-        </Button>
-      ) : currentPermission === 'denied' ? (
-        <Button variant="ghost" size="sm" className="gap-2" disabled>
-          <BellOff className="h-4 w-4 text-muted-foreground" />
-          Уведомления отключены
-        </Button>
-      ) : (
-        <Button variant="outline" size="sm" className="gap-2" onClick={requestPermission}>
-          <Bell className="h-4 w-4" />
-          Включить уведомления
-        </Button>
-      )}
+    <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+      <div className="flex items-center gap-3">
+        <Bell className="h-5 w-5 text-primary" />
+        <div>
+          <Label htmlFor="push-notifications" className="font-medium cursor-pointer">
+            Push-уведомления
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {enabled ? 'Уведомления включены' : 'Включите для получения обновлений'}
+          </p>
+        </div>
+      </div>
+      <Switch
+        id="push-notifications"
+        checked={enabled}
+        onCheckedChange={toggleNotifications}
+      />
     </div>
   );
 }
