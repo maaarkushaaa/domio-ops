@@ -209,24 +209,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   console.log('🏗️ AppProvider initializing');
   
   const [state, setState] = useState<AppState>(() => {
-    // Don't load demo user from localStorage - only load other data
-    const saved = localStorage.getItem('appState');
-    let initialState;
+    // Force clear localStorage to prevent demo user loading
+    console.log('🧹 Clearing localStorage to prevent demo user loading');
+    localStorage.removeItem('appState');
     
-    if (saved) {
-      const parsedState = JSON.parse(saved);
-      // Remove user from saved state to force Supabase authentication
-      initialState = {
-        ...parsedState,
-        user: null
-      };
-    } else {
-      initialState = generateMockData();
-      // Remove demo user
-      initialState.user = null;
-    }
+    // Always start with clean state
+    const initialState = generateMockData();
+    initialState.user = null;
     
-    console.log('📊 Initial state:', initialState.user ? 'User logged in' : 'No user');
+    console.log('📊 Initial state:', initialState.user ? `User logged in: ${initialState.user.email} (${initialState.user.role})` : 'No user');
     return initialState;
   });
 
@@ -329,6 +320,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setUser = (user: User | null) => {
+    console.log('👤 Setting user:', user ? `${user.email} (${user.role})` : 'null');
     setState(prev => ({ ...prev, user }));
   };
 
