@@ -5,16 +5,16 @@ import "./index.css";
 // Apply dark theme by default
 document.documentElement.classList.add('dark');
 
-// Register service worker for PWA
+// SERVICE WORKER DISABLED TO FIX DEMO USER CACHING ISSUE
+// Unregister any existing service workers
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(registration => {
-        console.log('✅ SW registered: ', registration);
-      })
-      .catch(registrationError => {
-        console.log('❌ SW registration failed: ', registrationError);
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      registrations.forEach(registration => {
+        console.log('🚫 Unregistering existing Service Worker:', registration.scope);
+        registration.unregister();
       });
+    });
   });
 }
 
