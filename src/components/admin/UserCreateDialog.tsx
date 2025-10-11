@@ -39,7 +39,10 @@ export function UserCreateDialog({ trigger }: UserCreateDialogProps) {
         body: { email, password, name, role }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge Function error:', error);
+        throw error;
+      }
 
       toast({
         title: 'Пользователь создан',

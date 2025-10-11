@@ -12,9 +12,16 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl,
+      supabaseServiceKey,
       {
         auth: {
           autoRefreshToken: false,
@@ -50,20 +57,20 @@ serve(async (req) => {
       password,
       email_confirm: true,
       user_metadata: {
-        name,
+        full_name: name,
       }
     });
 
     if (createError) throw createError;
 
-    // Create profile
+    // Profile will be created automatically by the trigger
+    // Update the profile with the correct name if needed
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: newUser.user.id,
-        name,
-        email,
-      });
+      .update({
+        full_name: name,
+      })
+      .eq('id', newUser.user.id);
 
     if (profileError) throw profileError;
 

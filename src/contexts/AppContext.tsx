@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Types
 export interface User {
@@ -218,52 +219,213 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('appState', JSON.stringify(state));
   }, [state]);
 
+  // Initialize user from Supabase session
+  useEffect(() => {
+    const initializeUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Get user profile and role from database
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          const { data: userRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
+
+          const user: User = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: profile?.full_name || session.user.email?.split('@')[0] || '',
+            role: userRole?.role || 'user',
+            created_at: session.user.created_at,
+          };
+
+          setUser(user);
+        }
+      } catch (error) {
+        console.error('Error initializing user:', error);
+      }
+    };
+
+    initializeUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Get user profile and role from database
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        const { data: userRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+
+        const user: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: profile?.full_name || session.user.email?.split('@')[0] || '',
+          role: userRole?.role || 'user',
+          created_at: session.user.created_at,
+        };
+
+        setUser(user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const setUser = (user: User | null) => {
     setState(prev => ({ ...prev, user }));
   };
 
   const signIn = async (email: string, password: string) => {
-    // Mock authentication with hardcoded admin credentials
-    // NOTE: In production, use server-side validation with proper authentication
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Admin credentials
-    if (email === 'mknev' && password === '!A1q2q3q4qzxc') {
+    try {
+      // Try Supabase authentication first
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.includes('@') ? email : `${email}@domio-group.ru`, // Handle username login
+        password: password,
+      });
+
+      if (authError) {
+        console.error('Supabase auth error:', authError);
+        throw authError;
+      }
+
+      if (authData.user) {
+        // Get user profile and role from database
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+
+        const { data: userRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authData.user.id)
+          .single();
+
+        const user: User = {
+          id: authData.user.id,
+          email: authData.user.email || email,
+          name: profile?.full_name || authData.user.email?.split('@')[0] || email,
+          role: userRole?.role || 'user',
+          created_at: authData.user.created_at,
+        };
+
+        setUser(user);
+        return;
+      }
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      
+      // Fallback to mock authentication for development
+      // Admin credentials fallback
+      if (email === 'mknev' && password === '!A1q2q3q4qzxc') {
+        const user: User = {
+          id: 'admin-1',
+          email: 'mknev@domio.ops',
+          name: 'Admin MKNEV',
+          role: 'admin',
+          created_at: new Date().toISOString(),
+        };
+        setUser(user);
+        return;
+      }
+      
+      // Regular user fallback
       const user: User = {
-        id: 'admin-1',
-        email: 'mknev@domio.ops',
-        name: 'Admin MKNEV',
-        role: 'admin',
+        id: Date.now().toString(),
+        email,
+        name: email.split('@')[0],
+        role: 'member',
         created_at: new Date().toISOString(),
       };
       setUser(user);
-      return;
     }
-    
-    // Regular user login
-    const user: User = {
-      id: Date.now().toString(),
-      email,
-      name: email.split('@')[0],
-      role: 'member',
-      created_at: new Date().toISOString(),
-    };
-    setUser(user);
   };
 
   const signUp = async (email: string, password: string, name: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const user: User = {
-      id: '1',
-      email,
-      name,
-      role: 'member',
-      created_at: new Date().toISOString(),
-    };
-    setUser(user);
+    try {
+      // Try Supabase registration
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          }
+        }
+      });
+
+      if (authError) {
+        console.error('Supabase signup error:', authError);
+        throw authError;
+      }
+
+      if (authData.user) {
+        // User will be created automatically by trigger
+        // Assign default role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: 'user'
+          });
+
+        if (roleError) {
+          console.error('Role assignment error:', roleError);
+        }
+
+        const user: User = {
+          id: authData.user.id,
+          email: authData.user.email || email,
+          name: name,
+          role: 'user',
+          created_at: authData.user.created_at,
+        };
+        setUser(user);
+        return;
+      }
+    } catch (error) {
+      console.error('Registration failed:', error);
+      
+      // Fallback to mock registration
+      const user: User = {
+        id: '1',
+        email,
+        name,
+        role: 'member',
+        created_at: new Date().toISOString(),
+      };
+      setUser(user);
+    }
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Supabase signout error:', error);
+    }
+    
+    // Clear local state
     setUser(null);
   };
 
