@@ -1,0 +1,10 @@
+[33m6e3cfe2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m ULTRA AGGRESSIVE demo user blocking
+[33m73e97f3[m COMPLETELY REMOVE Service Worker to fix demo user issue
+[33mca0ce2e[m DISABLE Service Worker to fix demo user caching
+[33m7b01941[m ULTRA AGGRESSIVE demo user cleanup
+[33mac40746[m Clear all localStorage to prevent demo user caching
+[33m6ba31fc[m Force clear localStorage and add detailed logging
+[33mede24bd[m Fix demo user loading issue
+[33m38bdeae[m Remove fallback authentication - use only Supabase
+[33ma2d39f0[m Force fallback admin login for mknev
+[33mfb3b0c2[m Trigger Vercel deployment

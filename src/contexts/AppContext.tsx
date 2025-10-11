@@ -209,60 +209,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   console.log('🏗️ AppProvider initializing - ULTRA CLEAN MODE');
   
   const [state, setState] = useState<AppState>(() => {
-    // ULTRA AGGRESSIVE CLEANING
-    console.log('🧹 ULTRA CLEANING: Clearing ALL storage and cache');
-    
-    // Clear all possible storage
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // Clear any cached data
-    if ('caches' in window) {
-      caches.keys().then(names => {
-        names.forEach(name => caches.delete(name));
-      });
-    }
-    
-    // Unregister service worker if it exists
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        registrations.forEach(registration => {
-          console.log('🚫 Unregistering Service Worker:', registration.scope);
-          registration.unregister();
-        });
-      });
-    }
-    
-    // Force reload if demo user detected
-    const saved = localStorage.getItem('appState');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.user && (parsed.user.email === 'mknev@domio.ops' || parsed.user.id === 'admin-1')) {
-          console.log('🚨 DEMO USER DETECTED - FORCING RELOAD');
-          localStorage.clear();
-          window.location.reload();
-        }
-      } catch (e) {
-        localStorage.clear();
-      }
-    }
-    
-    // Always start with clean state
+    // Always start with clean state - no user from localStorage
     const initialState = generateMockData();
-    initialState.user = null;
-    
-    console.log('📊 ULTRA CLEAN Initial state:', initialState.user ? `User logged in: ${initialState.user.email} (${initialState.user.role})` : 'No user');
+    initialState.user = null; // Ensure no user is loaded
+    console.log('📊 Initial state: No user (clean start)');
     return initialState;
   });
 
   useEffect(() => {
-    // ULTRA AGGRESSIVE: Block saving demo users
-    if (state.user && (state.user.email === 'mknev@domio.ops' || state.user.id === 'admin-1')) {
-      console.log('🚨 BLOCKING SAVE OF DEMO USER:', state.user.email, state.user.id);
-      return;
-    }
-    
     localStorage.setItem('appState', JSON.stringify(state));
   }, [state]);
 
@@ -270,25 +224,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeUser = async () => {
       try {
-        console.log('🔄 ULTRA CLEAN: Initializing user from Supabase only');
-        
-        // ULTRA CLEAN: Clear any demo user data
-        const saved = localStorage.getItem('appState');
-        if (saved) {
-          const parsedState = JSON.parse(saved);
-          if (parsedState.user && (parsedState.user.id === 'admin-1' || parsedState.user.email === 'mknev@domio.ops')) {
-            console.log('🚨 DEMO USER DETECTED IN INIT - CLEARING');
-            localStorage.clear();
-            setUser(null);
-            return;
-          }
-        }
-
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          console.log('🔍 Found Supabase session for:', session.user.email);
-          
           // Get user profile and role from database
           const { data: profile } = await supabase
             .from('profiles')
@@ -310,15 +248,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             created_at: session.user.created_at,
           };
 
-          console.log('✅ ULTRA CLEAN: User initialized from Supabase session:', user.email, 'Role:', user.role);
+          console.log('✅ User initialized from Supabase session:', user.email, 'Role:', user.role);
           setUser(user);
-        } else {
-          console.log('ℹ️ ULTRA CLEAN: No Supabase session found');
-          setUser(null);
         }
       } catch (error) {
-        console.error('❌ ULTRA CLEAN: Error initializing user:', error);
-        setUser(null);
+        console.error('Error initializing user:', error);
       }
     };
 
@@ -367,16 +301,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setUser = (user: User | null) => {
-    // ULTRA AGGRESSIVE: Block demo users
-    if (user && (user.email === 'mknev@domio.ops' || user.id === 'admin-1')) {
-      console.log('🚨 BLOCKING DEMO USER:', user.email, user.id);
-      console.log('🧹 FORCING CLEAR AND RELOAD');
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.reload();
-      return;
-    }
-    
     console.log('👤 Setting user:', user ? `${user.email} (${user.role})` : 'null');
     setState(prev => ({ ...prev, user }));
   };
