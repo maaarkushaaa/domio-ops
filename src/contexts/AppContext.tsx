@@ -247,28 +247,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             created_at: session.user.created_at,
           };
 
+          console.log('✅ User initialized from Supabase session:', user.email, 'Role:', user.role);
           setUser(user);
         } else {
-          // If no Supabase session, check if we have a saved user in localStorage
-          const saved = localStorage.getItem('appState');
-          if (saved) {
-            const savedState = JSON.parse(saved);
-            if (savedState.user && savedState.user.role === 'admin') {
-              // Keep the admin user from localStorage if it was set via fallback
-              setUser(savedState.user);
-            }
-          }
+          console.log('ℹ️ No Supabase session found');
+          setUser(null);
         }
       } catch (error) {
         console.error('Error initializing user:', error);
-        // Fallback to localStorage if Supabase fails
-        const saved = localStorage.getItem('appState');
-        if (saved) {
-          const savedState = JSON.parse(saved);
-          if (savedState.user) {
-            setUser(savedState.user);
-          }
-        }
+        setUser(null);
       }
     };
 
@@ -276,30 +263,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth state changed:', event);
+      
       if (event === 'SIGNED_IN' && session?.user) {
-        // Get user profile and role from database
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+        try {
+          // Get user profile and role from database
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
 
-        const { data: userRole } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .single();
+          const { data: userRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
 
-        const user: User = {
-          id: session.user.id,
-          email: session.user.email || '',
-          name: profile?.full_name || session.user.email?.split('@')[0] || '',
-          role: userRole?.role || 'user',
-          created_at: session.user.created_at,
-        };
+          const user: User = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: profile?.full_name || session.user.email?.split('@')[0] || '',
+            role: userRole?.role || 'user',
+            created_at: session.user.created_at,
+          };
 
-        setUser(user);
+          console.log('✅ User signed in:', user.email, 'Role:', user.role);
+          setUser(user);
+        } catch (error) {
+          console.error('Error getting user data on sign in:', error);
+          setUser(null);
+        }
       } else if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out');
         setUser(null);
       }
     });
@@ -312,22 +308,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    // Temporary: Always use fallback for mknev to ensure admin access
-    if (email === 'mknev' && password === '!A1q2q3q4qzxc') {
-      const user: User = {
-        id: 'admin-1',
-        email: 'mknev@domio.ops',
-        name: 'Admin MKNEV',
-        role: 'admin',
-        created_at: new Date().toISOString(),
-      };
-      setUser(user);
-      console.log('✅ Admin login successful (fallback)');
-      return;
-    }
-
     try {
-      // Try Supabase authentication first
+      // Supabase authentication only
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.includes('@') ? email : `${email}@domio-group.ru`, // Handle username login
         password: password,
@@ -335,7 +317,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (authError) {
         console.error('Supabase auth error:', authError);
-        throw authError;
+        throw new Error(authError.message);
       }
 
       if (authData.user) {
@@ -360,28 +342,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           created_at: authData.user.created_at,
         };
 
+        console.log('✅ Supabase login successful:', user.email, 'Role:', user.role);
         setUser(user);
         return;
       }
     } catch (error) {
       console.error('Authentication failed:', error);
-      
-      // Fallback to mock authentication for development
-      // Regular user fallback
-      const user: User = {
-        id: Date.now().toString(),
-        email,
-        name: email.split('@')[0],
-        role: 'member',
-        created_at: new Date().toISOString(),
-      };
-      setUser(user);
+      throw error; // Re-throw error to show in UI
     }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      // Try Supabase registration
+      // Supabase registration only
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -394,7 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (authError) {
         console.error('Supabase signup error:', authError);
-        throw authError;
+        throw new Error(authError.message);
       }
 
       if (authData.user) {
@@ -418,21 +391,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           role: 'user',
           created_at: authData.user.created_at,
         };
+        
+        console.log('✅ Supabase registration successful:', user.email);
         setUser(user);
         return;
       }
     } catch (error) {
       console.error('Registration failed:', error);
-      
-      // Fallback to mock registration
-      const user: User = {
-        id: '1',
-        email,
-        name,
-        role: 'member',
-        created_at: new Date().toISOString(),
-      };
-      setUser(user);
+      throw error; // Re-throw error to show in UI
     }
   };
 
