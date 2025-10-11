@@ -209,8 +209,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   console.log('🏗️ AppProvider initializing');
   
   const [state, setState] = useState<AppState>(() => {
+    // Don't load demo user from localStorage - only load other data
     const saved = localStorage.getItem('appState');
-    const initialState = saved ? JSON.parse(saved) : generateMockData();
+    let initialState;
+    
+    if (saved) {
+      const parsedState = JSON.parse(saved);
+      // Remove user from saved state to force Supabase authentication
+      initialState = {
+        ...parsedState,
+        user: null
+      };
+    } else {
+      initialState = generateMockData();
+      // Remove demo user
+      initialState.user = null;
+    }
+    
     console.log('📊 Initial state:', initialState.user ? 'User logged in' : 'No user');
     return initialState;
   });
@@ -223,6 +238,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeUser = async () => {
       try {
+        // Clear any demo user data from localStorage
+        const saved = localStorage.getItem('appState');
+        if (saved) {
+          const parsedState = JSON.parse(saved);
+          if (parsedState.user && parsedState.user.id === 'admin-1') {
+            console.log('🧹 Clearing demo user data from localStorage');
+            localStorage.removeItem('appState');
+          }
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
