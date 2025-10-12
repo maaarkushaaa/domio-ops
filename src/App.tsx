@@ -9,6 +9,7 @@ import { ThemeProvider } from "./components/ui/theme-provider";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { GlobalSearch } from "./components/search/GlobalSearch";
 import { KeyboardShortcuts } from "./components/shortcuts/KeyboardShortcuts";
+import { TaskHotkeys } from "./components/common/TaskHotkeys";
 import { AIAssistantAdvanced } from "./components/ai/AIAssistantAdvanced";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
@@ -65,6 +66,7 @@ const App = () => {
               <CommandPalette />
               <GlobalSearch />
               <KeyboardShortcuts />
+              <TaskHotkeys />
               <AIAssistantAdvanced />
               <Routes>
                 <Route path="/auth" element={<Auth />} />

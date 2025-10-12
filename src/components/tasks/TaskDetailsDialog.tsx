@@ -36,19 +36,45 @@ export function TaskDetailsDialog({ task, trigger }: { task: any; trigger: React
   const [tagInput, setTagInput] = useState('');
   const [attachments, setAttachments] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [parent, setParent] = useState<any>(null);
+  const [subtasks, setSubtasks] = useState<any[]>([]);
+  const [activity, setActivity] = useState<any[]>([]);
 
   useEffect(() => {
     if (open) {
-      const loadAttachments = async () => {
-        const { data } = await (supabase as any)
+      const load = async () => {
+        const { data: atts } = await (supabase as any)
           .from('task_attachments')
           .select('*')
           .eq('task_id', task.id);
-        setAttachments(data || []);
+        setAttachments(atts || []);
+
+        if (task.parent_task_id) {
+          const { data: p } = await (supabase as any)
+            .from('tasks')
+            .select('id, title')
+            .eq('id', task.parent_task_id)
+            .single();
+          setParent(p);
+        }
+
+        const { data: subs } = await (supabase as any)
+          .from('tasks')
+          .select('id, title, status')
+          .eq('parent_task_id', task.id);
+        setSubtasks(subs || []);
+
+        const { data: acts } = await (supabase as any)
+          .from('task_activity')
+          .select('*, actor:profiles(full_name,email)')
+          .eq('task_id', task.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        setActivity(acts || []);
       };
-      loadAttachments();
+      load();
     }
-  }, [open, task.id]);
+  }, [open, task.id, task.parent_task_id]);
 
   const addTag = async () => {
     if (!tagInput.trim() || tags.includes(tagInput.trim())) return;
@@ -158,6 +184,48 @@ export function TaskDetailsDialog({ task, trigger }: { task: any; trigger: React
           </div>
 
           <TaskChecklists taskId={task.id} />
+
+          {/* Родительская/подзадачи */}
+          {(parent || subtasks.length > 0) && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Связи</div>
+              {parent && (
+                <div className="text-sm p-2 border rounded">
+                  <span className="text-muted-foreground">Родительская: </span>
+                  <span className="font-medium">{parent.title}</span>
+                </div>
+              )}
+              {subtasks.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Подзадачи ({subtasks.length}):</div>
+                  {subtasks.map(sub => (
+                    <div key={sub.id} className="text-sm p-2 border rounded flex items-center justify-between">
+                      <span>{sub.title}</span>
+                      <Badge variant="outline">{ruStatus(sub.status)}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Аудит-лог */}
+          {activity.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">История изменений</div>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {activity.map(act => (
+                  <div key={act.id} className="text-xs p-2 border rounded">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{act.actor?.full_name || act.actor?.email || 'Система'}</span>
+                      <span className="text-muted-foreground">{new Date(act.created_at).toLocaleString('ru-RU')}</span>
+                    </div>
+                    <div className="text-muted-foreground">{act.event}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <TaskComments taskId={task.id} />
         </div>

@@ -98,6 +98,16 @@ export const useTasks = () => {
       .eq('id', updates.id);
     if (error) throw error;
     updateTask(updates.id, updates);
+
+    // Log activity
+    await (supabase as any)
+      .from('task_activity')
+      .insert({
+        task_id: updates.id,
+        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        event: `Задача обновлена`,
+        payload: updates,
+      });
   };
 
   const deleteTaskWithSupabase = async (id: string) => {
