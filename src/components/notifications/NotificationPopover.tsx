@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Bell, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,6 +7,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { useTasks } from '@/hooks/use-tasks';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Notification {
@@ -18,35 +21,78 @@ interface Notification {
   read: boolean;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'Новая задача',
-    message: 'Создана задача: "Разработать прототип"',
-    type: 'info',
-    timestamp: new Date(Date.now() - 1000 * 60 * 5),
-    read: false,
-  },
-  {
-    id: '2',
-    title: 'Задача завершена',
-    message: 'Выполнена задача: "Дизайн главной страницы"',
-    type: 'success',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    read: false,
-  },
-  {
-    id: '3',
-    title: 'Критичные остатки',
-    message: 'Количество материалов ниже минимума',
-    type: 'warning',
-    timestamp: new Date(Date.now() - 1000 * 60 * 120),
-    read: true,
-  },
-];
-
 export function NotificationPopover() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const { tasks } = useTasks();
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [wipLimits, setWipLimits] = useState<Record<string, number>>({});
+
+  // Загружаем WIP лимиты
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('kanban_wip_limits')
+        .select('status, limit_value');
+      const map: Record<string, number> = {};
+      (data || []).forEach((r: any) => (map[r.status] = r.limit_value));
+      setWipLimits(map);
+    })();
+  }, []);
+
+  // Считаем уведомления по задачам
+  const computedTaskNotifications = useMemo<Notification[]>(() => {
+    const list: Notification[] = [];
+    const now = new Date();
+    const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+    const todayEnd = new Date(now); todayEnd.setHours(23,59,59,999);
+
+    (tasks || []).forEach((t: any) => {
+      if (!t.due_date || t.status === 'done') return;
+      const start = new Date(t.due_date); start.setHours(0,0,0,0);
+      const end = t.due_end ? new Date(t.due_end) : new Date(t.due_date); end.setHours(23,59,59,999);
+
+      if (end < todayStart) {
+        list.push({ id: `overdue:${t.id}`, title: 'Задача просрочена', message: t.title, type: 'error', timestamp: end, read: false });
+      } else if (end >= todayStart && end <= todayEnd) {
+        list.push({ id: `due-today:${t.id}`, title: 'Дедлайн сегодня', message: t.title, type: 'warning', timestamp: end, read: false });
+      }
+      if (start >= todayStart && start <= todayEnd) {
+        list.push({ id: `start-today:${t.id}`, title: 'Старт задачи сегодня', message: t.title, type: 'info', timestamp: start, read: false });
+      }
+    });
+
+    const byStatus: Record<string, number> = {};
+    (tasks || []).forEach((t: any) => { if (t.status !== 'done') byStatus[t.status] = (byStatus[t.status] || 0) + 1; });
+    Object.entries(wipLimits).forEach(([status, limit]) => {
+      if (limit > 0 && (byStatus[status] || 0) > limit) {
+        list.push({ id: `wip:${status}`, title: 'WIP лимит превышен', message: `Колонка превышает лимит (${byStatus[status]}/${limit})`, type: 'warning', timestamp: new Date(), read: false });
+      }
+    });
+    return list.sort((a,b)=>b.timestamp.getTime()-a.timestamp.getTime()).slice(0,30);
+  }, [tasks, wipLimits]);
+
+  // Realtime: новые комментарии
+  useEffect(() => {
+    const channel = supabase
+      .channel('notifications_task_comments')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'task_comments' }, (payload) => {
+        const row: any = payload.new;
+        if (row.author_id && user?.id && row.author_id === user.id) return;
+        setNotifications(prev => [{ id:`comment:${row.id}`, title:'Новый комментарий', message: row.content?.slice(0,120)||'Комментарий', type:'info', timestamp:new Date(row.created_at||new Date()), read:false }, ...prev].slice(0,50));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
+  // Синхронизируем вычисляемые уведомления
+  useEffect(() => {
+    setNotifications(prev => {
+      const keep = prev.filter(n => !n.id.startsWith('overdue:') && !n.id.startsWith('due-today:') && !n.id.startsWith('start-today:') && !n.id.startsWith('wip:'));
+      const merged = [...computedTaskNotifications, ...keep];
+      const map = new Map<string, Notification>(); merged.forEach(n=>map.set(n.id,n));
+      return Array.from(map.values()).sort((a,b)=>b.timestamp.getTime()-a.timestamp.getTime());
+    });
+  }, [computedTaskNotifications]);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const markAsRead = (id: string) => {

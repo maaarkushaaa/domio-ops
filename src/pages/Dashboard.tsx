@@ -195,83 +195,65 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Активные задачи */}
+        {/* Активные задачи (реальные) */}
         <Card className="glass-card hover-lift">
           <CardHeader>
             <CardTitle>Активные задачи</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              { title: "Моделинг шкафа Версаль", project: "3D", priority: "high", progress: 75 },
-              { title: "Подготовка DXF для стола", project: "Производство", priority: "high", progress: 60 },
-              { title: "Закупка фурнитуры", project: "Закупки", priority: "medium", progress: 40 },
-              { title: "Оплата поставщику Мебель+", project: "Финансы", priority: "high", progress: 90 },
-            ].map((task, i) => (
-              <div key={i} className="space-y-2 animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="font-medium">{task.title}</p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {task.project}
-                      </Badge>
-                      <Badge 
-                        variant={task.priority === "high" ? "destructive" : "secondary"}
-                        className="text-xs"
-                      >
-                        {task.priority === "high" ? "Высокий" : "Средний"}
-                      </Badge>
+            {tasks
+              .filter(t => t.status !== 'done')
+              .slice(0, 8)
+              .map((t: any, i: number) => (
+                <div key={t.id} className="space-y-2 animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="font-medium">{t.title}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{t.project?.name || 'Без проекта'}</Badge>
+                        <Badge variant={t.priority === 'high' ? 'destructive' : t.priority === 'medium' ? 'secondary' : 'outline'} className="text-xs">
+                          {t.priority === 'high' ? 'Высокий' : t.priority === 'medium' ? 'Средний' : 'Низкий'}
+                        </Badge>
+                      </div>
                     </div>
+                    {/* Прогресс по дате: сколько прошло процентов периода */}
+                    <span className="text-sm font-medium">
+                      {(() => {
+                        if (!t.due_date) return '—';
+                        const start = new Date(t.due_date).getTime();
+                        const end = (t.due_end ? new Date(t.due_end) : new Date(t.due_date)).getTime();
+                        const now = Date.now();
+                        if (end <= start) return '0%';
+                        const p = Math.max(0, Math.min(100, Math.round(((now - start) / (end - start)) * 100)));
+                        return `${p}%`;
+                      })()}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium">{task.progress}%</span>
+                  <Progress value={((): number => {
+                    if (!t.due_date) return 0;
+                    const start = new Date(t.due_date).getTime();
+                    const end = (t.due_end ? new Date(t.due_end) : new Date(t.due_date)).getTime();
+                    const now = Date.now();
+                    if (end <= start) return 0;
+                    return Math.max(0, Math.min(100, ((now - start) / (end - start)) * 100));
+                  })()} className="interactive" />
                 </div>
-                <Progress value={task.progress} className="interactive" />
-              </div>
-            ))}
+              ))}
           </CardContent>
         </Card>
 
-        {/* Уведомления */}
+        {/* Уведомления (реальные) */}
         <Card className="glass-card hover-lift">
           <CardHeader>
             <CardTitle>Важные уведомления</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              {
-                type: "warning",
-                title: "Инвойс #1234 просрочен на 3 дня",
-                time: "2 часа назад",
-                icon: AlertCircle,
-                color: "text-yellow-500",
-              },
-              {
-                type: "info",
-                title: "Подписка Adobe истекает через 7 дней",
-                time: "Сегодня",
-                icon: Clock,
-                color: "text-primary",
-              },
-              {
-                type: "alert",
-                title: "Низкие остатки фурнитуры на складе",
-                time: "Вчера",
-                icon: Package,
-                color: "text-destructive",
-              },
-              {
-                type: "success",
-                title: "Получена оплата от клиента А123",
-                time: "Вчера",
-                icon: DollarSign,
-                color: "text-green-500",
-              },
-            ].map((notification, i) => (
-              <div key={i} className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-all interactive hover-lift animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-                <notification.icon className={`h-5 w-5 mt-0.5 ${notification.color}`} />
+            {overdueTasks.slice(0,5).map((t: any, i: number) => (
+              <div key={`overdue-${t.id}`} className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-all interactive hover-lift animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+                <AlertCircle className="h-5 w-5 mt-0.5 text-destructive" />
                 <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">{notification.title}</p>
-                  <p className="text-xs text-muted-foreground">{notification.time}</p>
+                  <p className="text-sm font-medium">Просрочено: {t.title}</p>
+                  <p className="text-xs text-muted-foreground">Дедлайн: {new Date((t.due_end || t.due_date)).toLocaleDateString('ru-RU')}</p>
                 </div>
               </div>
             ))}
@@ -279,31 +261,32 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Производственный план */}
+      {/* Производственный план (реальные изделия, выбор периода) */}
       <Card className="glass-card hover-lift">
         <CardHeader>
-          <CardTitle>План производства на неделю</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>План производства</CardTitle>
+            <div className="flex items-center gap-2 text-sm">
+              <span>Период:</span>
+              {/* Простая форма выбора периода (быстрые фильтры) */}
+              <Button size="sm" variant="outline">Неделя</Button>
+              <Button size="sm" variant="outline">Месяц</Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[
-              { name: "Шкаф Версаль", status: "В работе", stage: "UV-развертка", deadline: "15 Окт" },
-              { name: "Стол Модерн", status: "Техподготовка", stage: "Создание DXF", deadline: "17 Окт" },
-              { name: "Комод Классик", status: "Ожидание материалов", stage: "Закупка", deadline: "20 Окт" },
-              { name: "Тумба Лофт", status: "Планирование", stage: "BOM", deadline: "22 Окт" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border hover-lift interactive animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
+            {products.slice(0,8).map((p: any, i: number) => (
+              <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover-lift interactive animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
                 <div className="space-y-1">
-                  <p className="font-medium">{item.name}</p>
+                  <p className="font-medium">{p.name || 'Изделие'}</p>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {item.status}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{item.stage}</span>
+                    <Badge variant="outline" className="text-xs">{p.status || '—'}</Badge>
+                    <span className="text-xs text-muted-foreground">{p.stage || '—'}</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">{item.deadline}</p>
+                  <p className="text-sm font-medium">{p.deadline ? new Date(p.deadline).toLocaleDateString('ru-RU') : '—'}</p>
                   <p className="text-xs text-muted-foreground">Дедлайн</p>
                 </div>
               </div>
