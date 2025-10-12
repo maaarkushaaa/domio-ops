@@ -28,78 +28,77 @@ function AudioMessage({ url }: { url: string | undefined }) {
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const animationRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!url) return;
     setIsLoading(true);
     const audio = new Audio(url);
+    audio.preload = 'metadata';
+    audio.crossOrigin = 'anonymous';
+    (audio as any).playsInline = true;
     audioRef.current = audio;
-    
-    const onLoaded = () => {
-      if (isFinite(audio.duration)) {
+
+    const onLoadedMetadata = () => {
+      if (isFinite(audio.duration) && audio.duration > 0) {
         setDuration(audio.duration);
         setIsLoading(false);
       }
     };
-    
-    const onEnded = () => { 
-      setIsPlaying(false); 
-      setCurrent(0);
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
+    const onDurationChange = () => {
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+        setIsLoading(false);
       }
     };
-    
+    const onCanPlay = () => {
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+        setIsLoading(false);
+      }
+    };
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrent(0);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
     const onError = () => {
       console.error('Audio loading error');
       setIsLoading(false);
     };
-    
-    audio.addEventListener('loadedmetadata', onLoaded);
+
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('durationchange', onDurationChange);
+    audio.addEventListener('canplay', onCanPlay);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', onError);
     audio.load();
-    
+
+    // Fallback timeout in case metadata never fires (unsupported codec)
+    const timeout = setTimeout(() => setIsLoading(false), 2500);
+
     return () => {
+      clearTimeout(timeout);
       audio.pause();
-      audio.removeEventListener('loadedmetadata', onLoaded);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('durationchange', onDurationChange);
+      audio.removeEventListener('canplay', onCanPlay);
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('error', onError);
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [url]);
 
-  // Update progress using requestAnimationFrame for smooth updates
   useEffect(() => {
-    if (!isPlaying || !audioRef.current) {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      return;
-    }
-    
-    const updateProgress = () => {
-      const audio = audioRef.current;
-      if (audio && isFinite(audio.currentTime)) {
-        setCurrent(audio.currentTime);
-        rafRef.current = requestAnimationFrame(updateProgress);
-      }
+    if (!isPlaying || !audioRef.current) return;
+    const update = () => {
+      const a = audioRef.current!;
+      if (isFinite(a.currentTime)) setCurrent(a.currentTime);
+      rafRef.current = requestAnimationFrame(update);
     };
-    
-    rafRef.current = requestAnimationFrame(updateProgress);
-    
+    rafRef.current = requestAnimationFrame(update);
     return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [isPlaying]);
 
@@ -113,20 +112,17 @@ function AudioMessage({ url }: { url: string | undefined }) {
       try {
         await audio.play();
         setIsPlaying(true);
-      } catch (err) {
-        console.error('Audio play error:', err);
+      } catch (e) {
+        console.error('Audio play error:', e);
       }
     }
   };
 
-  // If no URL or loading, show loading indicator
   if (!url || isLoading) {
     return (
       <div className="w-full flex items-center gap-3 p-2 rounded-lg bg-muted">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-xs text-muted-foreground">
-          {!url ? 'Загрузка аудио...' : 'Загрузка метаданных...'}
-        </span>
+        <span className="text-xs text-muted-foreground">{!url ? 'Загрузка аудио...' : 'Загрузка метаданных...'}</span>
       </div>
     );
   }
@@ -153,18 +149,8 @@ function AudioMessage({ url }: { url: string | undefined }) {
       <Button type="button" size="icon" variant="secondary" className="h-8 w-8" onClick={toggle}>
         {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
       </Button>
-      <input
-        type="range"
-        min={0}
-        max={duration || 0}
-        step={0.1}
-        value={Math.min(current, duration || 0)}
-        onChange={onSeek}
-        className="w-full accent-primary"
-      />
-      <div className="text-xs text-muted-foreground min-w-[68px] text-right">
-        {fmt(current)} / {fmt(duration)}
-      </div>
+      <input type="range" min={0} max={duration || 0} step={0.1} value={Math.min(current, duration || 0)} onChange={onSeek} className="w-full accent-primary" />
+      <div className="text-xs text-muted-foreground min-w-[68px] text-right">{fmt(current)} / {fmt(duration)}</div>
     </div>
   );
 }
@@ -187,6 +173,7 @@ export function ChatWidget() {
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesWrapRef = useRef<HTMLDivElement>(null);
   // Drag/resize state
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
   const draggingRef = useRef<{ type: 'fab' | 'chat' | 'resize' | null; dx: number; dy: number }>({ type: null, dx: 0, dy: 0 });
@@ -455,21 +442,85 @@ export function ChatWidget() {
     }
   };
 
+  // Helper: last read key per channel
+  const getLastReadKey = () => (channel === 'task' ? `chat:lastRead:task:${taskId || 'none'}` : 'chat:lastRead:global');
+
+  // Scroll helpers
+  const scrollToBottom = (smooth = false) => {
+    const el = messagesWrapRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  };
+  const scrollToMessage = (id: string) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (el) el.scrollIntoView({ block: 'start', behavior: 'auto' });
+  };
+
+  // After loading messages: go to first unread or bottom
+  useEffect(() => {
+    if (loadingMessages) return;
+    const key = getLastReadKey();
+    const lastReadAt = localStorage.getItem(key);
+    if (messages.length === 0) return;
+    if (lastReadAt) {
+      const target = messages.find(m => new Date(m.timestamp).getTime() > new Date(lastReadAt).getTime());
+      if (target) {
+        setTimeout(() => scrollToMessage(target.id), 0);
+        return;
+      }
+    }
+    setTimeout(() => scrollToBottom(false), 0);
+  }, [loadingMessages, channel, taskId]);
+
+  // On new message appended by self -> scroll to bottom
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last.userId === user?.id) scrollToBottom(true);
+  }, [messages.length]);
+
+  // Persist last read when closing or switching channel
+  useEffect(() => {
+    return () => {
+      const key = getLastReadKey();
+      localStorage.setItem(key, new Date().toISOString());
+    };
+  }, [channel, taskId]);
+
+  // Recording - choose best supported MIME (iOS first)
+  const pickAudioMime = (): { mime: string; ext: string } => {
+    const candidates = [
+      'audio/mp4;codecs=aac',
+      'audio/aac',
+      'audio/mpeg',
+      'audio/ogg;codecs=opus',
+      'audio/webm;codecs=opus',
+      'audio/webm'
+    ];
+    for (const t of candidates) {
+      if ((window as any).MediaRecorder && (MediaRecorder as any).isTypeSupported?.(t)) {
+        const ext = t.includes('mp4') || t.includes('aac') ? 'm4a' : t.includes('mpeg') ? 'mp3' : t.includes('ogg') ? 'ogg' : 'webm';
+        return { mime: t, ext };
+      }
+    }
+    return { mime: 'audio/webm', ext: 'webm' };
+  };
+
   const startRecording = async () => {
     if (isRecording || !user) return;
     try {
+      const { mime, ext } = pickAudioMime();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
       const chunks: BlobPart[] = [];
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       mediaRecorder.onstop = async () => {
         const tempId = `temp-audio-${Date.now()}`;
         try {
           setIsUploadingAudio(true);
-          const blob = new Blob(chunks, { type: 'audio/webm' });
-          const fileName = `${user.id}/${crypto.randomUUID()}.webm`;
-          
-          // Optimistic UI: add audio message with loading state
+          const blob = new Blob(chunks, { type: mime });
+          const fileName = `${user.id}/${crypto.randomUUID()}.${ext}`;
+
           const optimisticMsg: ChatMessage = {
             id: tempId,
             userId: user.id,
@@ -477,19 +528,19 @@ export function ChatWidget() {
             message: '',
             timestamp: new Date().toISOString(),
             type: 'audio',
-            audioUrl: undefined, // Will be replaced with real URL
+            audioUrl: undefined,
             channel: channel === 'task' ? 'task' : 'global',
             taskId: channel === 'task' && taskId ? taskId : null,
           };
           setMessages(prev => [...prev, optimisticMsg]);
-          
+
           const { error: uploadError } = await supabase.storage.from('chat-audio').upload(fileName, blob, {
             cacheControl: '3600',
             upsert: false,
-            contentType: 'audio/webm'
+            contentType: mime
           });
           if (uploadError) throw uploadError;
-          
+
           const { data: publicUrl } = supabase.storage.from('chat-audio').getPublicUrl(fileName);
           const { data, error: insertError } = await (supabase as any)
             .from('team_messages')
@@ -503,28 +554,23 @@ export function ChatWidget() {
             })
             .select()
             .single();
-          
           if (insertError) throw insertError;
-          
-          // Replace temp message with real one
+
           if (data) {
-            setMessages(prev => prev.map(msg => 
-              msg.id === tempId ? {
-                id: data.id,
-                userId: data.user_id,
-                userName: user.name,
-                message: data.content,
-                timestamp: data.created_at,
-                type: data.type,
-                audioUrl: data.audio_url,
-                channel: data.channel,
-                taskId: data.task_id,
-              } : msg
-            ));
+            setMessages(prev => prev.map(msg => msg.id === tempId ? {
+              id: data.id,
+              userId: data.user_id,
+              userName: user.name,
+              message: data.content,
+              timestamp: data.created_at,
+              type: data.type,
+              audioUrl: data.audio_url,
+              channel: data.channel,
+              taskId: data.task_id,
+            } : msg));
           }
         } catch (e: any) {
           console.error('Audio send error:', e);
-          // Remove optimistic message on error
           setMessages(prev => prev.filter(msg => msg.id !== tempId));
           toast({ title: 'Ошибка', description: e.message || 'Не удалось отправить голосовое', variant: 'destructive' });
         } finally {
@@ -536,7 +582,6 @@ export function ChatWidget() {
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsRecording(true);
-      // flag presence recording
       bumpTyping(false);
       const ch = presenceChannelRef.current; if (ch && user) ch.track({ user_id: user.id, name: user.name, typing: false, recording: true, channel, task_id: taskId || null });
     } catch (e: any) {
@@ -661,7 +706,7 @@ export function ChatWidget() {
       )}
 
       <CardContent className="flex-1 p-0 flex flex-col min-h-0 overflow-hidden">
-        <ScrollArea className="flex-1 p-4 min-h-0">
+        <div ref={messagesWrapRef} className="flex-1 p-4 min-h-0">
           <div className="space-y-4">
             {loadingMessages ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
@@ -675,6 +720,7 @@ export function ChatWidget() {
               messages.map((msg) => (
                 <div
                   key={msg.id}
+                  id={`msg-${msg.id}`}
                   className={`flex gap-3 ${
                     msg.userId === user?.id ? 'flex-row-reverse' : ''
                   } animate-fade-in`}
@@ -719,7 +765,7 @@ export function ChatWidget() {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <div className={`border-t relative flex-shrink-0 bg-background ${isMobile ? 'p-2 pb-safe' : 'p-3'}`}>
           <div className="flex gap-2 items-center w-full">
