@@ -27,29 +27,53 @@ function AudioMessage({ url }: { url: string | undefined }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!url) return;
     const audio = new Audio(url);
     audioRef.current = audio;
+    
     const onLoaded = () => {
       if (isFinite(audio.duration)) setDuration(audio.duration);
     };
-    const onTime = () => {
-      if (isFinite(audio.currentTime)) setCurrent(audio.currentTime);
+    
+    const onEnded = () => { 
+      setIsPlaying(false); 
+      setCurrent(0);
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-    const onEnded = () => { setIsPlaying(false); setCurrent(0); };
+    
     audio.addEventListener('loadedmetadata', onLoaded);
-    audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('ended', onEnded);
     audio.load();
+    
     return () => {
       audio.pause();
       audio.removeEventListener('loadedmetadata', onLoaded);
-      audio.removeEventListener('timeupdate', onTime);
       audio.removeEventListener('ended', onEnded);
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [url]);
+
+  // Update progress using requestAnimationFrame for smooth updates
+  useEffect(() => {
+    if (!isPlaying || !audioRef.current) return;
+    
+    const updateProgress = () => {
+      const audio = audioRef.current;
+      if (audio && isFinite(audio.currentTime)) {
+        setCurrent(audio.currentTime);
+      }
+      animationRef.current = requestAnimationFrame(updateProgress);
+    };
+    
+    animationRef.current = requestAnimationFrame(updateProgress);
+    
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [isPlaying]);
 
   const toggle = () => {
     const audio = audioRef.current;
@@ -138,6 +162,17 @@ export function ChatWidget() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // Adjust chat width when task mode is selected
+  useEffect(() => {
+    if (channel === 'task') {
+      // Increase width for task selector
+      setChatSize(prev => ({ w: Math.max(prev.w, 520), h: prev.h }));
+    } else if (channel === 'global') {
+      // Reset to default width
+      setChatSize(prev => ({ w: 420, h: prev.h }));
+    }
+  }, [channel]);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // Load messages from Supabase and subscribe to realtime
@@ -452,17 +487,22 @@ export function ChatWidget() {
     );
   }
 
+  // Make chat responsive to screen size
+  const chatStyle = isMobile 
+    ? { left: 0, top: 0, width: '100vw', height: '100vh' }
+    : { left: chatPos.x, top: chatPos.y, width: chatSize.w, height: chatSize.h };
+
   return (
-    <Card className="fixed flex flex-col glass-card shadow-glow hover-lift z-50 animate-scale-in"
-      style={{ left: chatPos.x, top: chatPos.y, width: chatSize.w, height: chatSize.h }}>
-      <CardHeader className="flex flex-row items-center justify-between p-4 border-b cursor-move"
-        onMouseDown={(e) => {
+    <Card className="fixed flex flex-col glass-card shadow-glow hover-lift z-50 animate-scale-in overflow-hidden"
+      style={chatStyle}>
+      <CardHeader className="flex flex-row items-center justify-between p-4 border-b cursor-move flex-shrink-0"
+        onMouseDown={!isMobile ? (e) => {
           draggingRef.current = { type: 'chat', dx: e.clientX - chatPos.x, dy: e.clientY - chatPos.y };
           const onMove = (ev: MouseEvent) => setChatPos({ x: ev.clientX - draggingRef.current.dx, y: ev.clientY - draggingRef.current.dy });
           const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); draggingRef.current.type = null; };
           window.addEventListener('mousemove', onMove);
           window.addEventListener('mouseup', onUp);
-        }}>
+        } : undefined}>
         <CardTitle className="text-sm flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-primary" />
           Чат команды
@@ -483,24 +523,25 @@ export function ChatWidget() {
             <X className="h-3 w-3" />
           </Button>
         </div>
-        {channel === 'task' && (
-          <div className="px-4 pb-2">
-            <Select value={taskId} onValueChange={(v) => setTaskId(v)}>
-              <SelectTrigger className="h-8 w-full">
-                <SelectValue placeholder="Выберите задачу" />
-              </SelectTrigger>
-              <SelectContent>
-                {tasks.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
       </CardHeader>
+      
+      {channel === 'task' && (
+        <div className="px-4 py-2 border-b flex-shrink-0">
+          <Select value={taskId} onValueChange={(v) => setTaskId(v)}>
+            <SelectTrigger className="h-8 w-full">
+              <SelectValue placeholder="Выберите задачу" />
+            </SelectTrigger>
+            <SelectContent>
+              {tasks.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
-      <CardContent className="flex-1 p-0 flex flex-col">
-        <ScrollArea className="flex-1 p-4">
+      <CardContent className="flex-1 p-0 flex flex-col min-h-0 overflow-hidden">
+        <ScrollArea className="flex-1 p-4 min-h-0">
           <div className="space-y-4">
             {loadingMessages ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
@@ -518,7 +559,7 @@ export function ChatWidget() {
                     msg.userId === user?.id ? 'flex-row-reverse' : ''
                   } animate-fade-in`}
                 >
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback className="text-xs">
                       {msg.userName.split(' ').map(n => n[0]).join('').toUpperCase()}
                     </AvatarFallback>
@@ -543,7 +584,7 @@ export function ChatWidget() {
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
                     }`}>
-                      <p className="text-sm">{msg.message}</p>
+                      <p className="text-sm break-words">{msg.message}</p>
                     </div>
                     )}
                   </div>
@@ -560,8 +601,8 @@ export function ChatWidget() {
           </div>
         </ScrollArea>
 
-        <div className="p-3 border-t relative">
-          <div className="flex gap-2 flex-wrap">
+        <div className="p-3 border-t relative flex-shrink-0">
+          <div className="flex gap-2 items-center">
             <Input
               placeholder="Сообщение..."
               value={newMessage}
@@ -587,20 +628,22 @@ export function ChatWidget() {
               </Button>
             )}
           </div>
-          {/* Resize handle */}
-          <div
-            className="absolute bottom-1 right-1 w-3 h-3 cursor-se-resize"
-            onMouseDown={(e) => {
-              draggingRef.current = { type: 'resize', dx: chatSize.w - e.clientX, dy: chatSize.h - e.clientY };
-              const onMove = (ev: MouseEvent) => setChatSize({
-                w: Math.max(360, ev.clientX + draggingRef.current.dx - chatPos.x),
-                h: Math.max(360, ev.clientY + draggingRef.current.dy - chatPos.y)
-              });
-              const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); draggingRef.current.type = null; };
-              window.addEventListener('mousemove', onMove);
-              window.addEventListener('mouseup', onUp);
-            }}
-          />
+          {/* Resize handle - hide on mobile */}
+          {!isMobile && (
+            <div
+              className="absolute bottom-1 right-1 w-3 h-3 cursor-se-resize"
+              onMouseDown={(e) => {
+                draggingRef.current = { type: 'resize', dx: chatSize.w - e.clientX, dy: chatSize.h - e.clientY };
+                const onMove = (ev: MouseEvent) => setChatSize({
+                  w: Math.max(360, ev.clientX + draggingRef.current.dx),
+                  h: Math.max(360, ev.clientY + draggingRef.current.dy)
+                });
+                const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); draggingRef.current.type = null; };
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onUp);
+              }}
+            />
+          )}
         </div>
       </CardContent>
     </Card>
