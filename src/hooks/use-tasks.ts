@@ -15,10 +15,11 @@ export const useTasks = () => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     const load = async () => {
       try {
+        // Подсчёт комментариев через подзапрос
         const { data, error } = await (supabase as any)
           .from('tasks')
-          .select('*')
-          .order('created_at', { ascending: true });
+          .select('*, comment_count:task_comments(count)')
+          .order('order', { ascending: true });
         if (error) throw error;
         (data || []).forEach((t: any) => {
           addTask({
@@ -32,6 +33,7 @@ export const useTasks = () => {
             due_date: t.due_date,
             created_at: t.created_at,
             updated_at: t.updated_at,
+            _comment_count: t.comment_count?.[0]?.count || 0,
           } as any);
         });
       } catch (e) {

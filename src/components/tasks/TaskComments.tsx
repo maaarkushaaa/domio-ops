@@ -28,7 +28,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
     setLoading(true);
     try {
       const row = await createComment(taskId, user.id, text.trim());
-      setComments(prev => [...prev, row]);
+      setComments(prev => [...prev, { ...row, author: { full_name: user.name, email: user.email } }]);
       setText('');
     } catch (e) {
       console.error('create comment', e);
@@ -57,7 +57,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
       </div>
       <div className="flex gap-2">
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Напишите комментарий..." onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); add(); } }} />
-        <Button onClick={add} disabled={loading || !text.trim()}>Добавить</Button>
+        <Button onClick={add} disabled={loading || !text.trim() || !user}>Добавить</Button>
       </div>
     </div>
   );

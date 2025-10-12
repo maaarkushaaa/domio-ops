@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, User, Calendar } from 'lucide-react';
+import { Plus, MoreVertical, User, Calendar, MessageCircle } from 'lucide-react';
 import { useTasks, TaskStatus } from '@/hooks/use-tasks';
 import { Task } from '@/contexts/AppContext';
 import { TaskDialog } from '@/components/tasks/TaskDialog';
@@ -42,11 +42,14 @@ export function KanbanBoard() {
     e.preventDefault();
   };
 
-  const handleDrop = (columnId: TaskStatus) => {
+  const handleDrop = async (columnId: TaskStatus) => {
     if (draggedTask && draggedTask.status !== columnId) {
-      updateTask({
+      const colTasks = tasksByColumn[columnId] || [];
+      const newOrder = colTasks.length > 0 ? Math.max(...colTasks.map((t: any) => t.order || 0)) + 1 : 0;
+      await updateTask({
         id: draggedTask.id,
         status: columnId,
+        order: newOrder,
       });
     }
     setDraggedTask(null);
@@ -123,7 +126,13 @@ export function KanbanBoard() {
                           {task.title}
                         </h4>
                       } />
-                      <TaskActionsMenu taskId={task.id} taskTitle={task.title} initialTask={task} />
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <MessageCircle className="h-3 w-3 mr-1" />
+                          <span>{(task as any)._comment_count || 0}</span>
+                        </div>
+                        <TaskActionsMenu taskId={task.id} taskTitle={task.title} initialTask={task} />
+                      </div>
                     </div>
 
                     {task.description && (

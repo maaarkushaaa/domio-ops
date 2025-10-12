@@ -12,6 +12,7 @@ import { KeyboardShortcuts } from "./components/shortcuts/KeyboardShortcuts";
 import { AIAssistantAdvanced } from "./components/ai/AIAssistantAdvanced";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
+import Projects from "./pages/Projects";
 import Production from "./pages/Production";
 import Finance from "./pages/Finance";
 import Procurement from "./pages/Procurement";
@@ -78,6 +79,13 @@ const App = () => {
                   <ProtectedRoute>
                     <AppLayout>
                       <Tasks />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/projects" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Projects />
                     </AppLayout>
                   </ProtectedRoute>
                 } />
