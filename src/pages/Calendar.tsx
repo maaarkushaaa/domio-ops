@@ -342,7 +342,9 @@ export default function Calendar() {
       <EventDetailsDialog
         event={selectedEvent}
         open={eventDetailsOpen}
-        onOpenChange={setEventDetailsOpen}
+        onOpenChange={(v)=>{ setEventDetailsOpen(v); if(!v) setSelectedEvent(null); }}
+        onEdit={(ev)=>{ setDayDialogOpen(false); setEditingEvent(ev); setNewEventName(ev.title); setNewEventStart(ev.date.toISOString().slice(0,16)); setNewEventEnd(ev.endDate? ev.endDate.toISOString().slice(0,16):''); setNewEventType(ev.type); setNewEventDescription(ev.description||''); setDialogOpen(true); }}
+        onDelete={(ev)=>{ setEvents(prev=>prev.filter(e=>e.id!==ev.id)); setEventDetailsOpen(false); }}
       />
     </div>
   );

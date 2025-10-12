@@ -15,6 +15,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useTasks } from "@/hooks/use-tasks";
 import { useProducts } from "@/hooks/use-products";
+import { EventDetailsDialog } from "@/components/calendar/EventDetailsDialog";
 import { ProjectTimeline } from "@/components/timeline/ProjectTimeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [dialogTitle, setDialogTitle] = useState('');
   const [dialogTasks, setDialogTasks] = useState<Task[]>([]);
   const [dialogVariant, setDialogVariant] = useState<'today' | 'overdue' | 'upcoming'>('today');
+  const [eventsColOpen, setEventsColOpen] = useState<{open:boolean,event:any|null}>({open:false,event:null});
   
   // Задачи на сегодня: начинаются сегодня или раньше И заканчиваются сегодня или позже (или не имеют конца)
   const today = new Date();
@@ -261,6 +263,31 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* События (столбец) */}
+      <Card className="glass-card hover-lift">
+        <CardHeader>
+          <CardTitle>События (ближайшие)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {/* Здесь предполагается подключение к реальному источнику событий; пока агрегируем из задач как дедлайны */}
+            {tasks
+              .filter((t:any)=>t.due_date)
+              .slice(0,10)
+              .map((t:any)=>({ id:t.id, title:t.title, date:new Date(t.due_date), endDate: t.due_end? new Date(t.due_end): undefined, type:'deadline' }))
+              .sort((a:any,b:any)=>a.date.getTime()-b.date.getTime())
+              .map((ev:any)=> (
+                <div key={`ev-${ev.id}`} className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50" onClick={()=>setEventsColOpen({open:true,event:ev})}>
+                  <div>
+                    <p className="font-medium">{ev.title}</p>
+                    <p className="text-sm text-muted-foreground">{ev.date.toLocaleDateString('ru-RU')} {ev.endDate? '— '+ev.endDate.toLocaleDateString('ru-RU'):''}</p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Производственный план (реальные изделия, выбор периода) */}
       <Card className="glass-card hover-lift">
         <CardHeader>
@@ -294,6 +321,9 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+      {eventsColOpen.open && (
+        <EventDetailsDialog event={eventsColOpen.event} open={eventsColOpen.open} onOpenChange={(v)=>setEventsColOpen({open:v,event:eventsColOpen.event})} />
+      )}
         </TabsContent>
 
         <TabsContent value="timeline">
