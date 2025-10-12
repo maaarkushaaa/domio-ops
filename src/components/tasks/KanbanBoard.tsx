@@ -83,15 +83,20 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
 
       const container = containerRef.current;
       
-      // Проверяем расстояние от КРАЯ ЭКРАНА, а не от края контейнера
-      const distanceFromLeftEdge = currentTouchPos.x;
-      const distanceFromRightEdge = window.innerWidth - currentTouchPos.x;
+      // Вычисляем края плавающей карточки (width: 300px, centered at currentTouchPos.x - 150)
+      const cardWidth = 300;
+      const cardLeftEdge = currentTouchPos.x - 150;
+      const cardRightEdge = currentTouchPos.x - 150 + cardWidth;
+      
+      // Проверяем расстояние КРАЁВ КАРТОЧКИ до краёв экрана
+      const distanceLeftEdgeToScreen = cardLeftEdge;
+      const distanceRightEdgeToScreen = window.innerWidth - cardRightEdge;
 
-      if (distanceFromLeftEdge < scrollThreshold && container.scrollLeft > 0) {
-        // Прокрутка влево - палец близко к левому краю экрана
+      if (distanceLeftEdgeToScreen < scrollThreshold && container.scrollLeft > 0) {
+        // Левый край карточки близко к левому краю экрана - прокручиваем влево
         container.scrollLeft -= scrollSpeed;
-      } else if (distanceFromRightEdge < scrollThreshold && container.scrollLeft < (container.scrollWidth - container.clientWidth)) {
-        // Прокрутка вправо - палец близко к правому краю экрана
+      } else if (distanceRightEdgeToScreen < scrollThreshold && container.scrollLeft < (container.scrollWidth - container.clientWidth)) {
+        // Правый край карточки близко к правому краю экрана - прокручиваем вправо
         container.scrollLeft += scrollSpeed;
       }
       // Не останавливаем автоматически, пусть работает пока палец двигается
@@ -339,7 +344,12 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           {task.due_date && (
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              <span>{new Date(task.due_date).toLocaleDateString('ru-RU')}</span>
+                              <span>
+                                {new Date(task.due_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                                {(task as any).due_end && (task as any).due_end !== task.due_date ? (
+                                  <> — {new Date((task as any).due_end).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</>
+                                ) : null}
+                              </span>
                             </div>
                           )}
                         </div>
