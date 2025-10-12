@@ -7,6 +7,7 @@ import { useTasks, TaskStatus } from '@/hooks/use-tasks';
 import { Task } from '@/contexts/AppContext';
 import { TaskDialog } from '@/components/tasks/TaskDialog';
 import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu';
+import { TaskDetailsDialog } from '@/components/tasks/TaskDetailsDialog';
 
 interface Column {
   id: TaskStatus;
@@ -117,9 +118,11 @@ export function KanbanBoard() {
                 >
                   <CardContent className="p-3 space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="text-sm font-medium leading-tight flex-1">
-                        {task.title}
-                      </h4>
+                      <TaskDetailsDialog task={task} trigger={
+                        <h4 className="text-sm font-medium leading-tight flex-1 hover:underline cursor-pointer">
+                          {task.title}
+                        </h4>
+                      } />
                       <TaskActionsMenu taskId={task.id} taskTitle={task.title} initialTask={task} />
                     </div>
 

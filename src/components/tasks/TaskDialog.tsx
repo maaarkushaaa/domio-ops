@@ -116,9 +116,11 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
 
   return (
     <Dialog open={openState} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || <Button>{mode === 'edit' ? 'Редактировать задачу' : 'Новая задача'}</Button>}
-      </DialogTrigger>
+      {trigger ? (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{mode === 'edit' ? 'Редактировать задачу' : 'Создать задачу'}</DialogTitle>
