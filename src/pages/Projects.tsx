@@ -80,10 +80,13 @@ export default function Projects() {
 
   const toggleArchive = async (projectId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'archived' : 'active';
+    console.log('[ARCHIVE] Starting archive toggle for project', projectId, 'from', currentStatus, 'to', newStatus);
     try {
-      await updateProjectStatus(projectId, newStatus);
+      const result = await updateProjectStatus(projectId, newStatus);
+      console.log('[ARCHIVE] Successfully toggled archive, result:', result);
     } catch (e) {
-      console.error('Toggle archive error', e);
+      console.error('[ARCHIVE] Toggle archive error', e);
+      alert('Ошибка при архивации проекта: ' + (e as any)?.message);
     }
   };
 
@@ -130,7 +133,7 @@ export default function Projects() {
             </CardHeader>
             <CardContent className="space-y-3">
               {project.description && (
-                <p className="text-sm text-muted-foreground">{project.description}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
               )}
               {((project as any).start_date || (project as any).end_date) && (
                 <div className="text-xs text-muted-foreground">
@@ -139,8 +142,8 @@ export default function Projects() {
                   {(project as any).end_date && `Конец: ${new Date((project as any).end_date).toLocaleDateString('ru-RU')}`}
                 </div>
               )}
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" variant="outline" onClick={() => openEdit(project)}>
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <Button size="sm" variant="outline" onClick={() => openEdit(project)} className="flex-1 sm:flex-initial">
                   <Edit2 className="h-3 w-3 mr-1" />
                   Редактировать
                 </Button>
@@ -148,6 +151,7 @@ export default function Projects() {
                   size="sm"
                   variant="outline"
                   onClick={() => toggleArchive(project.id, (project as any).status)}
+                  className="flex-1 sm:flex-initial"
                 >
                   {(project as any).status === 'active' ? (
                     <>

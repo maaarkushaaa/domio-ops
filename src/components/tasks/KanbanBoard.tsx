@@ -65,15 +65,22 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
       try {
         const colTasks = tasksByColumn[columnId] || [];
         const newOrder = colTasks.length > 0 ? Math.max(...colTasks.map((t: any) => t.order || 0)) + 1 : 0;
-        console.log('Dropping task', draggedTask.id, 'to', columnId, 'order', newOrder);
+        console.log('[KANBAN-DROP] Dropping task', draggedTask.id, 'from', draggedTask.status, 'to', columnId, 'order', newOrder);
+        console.log('[KANBAN-DROP] Current task data:', draggedTask);
         await updateTask({
           id: draggedTask.id,
           status: columnId,
           order: newOrder,
         });
+        console.log('[KANBAN-DROP] Drop completed successfully');
       } catch (e) {
-        console.error('Drop task error', e);
+        console.error('[KANBAN-DROP] Drop task error', e);
+        alert('Ошибка при перемещении задачи: ' + (e as any)?.message);
       }
+    } else if (draggedTask) {
+      console.log('[KANBAN-DROP] Task already in column', columnId, 'skipping');
+    } else {
+      console.log('[KANBAN-DROP] No dragged task');
     }
     setDraggedTask(null);
   };
@@ -112,6 +119,16 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
           className="flex-shrink-0 w-80"
           onDragOver={handleDragOver}
           onDrop={() => handleDrop(column.id)}
+          onTouchMove={(e) => {
+            // Поддержка touch для мобильных
+            e.preventDefault();
+          }}
+          onTouchEnd={() => {
+            // Поддержка drop на мобильных
+            if (draggedTask) {
+              handleDrop(column.id);
+            }
+          }}
         >
           <Card className={`${column.color} h-full`}>
             <CardHeader className="pb-3">
@@ -141,9 +158,16 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
               {(tasksByColumn[column.id] || []).map((task) => (
                 <Card
                   key={task.id}
-                  className="bg-card hover:shadow-lg transition-all cursor-move animate-fade-in hover-lift"
+                  className="bg-card hover:shadow-lg transition-all cursor-move animate-fade-in hover-lift touch-none"
                   draggable
                   onDragStart={() => handleDragStart(task)}
+                  onTouchStart={(e) => {
+                    // Поддержка touch для мобильных
+                    const touch = e.touches[0];
+                    if (touch) {
+                      handleDragStart(task);
+                    }
+                  }}
                 >
                   <CardContent className="p-3 space-y-3">
                     <div className="flex items-start justify-between gap-2">

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <rect width="1200" height="400" fill="#000000"/>
+  <!-- Thinner top and bottom lines, stretched farther apart -->
+  <line x1="60" y1="90" x2="1140" y2="90" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+  <line x1="60" y1="310" x2="1140" y2="310" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+  <!-- Center word -->
+  <text x="600" y="235" fill="#FFFFFF" font-family="Montserrat, Poppins, Arial, Helvetica, sans-serif"
+        font-size="120" text-anchor="middle" letter-spacing="22">DOMIO</text>
+  <!-- Left vertical "EST." (centered between lines) -->
+  <g transform="translate(85,200) rotate(-90)">
+    <text x="0" y="0" fill="#FFFFFF" font-family="Montserrat, Poppins, Arial, Helvetica, sans-serif"
+          font-size="60" text-anchor="middle" letter-spacing="4">EST.</text>
+  </g>
+  <!-- Right vertical "2025" (centered between lines) -->
+  <g transform="translate(1115,200) rotate(90)">
+    <text x="0" y="0" fill="#FFFFFF" font-family="Montserrat, Poppins, Arial, Helvetica, sans-serif"
+          font-size="60" text-anchor="middle" letter-spacing="4">2025</text>
+  </g>
+</svg>

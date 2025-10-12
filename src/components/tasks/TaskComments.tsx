@@ -15,18 +15,22 @@ export function TaskComments({ taskId }: { taskId: string }) {
   useEffect(() => {
     const load = async () => {
       try {
+        console.log('[COMMENTS] Loading comments for task', taskId);
         const rows = await listComments(taskId);
+        console.log('[COMMENTS] Loaded', rows?.length || 0, 'comments:', rows);
         setComments(rows || []);
       } catch (e) {
-        console.error('load comments', e);
+        console.error('[COMMENTS] Load comments error', e);
       }
     };
     load();
 
     // Realtime для комментариев
+    console.log('[COMMENTS] Setting up Realtime subscription for task', taskId);
     const channel = (supabase as any)
       .channel(`comments:${taskId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'task_comments', filter: `task_id=eq.${taskId}` }, (payload: any) => {
+        console.log('[COMMENTS] Realtime INSERT event:', payload);
         const newComment = payload.new;
         // Подтянуть автора и добавить (с дедупликацией)
         (async () => {
@@ -35,29 +39,42 @@ export function TaskComments({ taskId }: { taskId: string }) {
             .select('full_name, email')
             .eq('id', newComment.author_id)
             .single();
+          console.log('[COMMENTS] Fetched author profile:', profile);
           setComments(prev => {
             // Не добавлять дубликаты
-            if (prev.some(c => c.id === newComment.id)) return prev;
+            if (prev.some(c => c.id === newComment.id)) {
+              console.log('[COMMENTS] Duplicate comment detected, skipping');
+              return prev;
+            }
+            console.log('[COMMENTS] Adding new comment to state');
             return [...prev, { ...newComment, author: profile }];
           });
         })();
       })
-      .subscribe();
+      .subscribe((status: string) => {
+        console.log('[COMMENTS] Realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('[COMMENTS] Cleaning up Realtime subscription');
       (supabase as any).removeChannel(channel);
     };
   }, [taskId, listComments]);
 
   const add = async () => {
-    if (!text.trim() || !user) return;
+    if (!text.trim() || !user) {
+      console.log('[COMMENTS] Cannot add comment: empty text or no user');
+      return;
+    }
     setLoading(true);
     try {
+      console.log('[COMMENTS] Adding comment, user:', user.id, 'text:', text.trim());
       await createComment(taskId, user.id, text.trim());
+      console.log('[COMMENTS] Comment added successfully');
       // Не добавляем локально — Realtime сделает это автоматически
       setText('');
     } catch (e) {
-      console.error('create comment', e);
+      console.error('[COMMENTS] Create comment error', e);
     } finally {
       setLoading(false);
     }

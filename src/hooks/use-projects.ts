@@ -65,7 +65,7 @@ export const useProjects = () => {
 
   const updateProjectStatus = async (projectId: string, status: 'active' | 'archived') => {
     try {
-      console.log('Updating project', projectId, 'status to', status);
+      console.log('[PROJECT-UPDATE] Updating project', projectId, 'status to', status);
       const { data, error } = await (supabase as any)
         .from('projects')
         .update({ status })
@@ -73,14 +73,15 @@ export const useProjects = () => {
         .select()
         .single();
       if (error) {
-        console.error('Update project error:', error);
+        console.error('[PROJECT-UPDATE] Update project error:', error);
         throw error;
       }
-      console.log('Project updated successfully', data);
+      console.log('[PROJECT-UPDATE] Project updated successfully, received data:', data);
       updateProject(projectId, data);
+      console.log('[PROJECT-UPDATE] Local state updated');
       return data;
     } catch (err) {
-      console.error('Update project failed:', err);
+      console.error('[PROJECT-UPDATE] Update project failed:', err);
       throw err;
     }
   };

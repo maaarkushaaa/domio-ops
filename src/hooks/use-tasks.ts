@@ -94,19 +94,26 @@ export const useTasks = () => {
 
   const updateTaskWithNotification = async (updates: any) => {
     try {
-      console.log('Updating task', updates.id, 'with', updates);
+      console.log('[TASK-UPDATE] Updating task', updates.id, 'with', updates);
       const { data, error } = await (supabase as any)
         .from('tasks')
         .update(updates)
         .eq('id', updates.id)
-        .select()
+        .select('*, comment_count:task_comments(count), project:projects(id,name)')
         .single();
       if (error) {
-        console.error('Update task error:', error);
+        console.error('[TASK-UPDATE] Update task error:', error);
         throw error;
       }
-      console.log('Task updated successfully', data);
-      updateTask(updates.id, data);
+      console.log('[TASK-UPDATE] Task updated successfully, received data:', data);
+      
+      // Transform data to match expected format
+      const transformedData = {
+        ...data,
+        _comment_count: data.comment_count?.[0]?.count || 0,
+      };
+      updateTask(updates.id, transformedData);
+      console.log('[TASK-UPDATE] Local state updated');
 
       // Log activity
       await (supabase as any)
@@ -117,8 +124,10 @@ export const useTasks = () => {
           event: `Задача обновлена`,
           payload: updates,
         });
+      console.log('[TASK-UPDATE] Activity logged');
     } catch (err) {
-      console.error('Update task failed:', err);
+      console.error('[TASK-UPDATE] Update task failed:', err);
+      alert('Ошибка при обновлении задачи: ' + (err as any)?.message);
       throw err;
     }
   };
@@ -135,31 +144,37 @@ export const useTasks = () => {
   // Comments API
   const createComment = async (taskId: string, authorId: string, content: string) => {
     try {
-      console.log('Creating comment for task', taskId, 'by', authorId);
+      console.log('[COMMENT-CREATE] Creating comment for task', taskId, 'by', authorId, 'content:', content);
       const { data, error } = await (supabase as any)
         .from('task_comments')
         .insert({ task_id: taskId, author_id: authorId, content })
         .select()
         .single();
       if (error) {
-        console.error('Create comment error:', error);
+        console.error('[COMMENT-CREATE] Create comment error:', error);
         throw error;
       }
-      console.log('Comment created successfully', data);
+      console.log('[COMMENT-CREATE] Comment created successfully, data:', data);
       return data;
     } catch (err) {
-      console.error('Create comment failed:', err);
+      console.error('[COMMENT-CREATE] Create comment failed:', err);
+      alert('Ошибка при создании комментария: ' + (err as any)?.message);
       throw err;
     }
   };
 
   const listComments = async (taskId: string) => {
+    console.log('[COMMENT-LIST] Fetching comments for task', taskId);
     const { data, error } = await (supabase as any)
       .from('task_comments')
       .select('id, content, created_at, author:profiles(full_name,email)')
       .eq('task_id', taskId)
       .order('created_at', { ascending: true });
-    if (error) throw error;
+    if (error) {
+      console.error('[COMMENT-LIST] Error fetching comments:', error);
+      throw error;
+    }
+    console.log('[COMMENT-LIST] Fetched', data?.length || 0, 'comments');
     return data;
   };
 
