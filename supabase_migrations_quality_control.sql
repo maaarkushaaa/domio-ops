@@ -39,7 +39,7 @@ create table public.quality_inspections (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
   checklist_id uuid not null references public.quality_checklists(id) on delete restrict,
-  inspector_id uuid references auth.users(id) on delete set null,
+  inspector_id uuid references public.profiles(id) on delete set null,
   status text not null default 'pending', -- pending, in_progress, passed, failed
   score int, -- оценка 0-100
   notes text, -- комментарии инспектора

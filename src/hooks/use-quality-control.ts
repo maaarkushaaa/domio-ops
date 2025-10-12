@@ -190,31 +190,64 @@ export function useQualityControl() {
   // Создание проверки изделия
   const createInspection = async (productId: string, checklistId: string) => {
     const { data: userData } = await supabase.auth.getUser();
+    
+    if (!userData.user?.id) {
+      console.error('User not authenticated');
+      return null;
+    }
+
+    // Получаем профиль пользователя
+    const { data: profile } = await (supabase as any)
+      .from('profiles')
+      .select('id')
+      .eq('id', userData.user.id)
+      .single();
+
     const { data: inspection, error } = await (supabase as any)
       .from('quality_inspections')
       .insert({
         product_id: productId,
         checklist_id: checklistId,
-        inspector_id: userData.user?.id,
+        inspector_id: profile?.id || userData.user.id, // Fallback на auth.users если profiles нет
         status: 'in_progress',
         started_at: new Date().toISOString()
       })
       .select()
       .single();
     
-    if (error || !inspection) return null;
+    if (error) {
+      console.error('Error creating inspection:', error);
+      return null;
+    }
+    
+    if (!inspection) {
+      console.error('No inspection returned from database');
+      return null;
+    }
 
     // Загружаем пункты чек-листа и создаём результаты
     const checks = await loadChecks(checklistId);
+    
+    if (checks.length === 0) {
+      console.warn('No checks found for checklist:', checklistId);
+    }
+    
     const results = checks.map(check => ({
       inspection_id: inspection.id,
       check_id: check.id,
       checked: false
     }));
 
-    await (supabase as any)
-      .from('quality_inspection_results')
-      .insert(results);
+    if (results.length > 0) {
+      const { error: resultsError } = await (supabase as any)
+        .from('quality_inspection_results')
+        .insert(results);
+      
+      if (resultsError) {
+        console.error('Error creating inspection results:', resultsError);
+        // Не возвращаем null, так как проверка уже создана
+      }
+    }
     
     await loadInspections();
     return inspection;
