@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { MessageCircle, Send, X, Minimize2, Mic, Square, Hash, List } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ChatMessage {
   id: string;
@@ -31,6 +32,7 @@ export function ChatWidget() {
   const [taskId, setTaskId] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [tasks, setTasks] = useState<Array<{ id: string; title: string }>>([]);
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -153,6 +155,26 @@ export function ChatWidget() {
       if (channel) supabase.removeChannel(channel);
     };
   }, [channel, taskId]);
+
+  // Load tasks list for selector when task channel is active
+  useEffect(() => {
+    const loadTasks = async () => {
+      if (channel !== 'task') return;
+      try {
+        const { data, error } = await (supabase as any)
+          .from('tasks')
+          .select('id, title')
+          .order('created_at', { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        setTasks((data || []).map((t: any) => ({ id: t.id, title: t.title })));
+      } catch (e) {
+        console.error('Load tasks error:', e);
+        setTasks([]);
+      }
+    };
+    loadTasks();
+  }, [channel]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return;
@@ -287,12 +309,18 @@ export function ChatWidget() {
               <List className="h-3 w-3 mr-1" /> Задача
             </Button>
             {channel === 'task' && (
-              <Input
-                placeholder="Task ID"
-                value={taskId}
-                onChange={(e) => setTaskId(e.target.value)}
-                className="h-7 w-40"
-              />
+              <div className="min-w-[220px]">
+                <Select value={taskId} onValueChange={(v) => setTaskId(v)}>
+                  <SelectTrigger className="h-7">
+                    <SelectValue placeholder="Выберите задачу" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tasks.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           </div>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsMinimized(true)}>
