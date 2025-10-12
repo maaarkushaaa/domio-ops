@@ -82,17 +82,16 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
       }
 
       const container = containerRef.current;
-      const rect = container.getBoundingClientRect();
       
-      // Используем текущую позицию касания для пересчёта дистанции
-      const distanceFromLeft = currentTouchPos.x - rect.left;
-      const distanceFromRight = rect.right - currentTouchPos.x;
+      // Проверяем расстояние от КРАЯ ЭКРАНА, а не от края контейнера
+      const distanceFromLeftEdge = currentTouchPos.x;
+      const distanceFromRightEdge = window.innerWidth - currentTouchPos.x;
 
-      if (distanceFromLeft < scrollThreshold && container.scrollLeft > 0) {
-        // Прокрутка влево
+      if (distanceFromLeftEdge < scrollThreshold && container.scrollLeft > 0) {
+        // Прокрутка влево - палец близко к левому краю экрана
         container.scrollLeft -= scrollSpeed;
-      } else if (distanceFromRight < scrollThreshold && container.scrollLeft < (container.scrollWidth - container.clientWidth)) {
-        // Прокрутка вправо
+      } else if (distanceFromRightEdge < scrollThreshold && container.scrollLeft < (container.scrollWidth - container.clientWidth)) {
+        // Прокрутка вправо - палец близко к правому краю экрана
         container.scrollLeft += scrollSpeed;
       }
       // Не останавливаем автоматически, пусть работает пока палец двигается

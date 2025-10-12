@@ -31,6 +31,7 @@ export const useTasks = () => {
             project_id: t.project_id,
             assignee_id: t.assignee_id,
             due_date: t.due_date,
+            due_end: t.due_end, // ✅ Добавлено!
             created_at: t.created_at,
             updated_at: t.updated_at,
             _comment_count: t.comment_count?.[0]?.count || 0,
@@ -53,6 +54,7 @@ export const useTasks = () => {
             project_id: row.project_id,
             assignee_id: row.assignee_id,
             due_date: row.due_date,
+            due_end: row.due_end, // ✅ Добавлено!
             created_at: row.created_at,
             updated_at: row.updated_at,
           } as any);
