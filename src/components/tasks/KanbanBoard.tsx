@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Plus, MoreVertical, User, Calendar } from 'lucide-react';
 import { useTasks, TaskStatus } from '@/hooks/use-tasks';
 import { Task } from '@/contexts/AppContext';
+import { TaskDialog } from '@/components/tasks/TaskDialog';
+import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu';
 
 interface Column {
   id: TaskStatus;
@@ -23,6 +25,7 @@ const columns: Column[] = [
 export function KanbanBoard() {
   const { tasks, updateTask } = useTasks();
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
+  const [openFor, setOpenFor] = useState<TaskStatus | null>(null);
 
   const tasksByColumn = tasks.reduce((acc, task) => {
     if (!acc[task.status]) acc[task.status] = [];
@@ -92,9 +95,16 @@ export function KanbanBoard() {
                     {tasksByColumn[column.id]?.length || 0}
                   </Badge>
                 </CardTitle>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <TaskDialog
+                  defaultStatus={column.id}
+                  trigger={
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setOpenFor(column.id); }}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  }
+                  openExternal={openFor === column.id}
+                  onOpenChangeExternal={(v) => setOpenFor(v ? column.id : null)}
+                />
               </div>
             </CardHeader>
             <CardContent className="space-y-3 max-h-[calc(100vh-16rem)] overflow-y-auto custom-scrollbar">
@@ -110,9 +120,7 @@ export function KanbanBoard() {
                       <h4 className="text-sm font-medium leading-tight flex-1">
                         {task.title}
                       </h4>
-                      <Button variant="ghost" size="icon" className="h-6 w-6">
-                        <MoreVertical className="h-3 w-3" />
-                      </Button>
+                      <TaskActionsMenu taskId={task.id} taskTitle={task.title} />
                     </div>
 
                     {task.description && (
