@@ -127,10 +127,17 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
                 </div>
               ) : (
                 projects.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    key={p.id}
+                    onClick={() => setProjectId(p.id)}
+                    className={`w-full flex items-center justify-between rounded px-2 py-1 text-left transition-colors ${
+                      projectId === p.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                    }`}
+                  >
                     <span className="truncate max-w-[70%]">{p.name}</span>
                     <span className="text-xs text-muted-foreground">{p.status}</span>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
