@@ -168,7 +168,7 @@ export default function Dashboard() {
 
         <Card className="glass-card hover-lift animate-scale-in interactive" style={{ animationDelay: '200ms' }} onClick={() => navigate('/finance')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Баланс (Взлётка: 8 мес)</CardTitle>
+            <CardTitle className="text-sm font-medium">Финансовый баланс (горизонт планирования: 8 мес)</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>

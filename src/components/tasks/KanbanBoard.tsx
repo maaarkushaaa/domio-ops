@@ -172,8 +172,8 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
         console.log('[KANBAN-DROP] Dropping task', draggedTask.id, 'from', draggedTask.status, 'to', columnId, 'order', newOrder);
         console.log('[KANBAN-DROP] Current task data:', draggedTask);
         await updateTask({
-          id: draggedTask.id,
-          status: columnId,
+        id: draggedTask.id,
+        status: columnId,
           order: newOrder,
         });
         console.log('[KANBAN-DROP] Drop completed successfully');
@@ -240,7 +240,7 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
       )}
       
       <div ref={containerRef} className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'auto' }}>
-        {columns.map((column) => (
+      {columns.map((column) => (
         <div
           key={column.id}
           className="flex-shrink-0 w-80"
@@ -264,8 +264,8 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                   defaultStatus={column.id}
                   trigger={
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setOpenFor(column.id); }}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                  <Plus className="h-4 w-4" />
+                </Button>
                   }
                   openExternal={openFor === column.id}
                   onOpenChangeExternal={(v) => setOpenFor(v ? column.id : null)}
@@ -386,11 +386,11 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                       </button>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                           <TaskDetailsDialog task={task} trigger={
                             <h4 className="text-sm font-medium leading-tight flex-1 hover:underline cursor-pointer">
-                              {task.title}
-                            </h4>
+                        {task.title}
+                      </h4>
                           } />
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <div className="flex items-center text-xs text-muted-foreground">
@@ -399,41 +399,41 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                             </div>
                             <TaskActionsMenu taskId={task.id} taskTitle={task.title} initialTask={task} />
                           </div>
-                        </div>
+                    </div>
 
-                        {task.description && (
+                    {task.description && (
                           <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
-                            {task.description}
-                          </p>
-                        )}
+                        {task.description}
+                      </p>
+                    )}
 
                         <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">
-                            {task.project?.name || 'Без проекта'}
-                          </Badge>
-                          <Badge variant={getPriorityColor(task.priority)} className="text-xs">
-                            {getPriorityLabel(task.priority)}
-                          </Badge>
-                        </div>
+                      <Badge variant="outline" className="text-xs">
+                        {task.project?.name || 'Без проекта'}
+                      </Badge>
+                      <Badge variant={getPriorityColor(task.priority)} className="text-xs">
+                        {getPriorityLabel(task.priority)}
+                      </Badge>
+                    </div>
 
                         <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
-                          {task.assignee && (
-                            <div className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              <span>{task.assignee.full_name}</span>
-                            </div>
-                          )}
-                          {task.due_date && (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
+                      {task.assignee && (
+                        <div className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          <span>{task.assignee.full_name}</span>
+                        </div>
+                      )}
+                      {task.due_date && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
                               <span>
                                 {new Date(task.due_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                                 {(task as any).due_end && (task as any).due_end !== task.due_date ? (
                                   <> — {new Date((task as any).due_end).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</>
                                 ) : null}
                               </span>
-                            </div>
-                          )}
+                        </div>
+                      )}
                         </div>
                       </div>
                     </div>
@@ -450,7 +450,7 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
           </Card>
         </div>
       ))}
-      </div>
+    </div>
     </>
   );
 }

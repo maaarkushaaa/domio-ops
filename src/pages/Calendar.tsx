@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Edit2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,25 +13,30 @@ import { EventDetailsDialog } from "@/components/calendar/EventDetailsDialog";
 interface Event {
   id: number;
   title: string;
-  date: Date;
+  date: Date;      // начало
+  endDate?: Date;  // конец (необязательно)
   type: string;
   description?: string;
 }
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<Event[]>([
-    { id: 1, title: "Встреча с клиентом", date: new Date(2025, 9, 15), type: "meeting", description: "Обсуждение проекта кухни" },
-    { id: 2, title: "Дедлайн проекта", date: new Date(2025, 9, 20), type: "deadline", description: "Сдача 3D модели шкафа" },
-    { id: 3, title: "Доставка материалов", date: new Date(2025, 9, 18), type: "delivery", description: "Поставка ЛДСП и фурнитуры" },
-  ]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [newEventName, setNewEventName] = useState('');
-  const [newEventDate, setNewEventDate] = useState('');
+  const [newEventStart, setNewEventStart] = useState('');
+  const [newEventEnd, setNewEventEnd] = useState('');
   const [newEventType, setNewEventType] = useState('');
   const [newEventDescription, setNewEventDescription] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const [dayDialogDate, setDayDialogDate] = useState<Date | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  // Диапазонное выделение
+  const [isSelecting, setIsSelecting] = useState(false);
+  const selectStartRef = useRef<number | null>(null);
+  const [selectEnd, setSelectEnd] = useState<number | null>(null);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -56,11 +61,13 @@ export default function Calendar() {
   };
 
   const getEventsForDay = (day: number) => {
-    return events.filter(event => 
-      event.date.getDate() === day && 
-      event.date.getMonth() === currentDate.getMonth() &&
-      event.date.getFullYear() === currentDate.getFullYear()
-    );
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    date.setHours(0,0,0,0);
+    return events.filter(ev => {
+      const start = new Date(ev.date); start.setHours(0,0,0,0);
+      const end = new Date(ev.endDate || ev.date); end.setHours(23,59,59,999);
+      return date >= start && date <= end;
+    });
   };
 
   return (
@@ -70,7 +77,7 @@ export default function Calendar() {
           <h1 className="text-3xl font-bold">Календарь</h1>
           <p className="text-muted-foreground">Планирование и события</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(v)=>{ setDialogOpen(v); if(!v){ setEditingEvent(null);} }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -79,23 +86,21 @@ export default function Calendar() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Новое событие</DialogTitle>
+              <DialogTitle>{editingEvent ? 'Редактировать событие' : 'Новое событие'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={(e) => {
               e.preventDefault();
-              if (!newEventName || !newEventDate || !newEventType) return;
-              const newEvent: Event = {
-                id: events.length + 1,
-                title: newEventName,
-                date: new Date(newEventDate),
-                type: newEventType,
-                description: newEventDescription || undefined
-              };
-              setEvents([...events, newEvent]);
-              setNewEventName('');
-              setNewEventDate('');
-              setNewEventType('');
-              setNewEventDescription('');
+              if (!newEventName || !newEventStart || !newEventType) return;
+              const start = new Date(newEventStart);
+              const end = newEventEnd ? new Date(newEventEnd) : undefined;
+              if (editingEvent) {
+                setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, title: newEventName, date: start, endDate: end, type: newEventType, description: newEventDescription || undefined } : ev));
+              } else {
+                const nextId = (events.at(-1)?.id || 0) + 1;
+                setEvents(prev => [...prev, { id: nextId, title: newEventName, date: start, endDate: end, type: newEventType, description: newEventDescription || undefined }]);
+              }
+              setEditingEvent(null);
+              setNewEventName(''); setNewEventStart(''); setNewEventEnd(''); setNewEventType(''); setNewEventDescription('');
               setDialogOpen(false);
             }} className="space-y-4">
               <div className="space-y-2">
@@ -107,14 +112,15 @@ export default function Calendar() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Дата</Label>
-                <Input 
-                  type="datetime-local" 
-                  value={newEventDate}
-                  onChange={(e) => setNewEventDate(e.target.value)}
-                  required
-                />
+              <div className="space-y-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Начало</Label>
+                  <Input type="datetime-local" value={newEventStart} onChange={(e)=>setNewEventStart(e.target.value)} required />
+                </div>
+                <div>
+                  <Label>Окончание (необязательно)</Label>
+                  <Input type="datetime-local" value={newEventEnd} onChange={(e)=>setNewEventEnd(e.target.value)} />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Тип</Label>
@@ -152,7 +158,14 @@ export default function Calendar() {
                   onChange={(e) => setNewEventDescription(e.target.value)}
                 />
               </div>
-              <Button type="submit" className="w-full">Создать</Button>
+              {editingEvent ? (
+                <div className="flex justify-between">
+                  <Button type="button" variant="destructive" onClick={() => { setEvents(prev => prev.filter(ev => ev.id !== editingEvent.id)); setDialogOpen(false); setEditingEvent(null); }}> <Trash2 className="h-4 w-4 mr-2" /> Удалить</Button>
+                  <Button type="submit">Сохранить</Button>
+                </div>
+              ) : (
+                <Button type="submit" className="w-full">Создать</Button>
+              )}
             </form>
           </DialogContent>
         </Dialog>
@@ -196,7 +209,33 @@ export default function Calendar() {
                   key={day}
                   className={`min-h-[100px] p-2 border rounded-lg ${
                     isToday ? 'bg-primary/10 border-primary' : 'border-border'
-                  }`}
+                  } ${isSelecting && selectStartRef.current !== null && selectEnd !== null && (day >= Math.min(selectStartRef.current, selectEnd) && day <= Math.max(selectStartRef.current, selectEnd)) ? 'ring-2 ring-primary/60' : ''}`}
+                  onMouseDown={() => { setIsSelecting(true); selectStartRef.current = day; setSelectEnd(day); }}
+                  onMouseEnter={() => { if (isSelecting) setSelectEnd(day); }}
+                  onMouseUp={() => {
+                    if (isSelecting && selectStartRef.current !== null) {
+                      const min = Math.min(selectStartRef.current, day);
+                      const max = Math.max(selectStartRef.current, day);
+                      const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), min, 9, 0, 0);
+                      const end = new Date(currentDate.getFullYear(), currentDate.getMonth(), max, 18, 0, 0);
+                      setIsSelecting(false); selectStartRef.current = null; setSelectEnd(null);
+                      setNewEventName(''); setNewEventType(''); setNewEventDescription('');
+                      setNewEventStart(start.toISOString().slice(0,16)); setNewEventEnd(end.toISOString().slice(0,16));
+                      setDialogOpen(true);
+                      return;
+                    }
+                    setIsSelecting(false); selectStartRef.current = null; setSelectEnd(null);
+                    // Клик по дню — открыть диалог дня (или создание, если пусто)
+                    const evs = getEventsForDay(day);
+                    if (evs.length === 0) {
+                      const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), day, 9, 0, 0);
+                      setNewEventStart(start.toISOString().slice(0,16)); setNewEventEnd('');
+                      setDialogOpen(true);
+                    } else {
+                      setDayDialogDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
+                      setDayDialogOpen(true);
+                    }
+                  }}
                 >
                   <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
                     {day}
@@ -239,7 +278,7 @@ export default function Calendar() {
                       month: 'long',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}
+                    })}{event.endDate ? ' — ' + event.endDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''}
                   </p>
                 </div>
                 <Badge variant={event.type === 'deadline' ? 'destructive' : 'secondary'}>
@@ -252,6 +291,53 @@ export default function Calendar() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Диалог дня: список событий + создать */}
+      <Dialog open={dayDialogOpen} onOpenChange={setDayDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              События на {dayDialogDate?.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {dayDialogDate && getEventsForDay(dayDialogDate.getDate()).length === 0 && (
+              <div className="text-muted-foreground text-sm">Нет событий</div>
+            )}
+            {dayDialogDate && getEventsForDay(dayDialogDate.getDate()).map(ev => (
+              <div key={ev.id} className="flex items-center justify-between p-2 rounded border">
+                <div>
+                  <div className="font-medium text-sm">{ev.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {ev.date.toLocaleString('ru-RU')} {ev.endDate ? '— ' + ev.endDate.toLocaleString('ru-RU') : ''}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => {
+                    setEditingEvent(ev);
+                    setNewEventName(ev.title);
+                    setNewEventStart(ev.date.toISOString().slice(0,16));
+                    setNewEventEnd(ev.endDate ? ev.endDate.toISOString().slice(0,16) : '');
+                    setNewEventType(ev.type);
+                    setNewEventDescription(ev.description || '');
+                    setDialogOpen(true);
+                  }}>
+                    <Edit2 className="h-3 w-3 mr-1" /> Редактировать
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => setEvents(prev => prev.filter(e => e.id !== ev.id))}>
+                    <Trash2 className="h-3 w-3 mr-1" /> Удалить
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <div className="pt-2">
+              <Button onClick={() => { if (!dayDialogDate) return; setNewEventStart(dayDialogDate.toISOString().slice(0,16)); setNewEventEnd(''); setDialogOpen(true); }} className="w-full">
+                <Plus className="h-4 w-4 mr-2" /> Создать событие
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <EventDetailsDialog
         event={selectedEvent}

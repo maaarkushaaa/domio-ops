@@ -303,18 +303,21 @@ export function ChatWidget() {
 
           const enriched = { ...base, userName: name || base.userName || 'Пользователь' };
 
-          // Prevent duplicates
-          let alreadyHas = false;
-          setMessages(prev => {
-            alreadyHas = prev.some(mm => mm.id === enriched.id);
-            if (alreadyHas) return prev;
-            return [...prev, enriched];
-          });
-          if (alreadyHas) return;
-
-          const isInCurrentChannel = (channel === 'global' && enriched.channel === 'global') ||
+          // Добавляем в ленту только если сообщение относится к текущему каналу/задаче
+          const matchesCurrent = (channel === 'global' && enriched.channel === 'global') ||
             (channel === 'task' && enriched.channel === 'task' && taskId && enriched.taskId === taskId);
-          const isVisibleCurrent = isOpen && isInCurrentChannel;
+          if (matchesCurrent) {
+            let alreadyHas = false;
+            setMessages(prev => {
+              alreadyHas = prev.some(mm => mm.id === enriched.id);
+              if (alreadyHas) return prev;
+              return [...prev, enriched];
+            });
+            return;
+          }
+
+          const isInCurrentChannel = matchesCurrent;
+          const isVisibleCurrent = isOpen && matchesCurrent;
 
           if (isVisibleCurrent) {
             requestAnimationFrame(() => scrollToBottom(true));
@@ -356,11 +359,12 @@ export function ChatWidget() {
     };
   }, [channel, taskId, isOpen]);
 
-  // Load tasks list for selector when task channel is active
+  // Load tasks list for selector when task channel is active (with unread counters)
   useEffect(() => {
     const loadTasks = async () => {
       if (channel !== 'task') return;
       try {
+        const since = localStorage.getItem('chat:lastRead:tasks') || new Date(0).toISOString();
         const { data, error } = await (supabase as any)
           .from('tasks')
           .select('id, title')
@@ -368,6 +372,17 @@ export function ChatWidget() {
           .limit(200);
         if (error) throw error;
         setTasks((data || []).map((t: any) => ({ id: t.id, title: t.title })));
+
+        // Подсчёт непрочитанных по задачам
+        const { data: unreadData } = await (supabase as any)
+          .from('team_messages')
+          .select('task_id, count:id')
+          .eq('channel', 'task')
+          .gt('created_at', since)
+          .group('task_id');
+        const map: Record<string, number> = {};
+        (unreadData || []).forEach((r: any) => { if (r.task_id) map[r.task_id] = Number(r.count) || 0; });
+        setUnreadTasks(map);
       } catch (e) {
         console.error('Load tasks error:', e);
         setTasks([]);
@@ -803,7 +818,16 @@ export function ChatWidget() {
             </SelectTrigger>
             <SelectContent>
               {tasks.map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                <SelectItem key={t.id} value={t.id}>
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="truncate max-w-[220px]">{t.title}</span>
+                    {unreadTasks[t.id] > 0 && (
+                      <span className="ml-2 inline-flex h-5 min-w-[18px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px]">
+                        {unreadTasks[t.id]}
+                      </span>
+                    )}
+                  </div>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
