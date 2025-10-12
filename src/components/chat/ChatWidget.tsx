@@ -312,16 +312,16 @@ export function ChatWidget() {
           });
           if (alreadyHas) return;
 
-          const isForCurrent = (channel === 'global' && enriched.channel === 'global') ||
+          const isInCurrentChannel = (channel === 'global' && enriched.channel === 'global') ||
             (channel === 'task' && enriched.channel === 'task' && taskId && enriched.taskId === taskId);
+          const isVisibleCurrent = isOpen && isInCurrentChannel;
 
-          if (isForCurrent) {
+          if (isVisibleCurrent) {
             requestAnimationFrame(() => scrollToBottom(true));
           } else {
             if (enriched.channel === 'global') setUnreadGlobal(c => c + 1);
             else if (enriched.channel === 'task' && enriched.taskId) setUnreadTasks(prev => ({ ...prev, [enriched.taskId!]: (prev[enriched.taskId!] || 0) + 1 }));
             setUnread(prev => prev + 1);
-            // Visual toast notification for messages in other channels
             try {
               toast({
                 title: enriched.channel === 'global' ? 'Новое сообщение в Общем' : 'Новое сообщение в Задачах',
@@ -330,9 +330,9 @@ export function ChatWidget() {
             } catch {}
           }
 
-          // Play a short notification sound only if message is not in current view or чат закрыт
+          // Sound only if not visible
           try {
-            if (!isForCurrent || !isOpen) {
+            if (!isVisibleCurrent) {
               const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
               const osc = ctx.createOscillator();
               const gain = ctx.createGain();
@@ -354,7 +354,7 @@ export function ChatWidget() {
     return () => {
       if (rtChannel) supabase.removeChannel(rtChannel);
     };
-  }, [channel, taskId]);
+  }, [channel, taskId, isOpen]);
 
   // Load tasks list for selector when task channel is active
   useEffect(() => {
@@ -642,8 +642,9 @@ export function ChatWidget() {
   const totalUnread = unreadGlobal + getUnreadTasksTotal();
 
   if (!isOpen) {
+    const totalUnread = unreadGlobal + getUnreadTasksTotal();
     const fabStyle = isMobile
-      ? { right: 24, bottom: 150 } // статично на мобильном: справа внизу, выше AI assistant (увеличен отступ)
+      ? { right: 24, bottom: 'calc(24px + env(safe-area-inset-bottom))' }
       : { left: fabPos.x, top: fabPos.y };
     return (
       <Button
@@ -655,8 +656,8 @@ export function ChatWidget() {
           window.addEventListener('mouseup', onUp);
         } : undefined}
         onClick={() => setIsOpen(true)}
-        className="fixed h-14 w-14 rounded-full shadow-glow hover-lift animate-scale-in z-50"
-        style={fabStyle}
+        className="fixed h-14 w-14 rounded-full shadow-glow hover-lift animate-scale-in z-[60]"
+        style={fabStyle as any}
         size="icon"
       >
         <MessageCircle className="h-6 w-6" />
@@ -721,7 +722,7 @@ export function ChatWidget() {
           </div>
         </div>
         {/* Absolute controls on the right to avoid wrapping under buttons */}
-        <div className="absolute right-2 top-2 flex items-center gap-1">
+        <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsMinimized(true)}>
             <Minimize2 className="h-3 w-3" />
           </Button>
