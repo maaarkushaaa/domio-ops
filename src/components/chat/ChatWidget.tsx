@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
-import { MessageCircle, Send, X, Minimize2, Mic, Square, Hash, List, Play, Pause } from 'lucide-react';
+import { MessageCircle, Send, X, Minimize2, Mic, Square, Hash, List, Play, Pause, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -102,10 +102,27 @@ export function ChatWidget() {
   const [channel, setChannel] = useState<'global' | 'task'>('global');
   const [taskId, setTaskId] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [tasks, setTasks] = useState<Array<{ id: string; title: string }>>([]);
+  const [typingOthers, setTypingOthers] = useState<string[]>([]);
+  const [recordingOthers, setRecordingOthers] = useState<string[]>([]);
+  const typingTimeoutRef = useRef<number | null>(null);
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Drag/resize state
+  const draggingRef = useRef<{ type: 'fab' | 'chat' | 'resize' | null; dx: number; dy: number }>({ type: null, dx: 0, dy: 0 });
+  const [fabPos, setFabPos] = useState<{ x: number; y: number }>(() => ({
+    x: typeof window !== 'undefined' ? window.innerWidth - 88 : 300,
+    y: typeof window !== 'undefined' ? window.innerHeight - 88 : 300,
+  }));
+  const [chatPos, setChatPos] = useState<{ x: number; y: number }>(() => ({
+    x: typeof window !== 'undefined' ? window.innerWidth - 520 : 200,
+    y: typeof window !== 'undefined' ? window.innerHeight - 620 : 100,
+  }));
+  const [chatSize, setChatSize] = useState<{ w: number; h: number }>({ w: 420, h: 560 });
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   // Load messages from Supabase and subscribe to realtime
   useEffect(() => {
@@ -113,6 +130,7 @@ export function ChatWidget() {
 
     const load = async () => {
       try {
+        setLoadingMessages(true);
         const filters: any = { };
         // Channel filtering composed after fetch call
 
@@ -160,6 +178,8 @@ export function ChatWidget() {
         }
       } catch (e) {
         console.error('Chat load error:', e);
+      } finally {
+        setLoadingMessages(false);
       }
 
       // Realtime subscription (listen to all new messages to raise notifications)
@@ -247,6 +267,41 @@ export function ChatWidget() {
     loadTasks();
   }, [channel]);
 
+  // Presence (typing/recording)
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase.channel('chat_presence', { config: { presence: { key: user.id } } });
+    presenceChannelRef.current = ch;
+    ch.on('presence', { event: 'sync' }, () => {
+      const state = ch.presenceState() as any;
+      const othersTyping: string[] = [];
+      const othersRec: string[] = [];
+      Object.values(state).forEach((arr: any) => {
+        (arr as any[]).forEach((s: any) => {
+          if (s.user_id !== user.id) {
+            const sameChannel = (s.channel === channel) && (channel !== 'task' || s.task_id === taskId);
+            if (sameChannel && s.typing) othersTyping.push(s.name || 'Кто-то');
+            if (sameChannel && s.recording) othersRec.push(s.name || 'Кто-то');
+          }
+        });
+      });
+      setTypingOthers(othersTyping);
+      setRecordingOthers(othersRec);
+    });
+    ch.subscribe(async status => {
+      if (status === 'SUBSCRIBED') {
+        await ch.track({ user_id: user.id, name: user.name, typing: false, recording: false, channel, task_id: taskId || null });
+      }
+    });
+    return () => { supabase.removeChannel(ch); };
+  }, [user, channel, taskId]);
+
+  const bumpTyping = (flag: boolean) => {
+    const ch = presenceChannelRef.current;
+    if (!ch || !user) return;
+    ch.track({ user_id: user.id, name: user.name, typing: flag, recording: isRecording, channel, task_id: taskId || null });
+  };
+
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return;
     const content = newMessage.trim();
@@ -279,6 +334,7 @@ export function ChatWidget() {
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       mediaRecorder.onstop = async () => {
         try {
+          setIsUploadingAudio(true);
           const blob = new Blob(chunks, { type: 'audio/webm' });
           const fileName = `${user.id}/${crypto.randomUUID()}.webm`;
           const { error: uploadError } = await supabase.storage.from('chat-audio').upload(fileName, blob, {
@@ -305,11 +361,16 @@ export function ChatWidget() {
           toast({ title: 'Ошибка', description: e.message || 'Не удалось отправить голосовое', variant: 'destructive' });
         } finally {
           setIsRecording(false);
+          setIsUploadingAudio(false);
+          bumpTyping(false);
         }
       };
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsRecording(true);
+      // flag presence recording
+      bumpTyping(false);
+      const ch = presenceChannelRef.current; if (ch && user) ch.track({ user_id: user.id, name: user.name, typing: false, recording: true, channel, task_id: taskId || null });
     } catch (e: any) {
       console.error('Mic error:', e);
       toast({ title: 'Микрофон недоступен', description: e.message || 'Проверьте разрешения', variant: 'destructive' });
@@ -334,8 +395,16 @@ export function ChatWidget() {
   if (!isOpen) {
     return (
       <Button
+        onMouseDown={(e) => {
+          draggingRef.current = { type: 'fab', dx: e.clientX - fabPos.x, dy: e.clientY - fabPos.y };
+          const onMove = (ev: MouseEvent) => setFabPos({ x: ev.clientX - draggingRef.current.dx, y: ev.clientY - draggingRef.current.dy });
+          const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); draggingRef.current.type = null; };
+          window.addEventListener('mousemove', onMove);
+          window.addEventListener('mouseup', onUp);
+        }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-glow hover-lift animate-scale-in z-50"
+        className="fixed h-14 w-14 rounded-full shadow-glow hover-lift animate-scale-in z-50"
+        style={{ left: fabPos.x, top: fabPos.y }}
         size="icon"
       >
         <MessageCircle className="h-6 w-6" />
@@ -365,8 +434,16 @@ export function ChatWidget() {
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 w-96 h-[500px] flex flex-col glass-card shadow-glow hover-lift z-50 animate-scale-in">
-      <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
+    <Card className="fixed flex flex-col glass-card shadow-glow hover-lift z-50 animate-scale-in"
+      style={{ left: chatPos.x, top: chatPos.y, width: chatSize.w, height: chatSize.h }}>
+      <CardHeader className="flex flex-row items-center justify-between p-4 border-b cursor-move"
+        onMouseDown={(e) => {
+          draggingRef.current = { type: 'chat', dx: e.clientX - chatPos.x, dy: e.clientY - chatPos.y };
+          const onMove = (ev: MouseEvent) => setChatPos({ x: ev.clientX - draggingRef.current.dx, y: ev.clientY - draggingRef.current.dy });
+          const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); draggingRef.current.type = null; };
+          window.addEventListener('mousemove', onMove);
+          window.addEventListener('mouseup', onUp);
+        }}>
         <CardTitle className="text-sm flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-primary" />
           Чат команды
@@ -406,7 +483,11 @@ export function ChatWidget() {
       <CardContent className="flex-1 p-0 flex flex-col">
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
-            {messages.length === 0 ? (
+            {loadingMessages ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Загружаем сообщения…
+              </div>
+            ) : messages.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-8">
                 Нет сообщений. Начните общение!
               </div>
@@ -438,44 +519,73 @@ export function ChatWidget() {
                     {msg.type === 'audio' ? (
                       <AudioMessage url={msg.audioUrl} />
                     ) : (
-                      <div className={`p-3 rounded-lg ${
-                        msg.userId === user?.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}>
-                        <p className="text-sm">{msg.message}</p>
-                      </div>
+                    <div className={`p-3 rounded-lg ${
+                      msg.userId === user?.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}>
+                      <p className="text-sm">{msg.message}</p>
+                    </div>
                     )}
                   </div>
                 </div>
               ))
             )}
             <div ref={messagesEndRef} />
+            {(typingOthers.length > 0 || recordingOthers.length > 0) && (
+              <div className="text-xs text-muted-foreground pl-1">
+                {typingOthers.length > 0 && (<span>{typingOthers.join(', ')} печатает… </span>)}
+                {recordingOthers.length > 0 && (<span>{recordingOthers.join(', ')} записывает…</span>)}
+              </div>
+            )}
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t relative">
           <div className="flex gap-2">
             <Input
               placeholder="Напишите сообщение..."
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+                bumpTyping(true);
+                typingTimeoutRef.current = window.setTimeout(() => bumpTyping(false), 1200);
+              }}
               onKeyPress={handleKeyPress}
               className="interactive focus-elegant"
             />
-            <Button onClick={handleSend} size="icon" className="hover-lift">
+            <Button onClick={handleSend} size="icon" className="hover-lift" disabled={isUploadingAudio}>
               <Send className="h-4 w-4" />
             </Button>
             {!isRecording ? (
-              <Button onClick={startRecording} size="icon" variant="outline" title="Записать голосовое">
-                <Mic className="h-4 w-4" />
-              </Button>
+              <div className="relative">
+                <Button onClick={startRecording} size="icon" variant="outline" title="Записать голосовое" disabled={isUploadingAudio}>
+                  {isUploadingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+                </Button>
+                {/* бейдж длительности до воспроизведения не знаем; после загрузки покажем 0:00 */}
+                <span className="absolute -top-1 -right-1 text-[10px] px-1 py-0.5 rounded bg-muted">rec</span>
+              </div>
             ) : (
               <Button onClick={stopRecording} size="icon" variant="destructive" title="Остановить запись">
                 <Square className="h-4 w-4" />
               </Button>
             )}
           </div>
+          {/* Resize handle */}
+          <div
+            className="absolute bottom-1 right-1 w-3 h-3 cursor-se-resize"
+            onMouseDown={(e) => {
+              draggingRef.current = { type: 'resize', dx: chatSize.w - e.clientX, dy: chatSize.h - e.clientY };
+              const onMove = (ev: MouseEvent) => setChatSize({
+                w: Math.max(360, ev.clientX + draggingRef.current.dx - chatPos.x),
+                h: Math.max(360, ev.clientY + draggingRef.current.dy - chatPos.y)
+              });
+              const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); draggingRef.current.type = null; };
+              window.addEventListener('mousemove', onMove);
+              window.addEventListener('mouseup', onUp);
+            }}
+          />
         </div>
       </CardContent>
     </Card>
