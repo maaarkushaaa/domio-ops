@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { MessageCircle, Send, X, Minimize2, Mic, Square, Hash, List, Play, Pause, Loader2 } from 'lucide-react';
@@ -706,7 +705,7 @@ export function ChatWidget() {
       )}
 
       <CardContent className="flex-1 p-0 flex flex-col min-h-0 overflow-hidden">
-        <div ref={messagesWrapRef} className="flex-1 p-4 min-h-0">
+        <div ref={messagesWrapRef} className="flex-1 p-4 min-h-0 overflow-y-auto">
           <div className="space-y-4">
             {loadingMessages ? (
               <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
