@@ -85,23 +85,30 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
       const container = containerRef.current;
       const pos = touchPosRef.current;
       
+      // Получаем границы ВИДИМОЙ области контейнера
+      const containerRect = container.getBoundingClientRect();
+      
       // Вычисляем края плавающей карточки (width: 300px, centered at pos.x - 150)
       const cardWidth = 300;
       const cardLeftEdge = pos.x - 150;
       const cardRightEdge = pos.x - 150 + cardWidth;
       
-      // Проверяем расстояние КРАЁВ КАРТОЧКИ до краёв экрана
-      const distanceLeftEdgeToScreen = cardLeftEdge;
-      const distanceRightEdgeToScreen = window.innerWidth - cardRightEdge;
+      // Проверяем расстояние КРАЁВ КАРТОЧКИ до КРАЁВ ВИДИМОЙ ОБЛАСТИ КОНТЕЙНЕРА
+      const distanceLeftEdgeToContainer = cardLeftEdge - containerRect.left;
+      const distanceRightEdgeToContainer = containerRect.right - cardRightEdge;
 
-      if (distanceLeftEdgeToScreen < scrollThreshold && container.scrollLeft > 0) {
-        // Левый край карточки близко к левому краю экрана - прокручиваем влево
+      const canScrollLeft = container.scrollLeft > 0;
+      const canScrollRight = container.scrollLeft < (container.scrollWidth - container.clientWidth);
+
+      if (distanceLeftEdgeToContainer < scrollThreshold && canScrollLeft) {
+        // Левый край карточки близко к левому краю видимой области - прокручиваем влево
         container.scrollLeft -= scrollSpeed;
-      } else if (distanceRightEdgeToScreen < scrollThreshold && container.scrollLeft < (container.scrollWidth - container.clientWidth)) {
-        // Правый край карточки близко к правому краю экрана - прокручиваем вправо
+        console.log('[AUTOSCROLL] Scrolling LEFT, cardLeft:', cardLeftEdge, 'containerLeft:', containerRect.left, 'distance:', distanceLeftEdgeToContainer);
+      } else if (distanceRightEdgeToContainer < scrollThreshold && canScrollRight) {
+        // Правый край карточки близко к правому краю видимой области - прокручиваем вправо
         container.scrollLeft += scrollSpeed;
+        console.log('[AUTOSCROLL] Scrolling RIGHT, cardRight:', cardRightEdge, 'containerRight:', containerRect.right, 'distance:', distanceRightEdgeToContainer);
       }
-      // Не останавливаем автоматически, пусть работает пока палец двигается
     }, 16); // ~60fps
   };
 
@@ -258,6 +265,11 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           const pos = { x: touch.clientX, y: touch.clientY };
                           setCurrentTouchPos(pos);
                           touchPosRef.current = pos; // Синхронное обновление для автопрокрутки
+                          
+                          // Логируем позицию для отладки
+                          if (Math.random() < 0.1) { // Логируем каждое 10-е событие
+                            console.log('[TOUCH] Position:', pos.x, pos.y, 'AutoScroll active:', autoScrollIntervalRef.current !== null);
+                          }
                           
                           // Запускаем автопрокрутку (запустится только один раз)
                           startAutoScroll();
