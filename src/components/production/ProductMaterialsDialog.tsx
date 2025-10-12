@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Trash2, Package } from 'lucide-react';
+import { Plus, Trash2, Package, PackagePlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AddMaterialDialog } from './AddMaterialDialog';
 
 interface Material {
   id: string;
@@ -54,6 +55,7 @@ export function ProductMaterialsDialog({
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [addMaterialDialogOpen, setAddMaterialDialogOpen] = useState(false);
 
   // Загрузка справочника материалов
   useEffect(() => {
@@ -167,7 +169,17 @@ export function ProductMaterialsDialog({
         <div className="space-y-4">
           {/* Форма добавления материала */}
           <div className="p-4 rounded-lg border border-border bg-muted/20">
-            <h3 className="font-medium mb-3">Добавить материал</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium">Добавить материал</h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setAddMaterialDialogOpen(true)}
+              >
+                <PackagePlus className="h-4 w-4 mr-2" />
+                Создать новый материал
+              </Button>
+            </div>
             <div className="grid gap-3 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Материал</Label>
@@ -283,6 +295,13 @@ export function ProductMaterialsDialog({
           )}
         </div>
       </DialogContent>
+
+      {/* Диалог добавления нового материала в справочник */}
+      <AddMaterialDialog
+        open={addMaterialDialogOpen}
+        onOpenChange={setAddMaterialDialogOpen}
+        onMaterialAdded={loadMaterials}
+      />
     </Dialog>
   );
 }

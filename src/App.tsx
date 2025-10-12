@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Projects from "./pages/Projects";
 import Production from "./pages/Production";
+import Materials from "./pages/Materials";
 import Finance from "./pages/Finance";
 import Procurement from "./pages/Procurement";
 import Clients from "./pages/Clients";
@@ -95,6 +96,13 @@ const App = () => {
                   <ProtectedRoute>
                     <AppLayout>
                       <Production />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/materials" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Materials />
                     </AppLayout>
                   </ProtectedRoute>
                 } />
