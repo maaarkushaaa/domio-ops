@@ -29,6 +29,16 @@ function AudioMessage({ url }: { url: string | undefined }) {
   const [duration, setDuration] = useState(0);
   const animationRef = useRef<number | null>(null);
 
+  // If no URL, show loading indicator
+  if (!url) {
+    return (
+      <div className="w-full flex items-center gap-3 p-2 rounded-lg bg-muted">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-xs text-muted-foreground">Загрузка аудио...</span>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (!url) return;
     const audio = new Audio(url);
@@ -75,15 +85,19 @@ function AudioMessage({ url }: { url: string | undefined }) {
     };
   }, [isPlaying]);
 
-  const toggle = () => {
+  const toggle = async () => {
     const audio = audioRef.current;
     if (!audio) return;
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
     } else {
-      audio.play();
-      setIsPlaying(true);
+      try {
+        await audio.play();
+        setIsPlaying(true);
+      } catch (err) {
+        console.error('Audio play error:', err);
+      }
     }
   };
 
@@ -269,7 +283,7 @@ export function ChatWidget() {
 
           if (isForCurrent) {
             setMessages(prev => [...prev, enriched]);
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
           } else {
             setUnread(prev => prev + 1);
           }
@@ -357,9 +371,23 @@ export function ChatWidget() {
     if (!newMessage.trim() || !user) return;
     const content = newMessage.trim();
     setNewMessage('');
+    
+    // Optimistic UI: add message immediately
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: ChatMessage = {
+      id: tempId,
+      userId: user.id,
+      userName: user.name,
+      message: content,
+      timestamp: new Date().toISOString(),
+      type: 'text',
+      channel: channel === 'task' ? 'task' : 'global',
+      taskId: channel === 'task' && taskId ? taskId : null,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    
     try {
-      // Optimistic UI is optional; rely on realtime insert event
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('team_messages')
         .insert({
           user_id: user.id,
@@ -367,11 +395,32 @@ export function ChatWidget() {
           channel: channel === 'task' ? 'task' : 'global',
           task_id: channel === 'task' && taskId ? taskId : null,
           type: 'text',
-        });
+        })
+        .select()
+        .single();
+      
       if (error) throw error;
-      toast({ title: 'Сообщение отправлено' });
+      
+      // Replace temp message with real one from DB
+      if (data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempId ? {
+            id: data.id,
+            userId: data.user_id,
+            userName: user.name,
+            message: data.content,
+            timestamp: data.created_at,
+            type: data.type,
+            audioUrl: data.audio_url,
+            channel: data.channel,
+            taskId: data.task_id,
+          } : msg
+        ));
+      }
     } catch (e: any) {
       console.error('Chat send error:', e);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
       toast({ title: 'Ошибка', description: e.message || 'Не удалось отправить сообщение', variant: 'destructive' });
     }
   };
@@ -384,18 +433,35 @@ export function ChatWidget() {
       const chunks: BlobPart[] = [];
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       mediaRecorder.onstop = async () => {
+        const tempId = `temp-audio-${Date.now()}`;
         try {
           setIsUploadingAudio(true);
           const blob = new Blob(chunks, { type: 'audio/webm' });
           const fileName = `${user.id}/${crypto.randomUUID()}.webm`;
+          
+          // Optimistic UI: add audio message with loading state
+          const optimisticMsg: ChatMessage = {
+            id: tempId,
+            userId: user.id,
+            userName: user.name,
+            message: '',
+            timestamp: new Date().toISOString(),
+            type: 'audio',
+            audioUrl: undefined, // Will be replaced with real URL
+            channel: channel === 'task' ? 'task' : 'global',
+            taskId: channel === 'task' && taskId ? taskId : null,
+          };
+          setMessages(prev => [...prev, optimisticMsg]);
+          
           const { error: uploadError } = await supabase.storage.from('chat-audio').upload(fileName, blob, {
             cacheControl: '3600',
             upsert: false,
             contentType: 'audio/webm'
           });
           if (uploadError) throw uploadError;
+          
           const { data: publicUrl } = supabase.storage.from('chat-audio').getPublicUrl(fileName);
-          const { error: insertError } = await (supabase as any)
+          const { data, error: insertError } = await (supabase as any)
             .from('team_messages')
             .insert({
               user_id: user.id,
@@ -404,11 +470,32 @@ export function ChatWidget() {
               task_id: channel === 'task' && taskId ? taskId : null,
               type: 'audio',
               audio_url: publicUrl.publicUrl
-            });
+            })
+            .select()
+            .single();
+          
           if (insertError) throw insertError;
-          toast({ title: 'Голосовое отправлено' });
+          
+          // Replace temp message with real one
+          if (data) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === tempId ? {
+                id: data.id,
+                userId: data.user_id,
+                userName: user.name,
+                message: data.content,
+                timestamp: data.created_at,
+                type: data.type,
+                audioUrl: data.audio_url,
+                channel: data.channel,
+                taskId: data.task_id,
+              } : msg
+            ));
+          }
         } catch (e: any) {
           console.error('Audio send error:', e);
+          // Remove optimistic message on error
+          setMessages(prev => prev.filter(msg => msg.id !== tempId));
           toast({ title: 'Ошибка', description: e.message || 'Не удалось отправить голосовое', variant: 'destructive' });
         } finally {
           setIsRecording(false);
@@ -489,12 +576,15 @@ export function ChatWidget() {
 
   // Make chat responsive to screen size
   const chatStyle = isMobile 
-    ? { left: 0, top: 0, width: '100vw', height: '100vh' }
+    ? { left: 0, top: 0, width: '100vw', height: '100vh', maxHeight: '100vh' }
     : { left: chatPos.x, top: chatPos.y, width: chatSize.w, height: chatSize.h };
 
+  const chatClasses = isMobile
+    ? "fixed flex flex-col z-50 overflow-hidden border-0 rounded-none"
+    : "fixed flex flex-col glass-card shadow-glow hover-lift z-50 animate-scale-in overflow-hidden";
+
   return (
-    <Card className="fixed flex flex-col glass-card shadow-glow hover-lift z-50 animate-scale-in overflow-hidden"
-      style={chatStyle}>
+    <Card className={chatClasses} style={chatStyle}>
       <CardHeader className="flex flex-row items-center justify-between p-4 border-b cursor-move flex-shrink-0"
         onMouseDown={!isMobile ? (e) => {
           draggingRef.current = { type: 'chat', dx: e.clientX - chatPos.x, dy: e.clientY - chatPos.y };
@@ -524,7 +614,7 @@ export function ChatWidget() {
           </Button>
         </div>
       </CardHeader>
-      
+
       {channel === 'task' && (
         <div className="px-4 py-2 border-b flex-shrink-0">
           <Select value={taskId} onValueChange={(v) => setTaskId(v)}>
