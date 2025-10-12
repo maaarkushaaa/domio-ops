@@ -1,8 +1,11 @@
 -- calendar_events: события календаря
 -- Таблица, индексы, RLS, Realtime
 
--- Создаём таблицу
-create table if not exists public.calendar_events (
+-- Удаляем старую таблицу если существует (для чистой миграции)
+drop table if exists public.calendar_events cascade;
+
+-- Создаём таблицу заново
+create table public.calendar_events (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   start_at timestamptz not null,
@@ -14,18 +17,9 @@ create table if not exists public.calendar_events (
   updated_at timestamptz not null default now()
 );
 
--- Индексы (только если таблица существует и колонки есть)
-do $$ 
-begin
-  if exists (select 1 from information_schema.tables where table_schema='public' and table_name='calendar_events') then
-    if not exists (select 1 from pg_indexes where tablename='calendar_events' and indexname='idx_calendar_events_start_at') then
-      create index idx_calendar_events_start_at on public.calendar_events(start_at);
-    end if;
-    if not exists (select 1 from pg_indexes where tablename='calendar_events' and indexname='idx_calendar_events_end_at') then
-      create index idx_calendar_events_end_at on public.calendar_events(end_at);
-    end if;
-  end if;
-end $$;
+-- Индексы
+create index idx_calendar_events_start_at on public.calendar_events(start_at);
+create index idx_calendar_events_end_at on public.calendar_events(end_at);
 
 -- Триггер updated_at
 create or replace function public.set_updated_at()
