@@ -27,61 +27,79 @@ function AudioMessage({ url }: { url: string | undefined }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const animationRef = useRef<number | null>(null);
-
-  // If no URL, show loading indicator
-  if (!url) {
-    return (
-      <div className="w-full flex items-center gap-3 p-2 rounded-lg bg-muted">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-xs text-muted-foreground">Загрузка аудио...</span>
-      </div>
-    );
-  }
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!url) return;
+    setIsLoading(true);
     const audio = new Audio(url);
     audioRef.current = audio;
     
     const onLoaded = () => {
-      if (isFinite(audio.duration)) setDuration(audio.duration);
+      if (isFinite(audio.duration)) {
+        setDuration(audio.duration);
+        setIsLoading(false);
+      }
     };
     
     const onEnded = () => { 
       setIsPlaying(false); 
       setCurrent(0);
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+    
+    const onError = () => {
+      console.error('Audio loading error');
+      setIsLoading(false);
     };
     
     audio.addEventListener('loadedmetadata', onLoaded);
     audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
     audio.load();
     
     return () => {
       audio.pause();
       audio.removeEventListener('loadedmetadata', onLoaded);
       audio.removeEventListener('ended', onEnded);
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      audio.removeEventListener('error', onError);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
   }, [url]);
 
   // Update progress using requestAnimationFrame for smooth updates
   useEffect(() => {
-    if (!isPlaying || !audioRef.current) return;
+    if (!isPlaying || !audioRef.current) {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      return;
+    }
     
     const updateProgress = () => {
       const audio = audioRef.current;
       if (audio && isFinite(audio.currentTime)) {
         setCurrent(audio.currentTime);
+        rafRef.current = requestAnimationFrame(updateProgress);
       }
-      animationRef.current = requestAnimationFrame(updateProgress);
     };
     
-    animationRef.current = requestAnimationFrame(updateProgress);
+    rafRef.current = requestAnimationFrame(updateProgress);
     
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
   }, [isPlaying]);
 
@@ -100,6 +118,18 @@ function AudioMessage({ url }: { url: string | undefined }) {
       }
     }
   };
+
+  // If no URL or loading, show loading indicator
+  if (!url || isLoading) {
+    return (
+      <div className="w-full flex items-center gap-3 p-2 rounded-lg bg-muted">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-xs text-muted-foreground">
+          {!url ? 'Загрузка аудио...' : 'Загрузка метаданных...'}
+        </span>
+      </div>
+    );
+  }
 
   const onSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
@@ -532,7 +562,7 @@ export function ChatWidget() {
 
   if (!isOpen) {
     const fabStyle = isMobile
-      ? { right: 24, bottom: 90 } // статично на мобильном: справа внизу, выше AI assistant
+      ? { right: 24, bottom: 150 } // статично на мобильном: справа внизу, выше AI assistant (увеличен отступ)
       : { left: fabPos.x, top: fabPos.y };
     return (
       <Button
@@ -576,11 +606,11 @@ export function ChatWidget() {
 
   // Make chat responsive to screen size
   const chatStyle = isMobile 
-    ? { left: 0, top: 0, width: '100vw', height: '100vh', maxHeight: '100vh' }
+    ? { left: 0, top: 0, right: 0, bottom: 0, width: '100vw', height: '100dvh', maxHeight: '100dvh' }
     : { left: chatPos.x, top: chatPos.y, width: chatSize.w, height: chatSize.h };
 
   const chatClasses = isMobile
-    ? "fixed flex flex-col z-50 overflow-hidden border-0 rounded-none"
+    ? "fixed inset-0 flex flex-col z-50 overflow-hidden border-0 rounded-none bg-background"
     : "fixed flex flex-col glass-card shadow-glow hover-lift z-50 animate-scale-in overflow-hidden";
 
   return (
@@ -691,8 +721,8 @@ export function ChatWidget() {
           </div>
         </ScrollArea>
 
-        <div className="p-3 border-t relative flex-shrink-0">
-          <div className="flex gap-2 items-center">
+        <div className={`border-t relative flex-shrink-0 bg-background ${isMobile ? 'p-2 pb-safe' : 'p-3'}`}>
+          <div className="flex gap-2 items-center w-full">
             <Input
               placeholder="Сообщение..."
               value={newMessage}
@@ -703,17 +733,35 @@ export function ChatWidget() {
                 typingTimeoutRef.current = window.setTimeout(() => bumpTyping(false), 1200);
               }}
               onKeyPress={handleKeyPress}
-              className="interactive focus-elegant flex-1 min-w-0"
+              className={`interactive focus-elegant flex-1 min-w-0 ${isMobile ? 'h-10 text-base' : ''}`}
             />
-            <Button onClick={handleSend} size="icon" className="hover-lift flex-shrink-0" disabled={isUploadingAudio}>
+            <Button 
+              onClick={handleSend} 
+              size="icon" 
+              className={`hover-lift flex-shrink-0 ${isMobile ? 'h-10 w-10' : ''}`} 
+              disabled={isUploadingAudio}
+            >
               <Send className="h-4 w-4" />
             </Button>
             {!isRecording ? (
-              <Button onClick={startRecording} size="icon" variant="outline" title="Записать голосовое" disabled={isUploadingAudio} className="flex-shrink-0">
+              <Button 
+                onClick={startRecording} 
+                size="icon" 
+                variant="outline" 
+                title="Записать голосовое" 
+                disabled={isUploadingAudio} 
+                className={`flex-shrink-0 ${isMobile ? 'h-10 w-10' : ''}`}
+              >
                 {isUploadingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
               </Button>
             ) : (
-              <Button onClick={stopRecording} size="icon" variant="destructive" title="Остановить запись" className="flex-shrink-0">
+              <Button 
+                onClick={stopRecording} 
+                size="icon" 
+                variant="destructive" 
+                title="Остановить запись" 
+                className={`flex-shrink-0 ${isMobile ? 'h-10 w-10' : ''}`}
+              >
                 <Square className="h-4 w-4" />
               </Button>
             )}
