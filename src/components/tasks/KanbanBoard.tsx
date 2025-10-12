@@ -70,8 +70,6 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const startAutoScroll = (touchX: number) => {
     if (!containerRef.current) return;
 
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
     const scrollThreshold = 100; // Зона активации автопрокрутки (px от края)
     const scrollSpeed = 15; // Скорость прокрутки
 
@@ -80,23 +78,30 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
       clearInterval(autoScrollIntervalRef.current);
     }
 
-    // Проверяем, близко ли к краям
-    const distanceFromLeft = touchX - rect.left;
-    const distanceFromRight = rect.right - touchX;
+    autoScrollIntervalRef.current = window.setInterval(() => {
+      if (!containerRef.current || !currentTouchPos) {
+        stopAutoScroll();
+        return;
+      }
 
-    if (distanceFromLeft < scrollThreshold || distanceFromRight < scrollThreshold) {
-      autoScrollIntervalRef.current = window.setInterval(() => {
-        if (!containerRef.current) return;
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
+      
+      // Используем текущую позицию касания для пересчёта дистанции
+      const distanceFromLeft = currentTouchPos.x - rect.left;
+      const distanceFromRight = rect.right - currentTouchPos.x;
 
-        if (distanceFromLeft < scrollThreshold && container.scrollLeft > 0) {
-          // Прокрутка влево
-          container.scrollLeft -= scrollSpeed;
-        } else if (distanceFromRight < scrollThreshold) {
-          // Прокрутка вправо
-          container.scrollLeft += scrollSpeed;
-        }
-      }, 16); // ~60fps
-    }
+      if (distanceFromLeft < scrollThreshold && container.scrollLeft > 0) {
+        // Прокрутка влево
+        container.scrollLeft -= scrollSpeed;
+      } else if (distanceFromRight < scrollThreshold && container.scrollLeft < (container.scrollWidth - container.clientWidth)) {
+        // Прокрутка вправо
+        container.scrollLeft += scrollSpeed;
+      } else if (distanceFromLeft >= scrollThreshold && distanceFromRight >= scrollThreshold) {
+        // Палец не в зоне прокрутки - останавливаем
+        stopAutoScroll();
+      }
+    }, 16); // ~60fps
   };
 
   const stopAutoScroll = () => {

@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useProjects = () => {
-  const { projects, addProject, updateProject, deleteProject } = useApp();
+  const { projects, addProject, setProjects, updateProject, deleteProject } = useApp();
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -15,11 +15,17 @@ export const useProjects = () => {
           .select('id, name, description, status, start_date, end_date, created_at')
           .order('created_at', { ascending: true });
         if (error) throw error;
-        const seen = new Set<string>();
-        (data || []).forEach((p: any) => {
-          if (seen.has(p.id)) return; seen.add(p.id);
-          addProject({ id: p.id, name: p.name, description: p.description, status: p.status, start_date: p.start_date, created_at: p.created_at } as any);
-        });
+        
+        // Используем setProjects для полной перезаписи списка (решает проблему с удалением)
+        setProjects((data || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          status: p.status,
+          start_date: p.start_date,
+          end_date: p.end_date,
+          created_at: p.created_at
+        })));
       } catch (e) {
         console.error('load projects error', e);
       }

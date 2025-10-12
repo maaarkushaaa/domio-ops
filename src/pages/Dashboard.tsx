@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import {
   TrendingUp,
   Package,
   Clock,
+  Calendar,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTasks } from "@/hooks/use-tasks";
@@ -16,6 +18,8 @@ import { useProducts } from "@/hooks/use-products";
 import { ProjectTimeline } from "@/components/timeline/ProjectTimeline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
+import { TaskListDialog } from "@/components/dashboard/TaskListDialog";
+import { Task } from "@/types";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -23,6 +27,11 @@ export default function Dashboard() {
   const { products } = useProducts();
   const navigate = useNavigate();
   const userName = user?.name || user?.email?.split('@')[0] || 'Пользователь';
+  
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState('');
+  const [dialogTasks, setDialogTasks] = useState<Task[]>([]);
+  const [dialogVariant, setDialogVariant] = useState<'today' | 'overdue' | 'upcoming'>('today');
   
   // Задачи на сегодня: начинаются сегодня или раньше И заканчиваются сегодня или позже (или не имеют конца)
   const today = new Date();
@@ -54,8 +63,27 @@ export default function Dashboard() {
     endDate.setHours(23, 59, 59, 999);
     
     return endDate < today;
-  }).length;
+  });
+  
+  // Предстоящие: начинаются в будущем
+  const upcomingTasks = tasks.filter(t => {
+    if (t.status === 'done') return false;
+    if (!t.due_date) return false;
+    
+    const startDate = new Date(t.due_date);
+    startDate.setHours(0, 0, 0, 0);
+    
+    return startDate > todayEnd;
+  });
+  
   const inProduction = products.filter(p => p.status === 'in_progress').length;
+  
+  const openTaskDialog = (title: string, taskList: Task[], variant: 'today' | 'overdue' | 'upcoming') => {
+    setDialogTitle(title);
+    setDialogTasks(taskList);
+    setDialogVariant(variant);
+    setDialogOpen(true);
+  };
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -75,8 +103,23 @@ export default function Dashboard() {
         <TabsContent value="overview" className="space-y-6">
 
       {/* Статистика */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="glass-card hover-lift animate-scale-in interactive" style={{ animationDelay: '0ms' }} onClick={() => navigate('/tasks')}>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card 
+          className="glass-card hover-lift animate-scale-in interactive cursor-pointer" 
+          style={{ animationDelay: '0ms' }} 
+          onClick={() => {
+            const todayTasksList = tasks.filter(t => {
+              if (t.status === 'done') return false;
+              if (!t.due_date) return false;
+              const startDate = new Date(t.due_date);
+              startDate.setHours(0, 0, 0, 0);
+              const endDate = (t as any).due_end ? new Date((t as any).due_end) : startDate;
+              endDate.setHours(23, 59, 59, 999);
+              return startDate <= todayEnd && endDate >= today;
+            });
+            openTaskDialog('Задачи на сегодня', todayTasksList, 'today');
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Задачи на сегодня</CardTitle>
             <CheckSquare className="h-4 w-4 text-primary" />
@@ -84,20 +127,41 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{todayTasks}</div>
             <p className="text-xs text-muted-foreground">
-              Нажмите для перехода
+              Нажмите для просмотра
             </p>
           </CardContent>
         </Card>
 
-        <Card className="glass-card hover-lift animate-scale-in interactive" style={{ animationDelay: '100ms' }} onClick={() => navigate('/tasks')}>
+        <Card 
+          className="glass-card hover-lift animate-scale-in interactive cursor-pointer" 
+          style={{ animationDelay: '100ms' }} 
+          onClick={() => openTaskDialog('Просроченные задачи', overdueTasks, 'overdue')}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Просрочено</CardTitle>
             <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{overdueTasks}</div>
+            <div className="text-2xl font-bold text-destructive">{overdueTasks.length}</div>
             <p className="text-xs text-muted-foreground">
               Требуют внимания
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="glass-card hover-lift animate-scale-in interactive cursor-pointer" 
+          style={{ animationDelay: '150ms' }} 
+          onClick={() => openTaskDialog('Предстоящие задачи', upcomingTasks, 'upcoming')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Предстоящие</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-500">{upcomingTasks.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Запланированы
             </p>
           </CardContent>
         </Card>
@@ -253,6 +317,14 @@ export default function Dashboard() {
           <ProjectTimeline />
         </TabsContent>
       </Tabs>
+      
+      <TaskListDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={dialogTitle}
+        tasks={dialogTasks}
+        variant={dialogVariant}
+      />
     </div>
   );
 }

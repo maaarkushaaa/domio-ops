@@ -140,7 +140,17 @@ export function TaskDetailsDialog({ task, trigger }: { task: any; trigger: React
             <div className="text-sm"><b>Статус:</b> {ruStatus(task.status)}</div>
             <div className="text-sm"><b>Приоритет:</b> {ruPriority(task.priority)}</div>
             <div className="text-sm"><b>Проект:</b> {task.project?.name || 'Без проекта'}</div>
-            <div className="text-sm"><b>Дедлайн:</b> {task.due_date ? new Date(task.due_date).toLocaleDateString('ru-RU') : '—'}</div>
+            <div className="text-sm">
+              <b>Период:</b>{' '}
+              {task.due_date ? (
+                <>
+                  {new Date(task.due_date).toLocaleDateString('ru-RU')}
+                  {(task as any).due_end && (task as any).due_end !== task.due_date ? (
+                    <> — {new Date((task as any).due_end).toLocaleDateString('ru-RU')}</>
+                  ) : null}
+                </>
+              ) : '—'}
+            </div>
           </div>
 
           {/* Теги */}
