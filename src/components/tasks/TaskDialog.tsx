@@ -36,6 +36,7 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
   const [dueDate, setDueDate] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
   const [profiles, setProfiles] = useState<Array<{ id: string; name: string }>>([]);
+  const [dueRange, setDueRange] = useState<{ from?: Date; to?: Date }>({});
 
   const { createTask } = useTasks();
   const { projects } = useProjects();
@@ -56,6 +57,9 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
     e.preventDefault();
     if (!title.trim() || !projectId) return;
 
+    const due_from = dueRange.from ? new Date(dueRange.from).toISOString().slice(0,10) : (dueDate || null);
+    const due_to = dueRange.to ? new Date(dueRange.to).toISOString().slice(0,10) : null;
+
     await createTask({
       title: title.trim(),
       description: description.trim() || undefined,
@@ -63,7 +67,9 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
       priority,
       project_id: projectId,
       assignee_id: assigneeId || null,
-      due_date: dueDate || null,
+      due_date: due_from || null,
+      // store to field future-ready (optional)
+      due_end: due_to as any,
     } as any);
 
     setTitle('');
@@ -73,6 +79,7 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
     setProjectId('');
     setAssigneeId('');
     setDueDate('');
+    setDueRange({});
     setOpen(false);
     onClose?.();
   };
@@ -196,14 +203,16 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start text-left font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dueDate ? new Date(dueDate).toLocaleDateString('ru-RU') : 'Выберите дату'}
+                    {dueRange.from || dueDate
+                      ? `${(dueRange.from ? dueRange.from : new Date(dueDate)).toLocaleDateString('ru-RU')}${dueRange.to ? ' — ' + dueRange.to.toLocaleDateString('ru-RU') : ''}`
+                      : 'Выберите дату/период'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0" align="start">
                   <Calendar
-                    mode="single"
-                    selected={dueDate ? new Date(dueDate) as any : undefined}
-                    onSelect={(d: any) => setDueDate(d ? new Date(d).toISOString().slice(0,10) : '')}
+                    mode="range"
+                    selected={dueRange as any}
+                    onSelect={(r: any) => setDueRange(r || {})}
                     initialFocus
                   />
                 </PopoverContent>

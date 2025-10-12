@@ -22,6 +22,7 @@ export const useTasks = () => {
         if (error) throw error;
         (data || []).forEach((t: any) => {
           addTask({
+            id: t.id,
             title: t.title,
             description: t.description,
             status: t.status,
@@ -29,32 +30,37 @@ export const useTasks = () => {
             project_id: t.project_id,
             assignee_id: t.assignee_id,
             due_date: t.due_date,
+            created_at: t.created_at,
+            updated_at: t.updated_at,
           } as any);
-          updateTask(t.id, { id: t.id, created_at: t.created_at } as any);
         });
       } catch (e) {
         console.error('load tasks error', e);
       }
       channel = supabase
         .channel('tasks_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
-          const row: any = payload.new || payload.old;
-          if (payload.eventType === 'INSERT') {
-            addTask({
-              title: row.title,
-              description: row.description,
-              status: row.status,
-              priority: row.priority,
-              project_id: row.project_id,
-              assignee_id: row.assignee_id,
-              due_date: row.due_date,
-            } as any);
-            updateTask(row.id, { id: row.id, created_at: row.created_at } as any);
-          } else if (payload.eventType === 'UPDATE') {
-            updateTask(row.id, row);
-          } else if (payload.eventType === 'DELETE') {
-            deleteTask(row.id);
-          }
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => {
+          const row: any = payload.new;
+          addTask({
+            id: row.id,
+            title: row.title,
+            description: row.description,
+            status: row.status,
+            priority: row.priority,
+            project_id: row.project_id,
+            assignee_id: row.assignee_id,
+            due_date: row.due_date,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+          } as any);
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, (payload) => {
+          const row: any = payload.new;
+          updateTask(row.id, row);
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, (payload) => {
+          const row: any = payload.old;
+          deleteTask(row.id);
         })
         .subscribe();
     };
@@ -77,9 +83,8 @@ export const useTasks = () => {
       .select()
       .single();
     if (error) throw error;
-    // optimistic UX
-    addTask(task as any);
-    updateTask(data.id, { id: data.id, created_at: data.created_at } as any);
+    // add with DB id (realtime may also insert same id; addTask in context dedupes by id)
+    addTask({ id: data.id, ...data } as any);
     sendTelegramNotification({ title: 'Новая задача', message: `Создана задача: "${task.title}"`, type: 'info' });
     return data;
   };
