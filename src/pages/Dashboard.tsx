@@ -24,8 +24,37 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const userName = user?.name || user?.email?.split('@')[0] || 'Пользователь';
   
-  const todayTasks = tasks.filter(t => t.status !== 'done').length;
-  const overdueTasks = tasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length;
+  // Задачи на сегодня: начинаются сегодня или раньше И заканчиваются сегодня или позже (или не имеют конца)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(today);
+  todayEnd.setHours(23, 59, 59, 999);
+  
+  const todayTasks = tasks.filter(t => {
+    if (t.status === 'done') return false;
+    
+    if (!t.due_date) return false; // Нет дедлайна - не показываем
+    
+    const startDate = new Date(t.due_date);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = (t as any).due_end ? new Date((t as any).due_end) : startDate;
+    endDate.setHours(23, 59, 59, 999);
+    
+    // Задача на сегодня если: начало <= сегодня И конец >= сегодня
+    return startDate <= todayEnd && endDate >= today;
+  }).length;
+  
+  // Просроченные: конец задачи раньше сегодняшней даты
+  const overdueTasks = tasks.filter(t => {
+    if (t.status === 'done') return false;
+    if (!t.due_date) return false;
+    
+    const endDate = (t as any).due_end ? new Date((t as any).due_end) : new Date(t.due_date);
+    endDate.setHours(23, 59, 59, 999);
+    
+    return endDate < today;
+  }).length;
   const inProduction = products.filter(p => p.status === 'in_progress').length;
   
   return (

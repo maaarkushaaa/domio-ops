@@ -74,8 +74,16 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
     e.preventDefault();
     if (!title.trim() || !projectId) return;
 
-    const due_from = dueRange.from ? new Date(dueRange.from).toISOString().slice(0,10) : (dueDate || null);
-    const due_to = dueRange.to ? new Date(dueRange.to).toISOString().slice(0,10) : null;
+    // Форматируем даты без timezone issues
+    const formatDateLocal = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const due_from = dueRange.from ? formatDateLocal(dueRange.from) : (dueDate || null);
+    const due_to = dueRange.to ? formatDateLocal(dueRange.to) : null;
 
     if (mode === 'edit' && initialTask?.id) {
       await updateTask({
