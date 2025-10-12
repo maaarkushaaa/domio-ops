@@ -107,11 +107,34 @@ export const useTasks = () => {
     deleteTask(id);
   };
 
+  // Comments API
+  const createComment = async (taskId: string, authorId: string, content: string) => {
+    const { data, error } = await (supabase as any)
+      .from('task_comments')
+      .insert({ task_id: taskId, author_id: authorId, content })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
+  const listComments = async (taskId: string) => {
+    const { data, error } = await (supabase as any)
+      .from('task_comments')
+      .select('id, content, created_at, author:profiles(full_name,email)')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  };
+
   return {
     tasks,
     isLoading: false,
     createTask,
     updateTask: updateTaskWithNotification,
     deleteTask: deleteTaskWithSupabase,
+    createComment,
+    listComments,
   };
 };

@@ -19,9 +19,11 @@ interface TaskDialogProps {
   defaultStatus?: TaskStatus;
   openExternal?: boolean;
   onOpenChangeExternal?: (open: boolean) => void;
+  mode?: 'create' | 'edit';
+  initialTask?: any;
 }
 
-export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openExternal, onOpenChangeExternal }: TaskDialogProps) {
+export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openExternal, onOpenChangeExternal, mode = 'create', initialTask }: TaskDialogProps) {
   const [open, setOpenState] = useState(false);
   const openState = openExternal ?? open;
   const setOpen = (v: boolean) => {
@@ -38,10 +40,25 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
   const [profiles, setProfiles] = useState<Array<{ id: string; name: string }>>([]);
   const [dueRange, setDueRange] = useState<{ from?: Date; to?: Date }>({});
 
-  const { createTask } = useTasks();
+  const { createTask, updateTask } = useTasks();
   const { projects } = useProjects();
 
   useEffect(() => { setStatus(defaultStatus); }, [defaultStatus]);
+
+  useEffect(() => {
+    if (mode === 'edit' && initialTask) {
+      setTitle(initialTask.title || '');
+      setDescription(initialTask.description || '');
+      setStatus(initialTask.status || defaultStatus);
+      setPriority(initialTask.priority || 'medium');
+      setProjectId(initialTask.project_id || '');
+      setAssigneeId(initialTask.assignee_id || '');
+      if (initialTask.due_date) {
+        setDueDate(initialTask.due_date);
+        try { setDueRange({ from: new Date(initialTask.due_date) }); } catch {}
+      }
+    }
+  }, [mode, initialTask, defaultStatus]);
 
   useEffect(() => {
     (async () => {
@@ -60,17 +77,30 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
     const due_from = dueRange.from ? new Date(dueRange.from).toISOString().slice(0,10) : (dueDate || null);
     const due_to = dueRange.to ? new Date(dueRange.to).toISOString().slice(0,10) : null;
 
-    await createTask({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      status,
-      priority,
-      project_id: projectId,
-      assignee_id: assigneeId || null,
-      due_date: due_from || null,
-      // store to field future-ready (optional)
-      due_end: due_to as any,
-    } as any);
+    if (mode === 'edit' && initialTask?.id) {
+      await updateTask({
+        id: initialTask.id,
+        title: title.trim(),
+        description: description.trim() || null,
+        status,
+        priority,
+        project_id: projectId,
+        assignee_id: assigneeId || null,
+        due_date: due_from || null,
+        due_end: due_to as any,
+      });
+    } else {
+      await createTask({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        status,
+        priority,
+        project_id: projectId,
+        assignee_id: assigneeId || null,
+        due_date: due_from || null,
+        due_end: due_to as any,
+      } as any);
+    }
 
     setTitle('');
     setDescription('');
@@ -87,11 +117,11 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
   return (
     <Dialog open={openState} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || <Button>Новая задача</Button>}
+        {trigger || <Button>{mode === 'edit' ? 'Редактировать задачу' : 'Новая задача'}</Button>}
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Создать задачу</DialogTitle>
+          <DialogTitle>{mode === 'edit' ? 'Редактировать задачу' : 'Создать задачу'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -121,32 +151,6 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
                 className="flex-1"
               />
               <VoiceInput onTranscript={(text) => setDescription(text)} />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Проекты (список)</Label>
-            <div className="max-h-28 overflow-y-auto rounded-md border p-2 text-sm space-y-1">
-              {(projects || []).length === 0 ? (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Нет проектов</span>
-                  <Button type="button" variant="link" className="px-0" onClick={() => window.location.reload()}>Обновить</Button>
-                </div>
-              ) : (
-                projects.map((p) => (
-                  <button
-                    type="button"
-                    key={p.id}
-                    onClick={() => setProjectId(p.id)}
-                    className={`w-full flex items-center justify-between rounded px-2 py-1 text-left transition-colors ${
-                      projectId === p.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
-                    }`}
-                  >
-                    <span className="truncate max-w-[70%]">{p.name}</span>
-                    <span className="text-xs text-muted-foreground">{p.status}</span>
-                  </button>
-                ))
-              )}
             </div>
           </div>
 
@@ -224,7 +228,7 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Отмена
             </Button>
-            <Button type="submit">Создать</Button>
+            <Button type="submit">{mode === 'edit' ? 'Сохранить' : 'Создать'}</Button>
           </div>
         </form>
       </DialogContent>

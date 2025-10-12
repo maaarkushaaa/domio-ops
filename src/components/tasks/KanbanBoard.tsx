@@ -120,7 +120,7 @@ export function KanbanBoard() {
                       <h4 className="text-sm font-medium leading-tight flex-1">
                         {task.title}
                       </h4>
-                      <TaskActionsMenu taskId={task.id} taskTitle={task.title} />
+                      <TaskActionsMenu taskId={task.id} taskTitle={task.title} initialTask={task} />
                     </div>
 
                     {task.description && (
