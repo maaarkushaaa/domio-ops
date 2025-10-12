@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, User, Calendar, MessageCircle } from 'lucide-react';
+import { Plus, MoreVertical, User, Calendar, MessageCircle, AlertTriangle } from 'lucide-react';
 import { useTasks, TaskStatus } from '@/hooks/use-tasks';
 import { Task } from '@/contexts/AppContext';
 import { TaskDialog } from '@/components/tasks/TaskDialog';
 import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu';
 import { TaskDetailsDialog } from '@/components/tasks/TaskDetailsDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Column {
   id: TaskStatus;
@@ -27,8 +28,23 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const { tasks, updateTask } = useTasks();
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [openFor, setOpenFor] = useState<TaskStatus | null>(null);
+  const [wipLimits, setWipLimits] = useState<Record<TaskStatus, number>>({} as any);
   
   const displayTasks = filteredTasks || tasks;
+
+  useEffect(() => {
+    const loadWip = async () => {
+      const { data } = await (supabase as any)
+        .from('kanban_wip_limits')
+        .select('status, limit_value');
+      if (data) {
+        const map: any = {};
+        data.forEach((row: any) => (map[row.status] = row.limit_value));
+        setWipLimits(map);
+      }
+    };
+    loadWip();
+  }, []);
 
   const tasksByColumn = displayTasks.reduce((acc, task) => {
     if (!acc[task.status]) acc[task.status] = [];
@@ -100,6 +116,9 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                   <Badge variant="secondary" className="text-xs">
                     {tasksByColumn[column.id]?.length || 0}
                   </Badge>
+                  {wipLimits[column.id] && (tasksByColumn[column.id]?.length || 0) > wipLimits[column.id] && (
+                    <AlertTriangle className="h-4 w-4 text-destructive" title={`WIP лимит превышен (${wipLimits[column.id]})`} />
+                  )}
                 </CardTitle>
                 <TaskDialog
                   defaultStatus={column.id}
