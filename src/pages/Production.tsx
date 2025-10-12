@@ -3,15 +3,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Plus, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react";
+import { Plus, CheckCircle2, Clock, AlertTriangle, Package, ClipboardCheck } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
+import { useQualityControl } from "@/hooks/use-quality-control";
 import { ProductDialog } from "@/components/production/ProductDialog";
 import { ProductionDetailsDialog } from "@/components/production/ProductionDetailsDialog";
+import { QualityInspectionDialog } from "@/components/production/QualityInspectionDialog";
 import { useState, useMemo } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Production() {
   const { products, isLoading } = useProducts();
+  const { checklists, inspections, createInspection } = useQualityControl();
   const [detailsType, setDetailsType] = useState<'inProgress' | 'completed' | 'needsMaterials' | 'warehouse' | null>(null);
+  const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
+  const [selectedProductForInspection, setSelectedProductForInspection] = useState<string | null>(null);
+  const [selectedChecklistForNew, setSelectedChecklistForNew] = useState<string | null>(null);
 
   // Вычисление статистики на основе реальных данных
   const stats = useMemo(() => {
@@ -24,6 +37,16 @@ export default function Production() {
     
     return { inProgress: inProgress + qualityCheck, completed, needsMaterials, warehouse };
   }, [products]);
+
+  const handleStartInspection = async () => {
+    if (!selectedProductForInspection || !selectedChecklistForNew) return;
+    const inspection = await createInspection(selectedProductForInspection, selectedChecklistForNew);
+    if (inspection) {
+      setSelectedInspectionId(inspection.id);
+      setSelectedProductForInspection(null);
+      setSelectedChecklistForNew(null);
+    }
+  };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -178,18 +201,118 @@ export default function Production() {
         </TabsContent>
 
         <TabsContent value="quality" className="space-y-4">
+          {/* Начать новую проверку */}
           <Card>
             <CardHeader>
-              <CardTitle>Контроль качества</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5" />
+                Начать новую проверку
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">Чек-листы контроля качества будут отображаться здесь</p>
-                <p className="text-xs mt-2">Выберите изделие для проверки или создайте новый чек-лист</p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Изделие</label>
+                  <Select value={selectedProductForInspection || ""} onValueChange={setSelectedProductForInspection}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите изделие" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Чек-лист</label>
+                  <Select value={selectedChecklistForNew || ""} onValueChange={setSelectedChecklistForNew}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите чек-лист" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {checklists.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    onClick={handleStartInspection}
+                    disabled={!selectedProductForInspection || !selectedChecklistForNew}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Начать проверку
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* История проверок */}
+          <Card>
+            <CardHeader>
+              <CardTitle>История проверок</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {inspections.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ClipboardCheck className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm">Проверок пока нет</p>
+                  <p className="text-xs mt-2">Начните первую проверку выше</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {inspections.map((inspection) => (
+                    <div
+                      key={inspection.id}
+                      className="flex items-center justify-between p-4 rounded-lg border border-border cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedInspectionId(inspection.id)}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium">{inspection.product?.name || 'Изделие'}</p>
+                          <Badge variant={
+                            inspection.status === 'passed' ? 'default' :
+                            inspection.status === 'failed' ? 'destructive' :
+                            'outline'
+                          }>
+                            {inspection.status === 'passed' ? 'Принято' :
+                             inspection.status === 'failed' ? 'Отклонено' :
+                             inspection.status === 'in_progress' ? 'В работе' : 'Ожидает'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {inspection.checklist?.name} • {inspection.inspector?.full_name || 'Инспектор'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(inspection.created_at).toLocaleDateString('ru-RU')}
+                        </p>
+                      </div>
+                      {inspection.score !== undefined && (
+                        <div className="text-right">
+                          <p className="text-2xl font-bold">{inspection.score}%</p>
+                          <p className="text-xs text-muted-foreground">Оценка</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <QualityInspectionDialog
+            inspectionId={selectedInspectionId}
+            open={!!selectedInspectionId}
+            onOpenChange={(open) => !open && setSelectedInspectionId(null)}
+          />
         </TabsContent>
       </Tabs>
     </div>
