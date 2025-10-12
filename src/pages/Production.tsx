@@ -7,19 +7,23 @@ import { Plus, CheckCircle2, Clock, AlertTriangle, Package } from "lucide-react"
 import { useProducts } from "@/hooks/use-products";
 import { ProductDialog } from "@/components/production/ProductDialog";
 import { ProductionDetailsDialog } from "@/components/production/ProductionDetailsDialog";
-import { useState } from "react";
-
-const bomItemsStatic = [
-  { name: "ЛДСП 16мм белый", quantity: 8, unit: "м²", inStock: 12, status: "В наличии" },
-  { name: "Кромка ПВХ 2мм", quantity: 45, unit: "м", inStock: 30, status: "Недостаточно" },
-  { name: "Петли Blum", quantity: 6, unit: "шт", inStock: 8, status: "В наличии" },
-  { name: "Направляющие 500мм", quantity: 4, unit: "пар", inStock: 2, status: "Недостаточно" },
-  { name: "Конфирматы 5x70", quantity: 24, unit: "шт", inStock: 100, status: "В наличии" },
-];
+import { useState, useMemo } from "react";
 
 export default function Production() {
   const { products, isLoading } = useProducts();
   const [detailsType, setDetailsType] = useState<'inProgress' | 'completed' | 'needsMaterials' | 'warehouse' | null>(null);
+
+  // Вычисление статистики на основе реальных данных
+  const stats = useMemo(() => {
+    const inProgress = products.filter(p => p.status === 'in_progress').length;
+    const qualityCheck = products.filter(p => p.status === 'quality_check').length;
+    const completed = products.filter(p => p.status === 'completed').length;
+    // Для "требуют материалов" и "на складе" нужны будут дополнительные данные из БД материалов
+    const needsMaterials = 0; // TODO: подключить таблицу материалов
+    const warehouse = 0; // TODO: подключить склад
+    
+    return { inProgress: inProgress + qualityCheck, completed, needsMaterials, warehouse };
+  }, [products]);
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -51,7 +55,7 @@ export default function Production() {
         } />
       </div>
 
-      {/* Статистика */}
+      {/* Статистика (реальные данные из БД) */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card 
           className="cursor-pointer hover:shadow-md transition-all hover-lift"
@@ -62,7 +66,7 @@ export default function Production() {
             <Clock className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
+            <div className="text-2xl font-bold">{stats.inProgress}</div>
             <p className="text-xs text-muted-foreground">изделий</p>
           </CardContent>
         </Card>
@@ -72,12 +76,12 @@ export default function Production() {
           onClick={() => setDetailsType('completed')}
         >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Завершено за месяц</CardTitle>
+            <CardTitle className="text-sm font-medium">Завершено</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">+8% к прошлому</p>
+            <div className="text-2xl font-bold">{stats.completed}</div>
+            <p className="text-xs text-muted-foreground">изделий</p>
           </CardContent>
         </Card>
 
@@ -90,8 +94,8 @@ export default function Production() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">3</div>
-            <p className="text-xs text-muted-foreground">ожидают закупки</p>
+            <div className="text-2xl font-bold text-destructive">{stats.needsMaterials}</div>
+            <p className="text-xs text-muted-foreground">{stats.needsMaterials > 0 ? 'ожидают закупки' : 'все обеспечены'}</p>
           </CardContent>
         </Card>
 
@@ -104,7 +108,7 @@ export default function Production() {
             <Package className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
+            <div className="text-2xl font-bold">{stats.warehouse}</div>
             <p className="text-xs text-muted-foreground">позиций</p>
           </CardContent>
         </Card>
@@ -161,41 +165,13 @@ export default function Production() {
         <TabsContent value="bom" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>BOM: Шкаф Версаль</CardTitle>
+              <CardTitle>BOM / Материалы</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {bomItemsStatic.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Требуется: {item.quantity} {item.unit}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          На складе: {item.inStock} {item.unit}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={item.status === "В наличии" ? "default" : "destructive"}
-                      >
-                        {item.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4">
-                <Button className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Создать заказ недостающих материалов
-                </Button>
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">Спецификации материалов (BOM) будут отображаться здесь</p>
+                <p className="text-xs mt-2">Для подключения требуется таблица материалов и складских остатков в БД</p>
               </div>
             </CardContent>
           </Card>
@@ -204,36 +180,14 @@ export default function Production() {
         <TabsContent value="quality" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Чек-лист качества: Шкаф Версаль</CardTitle>
+              <CardTitle>Контроль качества</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { item: "Поликаунт в пределах нормы (< 100K)", checked: true },
-                { item: "PBR-карты созданы и оптимизированы", checked: true },
-                { item: "Вес GLB файла < 10MB", checked: true },
-                { item: "Пройдена glTF-валидация", checked: false },
-                { item: "Превью-рендер создан", checked: false },
-                { item: "UV-развертка без наложений", checked: true },
-              ].map((check, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                  onClick={() => {
-                    // Toggle logic would be here in real implementation
-                  }}
-                >
-                  <div
-                    className={`h-5 w-5 rounded-full flex items-center justify-center transition-colors ${
-                      check.checked ? "bg-success" : "bg-muted-foreground/30"
-                    }`}
-                  >
-                    {check.checked && <CheckCircle2 className="h-4 w-4 text-success-foreground" />}
-                  </div>
-                  <span className={check.checked ? "line-through text-muted-foreground" : ""}>
-                    {check.item}
-                  </span>
-                </div>
-              ))}
+            <CardContent>
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">Чек-листы контроля качества будут отображаться здесь</p>
+                <p className="text-xs mt-2">Выберите изделие для проверки или создайте новый чек-лист</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
