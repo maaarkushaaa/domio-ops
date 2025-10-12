@@ -39,6 +39,13 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const touchPosRef = useRef<{ x: number; y: number } | null>(null); // Синхронный доступ к позиции
   const scrollElRef = useRef<HTMLElement | null>(null);
 
+  // Находим горизонтально скроллируемый контейнер под текущей точкой касания
+  const findScrollableAtPoint = (x: number, y: number): HTMLElement | null => {
+    const el = document.elementFromPoint(x, y) as HTMLElement | null;
+    if (!el) return null;
+    return findHorizontalScrollable(el);
+  };
+
   const findHorizontalScrollable = (start: HTMLElement | null): HTMLElement | null => {
     let el: HTMLElement | null = start;
     while (el) {
@@ -86,8 +93,10 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
     // Запускаем только если ещё не запущен
     if (autoScrollRafRef.current !== null) return;
     if (!containerRef.current) return;
-    if (!scrollElRef.current) {
-      scrollElRef.current = findHorizontalScrollable(containerRef.current);
+    if (!scrollElRef.current && touchPosRef.current) {
+      // Сначала пробуем точечный поиск по координатам пальца
+      scrollElRef.current = findScrollableAtPoint(touchPosRef.current.x, touchPosRef.current.y) ||
+        findHorizontalScrollable(containerRef.current);
     }
     const target = scrollElRef.current || containerRef.current;
 
@@ -103,7 +112,12 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
 
       const container = target;
       const pos = touchPosRef.current;
-      const rect = container.getBoundingClientRect();
+      // Каждый кадр проверяем актуальный контейнер под пальцем (если поменялся слой)
+      const dynamicTarget = findScrollableAtPoint(pos.x, pos.y) || container;
+      if (dynamicTarget !== container) {
+        scrollElRef.current = dynamicTarget;
+      }
+      const rect = (scrollElRef.current || container).getBoundingClientRect();
 
       // Параметры плавающей карточки (должны соответствовать preview)
       const cardWidth = 300;
@@ -114,8 +128,9 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
       const distLeft = cardLeft - rect.left;
       const distRight = rect.right - cardRight;
 
-      const canLeft = container.scrollLeft > 0;
-      const canRight = container.scrollLeft < (container.scrollWidth - container.clientWidth);
+      const scroller = scrollElRef.current || container;
+      const canLeft = scroller.scrollLeft > 0;
+      const canRight = scroller.scrollLeft < (scroller.scrollWidth - scroller.clientWidth);
 
       // Функция перевода дистанции в скорость (чем ближе к краю, тем быстрее)
       const speedFromDistance = (d: number) => {
@@ -126,10 +141,10 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
 
       if (distLeft < scrollThreshold && canLeft) {
         const v = speedFromDistance(distLeft);
-        container.scrollLeft -= v;
+        scroller.scrollLeft -= v;
       } else if (distRight < scrollThreshold && canRight) {
         const v = speedFromDistance(distRight);
-        container.scrollLeft += v;
+        scroller.scrollLeft += v;
       }
 
       autoScrollRafRef.current = window.requestAnimationFrame(loop);
