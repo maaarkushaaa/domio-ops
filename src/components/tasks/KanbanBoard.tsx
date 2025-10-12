@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, User, Calendar, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Plus, MoreVertical, User, Calendar, MessageCircle, AlertTriangle, GripVertical } from 'lucide-react';
 import { useTasks, TaskStatus } from '@/hooks/use-tasks';
 import { Task } from '@/contexts/AppContext';
 import { TaskDialog } from '@/components/tasks/TaskDialog';
@@ -29,6 +29,9 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [openFor, setOpenFor] = useState<TaskStatus | null>(null);
   const [wipLimits, setWipLimits] = useState<Record<TaskStatus, number>>({} as any);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const draggedElementRef = useRef<HTMLDivElement | null>(null);
   
   const displayTasks = filteredTasks || tasks;
 
@@ -117,18 +120,9 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
         <div
           key={column.id}
           className="flex-shrink-0 w-80"
+          data-column-id={column.id}
           onDragOver={handleDragOver}
           onDrop={() => handleDrop(column.id)}
-          onTouchMove={(e) => {
-            // Поддержка touch для мобильных
-            e.preventDefault();
-          }}
-          onTouchEnd={() => {
-            // Поддержка drop на мобильных
-            if (draggedTask) {
-              handleDrop(column.id);
-            }
-          }}
         >
           <Card className={`${column.color} h-full`}>
             <CardHeader className="pb-3">
@@ -158,61 +152,106 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
               {(tasksByColumn[column.id] || []).map((task) => (
                 <Card
                   key={task.id}
-                  className="bg-card hover:shadow-lg transition-all cursor-move animate-fade-in hover-lift touch-none"
+                  className={`bg-card hover:shadow-lg transition-all animate-fade-in hover-lift select-none ${isDragging && draggedTask?.id === task.id ? 'opacity-50' : ''}`}
                   draggable
                   onDragStart={() => handleDragStart(task)}
-                  onTouchStart={(e) => {
-                    // Поддержка touch для мобильных
-                    const touch = e.touches[0];
-                    if (touch) {
-                      handleDragStart(task);
-                    }
-                  }}
                 >
                   <CardContent className="p-3 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <TaskDetailsDialog task={task} trigger={
-                        <h4 className="text-sm font-medium leading-tight flex-1 hover:underline cursor-pointer">
-                          {task.title}
-                        </h4>
-                      } />
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <MessageCircle className="h-3 w-3 mr-1" />
-                          <span>{(task as any)._comment_count || 0}</span>
-                        </div>
-                        <TaskActionsMenu taskId={task.id} taskTitle={task.title} initialTask={task} />
+                    <div className="flex items-start gap-2">
+                      {/* Drag handle для мобильных */}
+                      <div
+                        className="touch-none cursor-grab active:cursor-grabbing pt-1 md:hidden"
+                        onTouchStart={(e) => {
+                          e.stopPropagation();
+                          const touch = e.touches[0];
+                          setTouchStartY(touch.clientY);
+                          setDraggedTask(task);
+                          setIsDragging(true);
+                          // Отключаем выделение текста
+                          document.body.style.userSelect = 'none';
+                          document.body.style.webkitUserSelect = 'none';
+                        }}
+                        onTouchMove={(e) => {
+                          if (!draggedTask || !touchStartY) return;
+                          e.preventDefault();
+                          const touch = e.touches[0];
+                          const deltaY = touch.clientY - touchStartY;
+                          
+                          // Визуальная обратная связь: прокрутка страницы не происходит
+                          if (Math.abs(deltaY) > 5) {
+                            setIsDragging(true);
+                          }
+                        }}
+                        onTouchEnd={(e) => {
+                          if (!draggedTask) return;
+                          
+                          // Определяем, над какой колонкой палец
+                          const touch = e.changedTouches[0];
+                          const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+                          const columnElement = elements.find(el => el.hasAttribute('data-column-id'));
+                          const columnId = columnElement?.getAttribute('data-column-id') as TaskStatus;
+                          
+                          if (columnId && columnId !== draggedTask.status) {
+                            handleDrop(columnId);
+                          }
+                          
+                          // Сбрасываем состояние
+                          setDraggedTask(null);
+                          setTouchStartY(null);
+                          setIsDragging(false);
+                          document.body.style.userSelect = '';
+                          document.body.style.webkitUserSelect = '';
+                        }}
+                      >
+                        <GripVertical className="h-4 w-4 text-muted-foreground" />
                       </div>
-                    </div>
-
-                    {task.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {task.description}
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {task.project?.name || 'Без проекта'}
-                      </Badge>
-                      <Badge variant={getPriorityColor(task.priority)} className="text-xs">
-                        {getPriorityLabel(task.priority)}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      {task.assignee && (
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          <span>{task.assignee.full_name}</span>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <TaskDetailsDialog task={task} trigger={
+                            <h4 className="text-sm font-medium leading-tight flex-1 hover:underline cursor-pointer">
+                              {task.title}
+                            </h4>
+                          } />
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center text-xs text-muted-foreground">
+                              <MessageCircle className="h-3 w-3 mr-1" />
+                              <span>{(task as any)._comment_count || 0}</span>
+                            </div>
+                            <TaskActionsMenu taskId={task.id} taskTitle={task.title} initialTask={task} />
+                          </div>
                         </div>
-                      )}
-                      {task.due_date && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{new Date(task.due_date).toLocaleDateString('ru-RU')}</span>
+
+                        {task.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-2">
+                            {task.description}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs">
+                            {task.project?.name || 'Без проекта'}
+                          </Badge>
+                          <Badge variant={getPriorityColor(task.priority)} className="text-xs">
+                            {getPriorityLabel(task.priority)}
+                          </Badge>
                         </div>
-                      )}
+
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                          {task.assignee && (
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              <span>{task.assignee.full_name}</span>
+                            </div>
+                          )}
+                          {task.due_date && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{new Date(task.due_date).toLocaleDateString('ru-RU')}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

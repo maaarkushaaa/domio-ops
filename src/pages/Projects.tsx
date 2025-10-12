@@ -91,13 +91,22 @@ export default function Projects() {
   };
 
   const handleDelete = async (projectId: string, projectName: string) => {
-    if (!confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Это действие необратимо.`)) {
+    console.log('[PROJECT-DELETE] Delete button clicked for project', projectId, projectName);
+    
+    const confirmed = window.confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Это действие необратимо.`);
+    console.log('[PROJECT-DELETE] User confirmation:', confirmed);
+    
+    if (!confirmed) {
+      console.log('[PROJECT-DELETE] User cancelled deletion');
       return;
     }
-    console.log('[PROJECT-DELETE] User confirmed deletion of project', projectId);
+    
+    console.log('[PROJECT-DELETE] Starting deletion process for project', projectId);
     try {
+      console.log('[PROJECT-DELETE] Calling deleteProject function...');
       await deleteProject(projectId);
       console.log('[PROJECT-DELETE] Project deleted successfully from UI');
+      alert('Проект успешно удалён');
     } catch (e) {
       console.error('[PROJECT-DELETE] Delete error', e);
       alert('Ошибка при удалении проекта: ' + (e as any)?.message);

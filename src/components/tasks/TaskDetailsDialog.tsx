@@ -172,7 +172,27 @@ export function TaskDetailsDialog({ task, trigger }: { task: any; trigger: React
               {attachments.map(att => (
                 <div key={att.id} className="text-sm flex items-center gap-2 p-2 rounded border">
                   <Upload className="h-4 w-4" />
-                  <a href={supabase.storage.from('task-files').getPublicUrl(att.object_path).data.publicUrl} target="_blank" rel="noopener noreferrer" className="hover:underline flex-1">
+                  <a 
+                    href="#"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      try {
+                        const { data, error } = await supabase.storage
+                          .from('task-files')
+                          .download(att.object_path);
+                        if (error) throw error;
+                        const url = URL.createObjectURL(data);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = att.object_path.split('/').pop() || 'file';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (err) {
+                        console.error('Download error', err);
+                        alert('Ошибка при скачивании файла');
+                      }
+                    }}
+                    className="hover:underline flex-1 cursor-pointer">
                     {att.object_path.split('/').pop()}
                   </a>
                   <span className="text-xs text-muted-foreground">{(att.size_bytes / 1024).toFixed(1)} KB</span>
