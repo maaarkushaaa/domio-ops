@@ -92,21 +92,18 @@ export const useProjects = () => {
 
   const deleteProjectFromDB = async (projectId: string) => {
     try {
-      console.log('[PROJECT-DELETE] Deleting project', projectId);
       const { error } = await (supabase as any)
         .from('projects')
         .delete()
         .eq('id', projectId);
-      if (error) {
-        console.error('[PROJECT-DELETE] Delete project error:', error);
-        throw error;
-      }
-      console.log('[PROJECT-DELETE] Project deleted successfully');
-      // Realtime удалит из локального стейта автоматически
+      
+      if (error) throw error;
+      
+      // Удаляем из локального стейта немедленно (оптимистичное обновление)
       deleteProject(projectId);
+      
       return true;
     } catch (err) {
-      console.error('[PROJECT-DELETE] Delete project failed:', err);
       throw err;
     }
   };

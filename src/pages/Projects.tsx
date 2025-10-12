@@ -91,24 +91,15 @@ export default function Projects() {
   };
 
   const handleDelete = async (projectId: string, projectName: string) => {
-    console.log('[PROJECT-DELETE] Delete button clicked for project', projectId, projectName);
-    
-    const confirmed = window.confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Это действие необратимо.`);
-    console.log('[PROJECT-DELETE] User confirmation:', confirmed);
-    
-    if (!confirmed) {
-      console.log('[PROJECT-DELETE] User cancelled deletion');
-      return;
-    }
-    
-    console.log('[PROJECT-DELETE] Starting deletion process for project', projectId);
     try {
-      console.log('[PROJECT-DELETE] Calling deleteProject function...');
+      const confirmed = window.confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Это действие необратимо.`);
+      
+      if (!confirmed) {
+        return;
+      }
+      
       await deleteProject(projectId);
-      console.log('[PROJECT-DELETE] Project deleted successfully from UI');
-      alert('Проект успешно удалён');
     } catch (e) {
-      console.error('[PROJECT-DELETE] Delete error', e);
       alert('Ошибка при удалении проекта: ' + (e as any)?.message);
     }
   };
@@ -166,7 +157,16 @@ export default function Projects() {
                 </div>
               )}
               <div className="flex flex-col gap-2 pt-2">
-                <Button size="sm" variant="outline" onClick={() => openEdit(project)} className="w-full">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openEdit(project);
+                  }}
+                  className="w-full"
+                >
                   <Edit2 className="h-3 w-3 mr-1" />
                   Редактировать
                 </Button>
@@ -174,7 +174,11 @@ export default function Projects() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => toggleArchive(project.id, (project as any).status)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleArchive(project.id, (project as any).status);
+                    }}
                     className="w-full"
                   >
                     <Archive className="h-3 w-3 mr-1" />
@@ -185,7 +189,11 @@ export default function Projects() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => toggleArchive(project.id, (project as any).status)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleArchive(project.id, (project as any).status);
+                      }}
                       className="w-full"
                     >
                       <ArchiveRestore className="h-3 w-3 mr-1" />
@@ -194,7 +202,16 @@ export default function Projects() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDelete(project.id, project.name)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(project.id, project.name);
+                      }}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(project.id, project.name);
+                      }}
                       className="w-full"
                     >
                       <Trash2 className="h-3 w-3 mr-1" />
