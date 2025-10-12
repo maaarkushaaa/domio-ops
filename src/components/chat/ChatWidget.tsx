@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { MessageCircle, Send, X, Minimize2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChatMessage {
   id: string;
@@ -24,36 +25,97 @@ export function ChatWidget() {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Load messages from Supabase and subscribe to realtime
   useEffect(() => {
-    const savedMessages = localStorage.getItem('chat_messages');
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages));
-    }
-  }, []);
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-  useEffect(() => {
-    localStorage.setItem('chat_messages', JSON.stringify(messages));
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const load = async () => {
+      try {
+        const { data, error } = await (supabase as any)
+          .from('team_messages')
+          .select('id, user_id, content, created_at')
+          .order('created_at', { ascending: true })
+          .limit(200);
+        if (error) throw error;
 
-  const handleSend = () => {
-    if (!newMessage.trim() || !user) return;
+        const loaded: ChatMessage[] = (data || []).map((m: any) => ({
+          id: m.id,
+          userId: m.user_id,
+          userName: '',
+          message: m.content,
+          timestamp: m.created_at,
+        }));
+        setMessages(loaded);
 
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      userId: user.id,
-      userName: user.name,
-      message: newMessage.trim(),
-      timestamp: new Date().toISOString(),
+        // Backfill names
+        const uniqueUserIds = Array.from(new Set(loaded.map(m => m.userId)));
+        if (uniqueUserIds.length > 0) {
+          const { data: profiles } = await (supabase as any)
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', uniqueUserIds);
+          const map = new Map<string, string>();
+          (profiles || []).forEach((p: any) => {
+            map.set(p.id, p.full_name || (p.email ? String(p.email).split('@')[0] : ''));
+          });
+          setMessages(prev => prev.map(m => ({ ...m, userName: map.get(m.userId) || m.userName || 'Пользователь' })));
+        }
+      } catch (e) {
+        console.error('Chat load error:', e);
+      }
+
+      // Realtime subscription
+      channel = supabase
+        .channel('team_messages_changes')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, async (payload) => {
+          const m = payload.new as any;
+          const base: ChatMessage = {
+            id: m.id,
+            userId: m.user_id,
+            userName: '',
+            message: m.content,
+            timestamp: m.created_at,
+          };
+
+          // Try get name for the new author
+          let name = '';
+          try {
+            const { data: prof } = await (supabase as any)
+              .from('profiles')
+              .select('full_name, email')
+              .eq('id', m.user_id)
+              .maybeSingle();
+            name = (prof && (prof.full_name || (prof.email ? String(prof.email).split('@')[0] : ''))) || '';
+          } catch {}
+
+          setMessages(prev => [...prev, { ...base, userName: name || base.userName || 'Пользователь' }]);
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        })
+        .subscribe();
     };
 
-    setMessages([...messages, message]);
-    setNewMessage('');
+    load();
 
-    toast({
-      title: 'Сообщение отправлено',
-      description: 'Ваше сообщение доставлено',
-    });
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const handleSend = async () => {
+    if (!newMessage.trim() || !user) return;
+    const content = newMessage.trim();
+    setNewMessage('');
+    try {
+      // Optimistic UI is optional; rely on realtime insert event
+      const { error } = await (supabase as any)
+        .from('team_messages')
+        .insert({ user_id: user.id, content });
+      if (error) throw error;
+      toast({ title: 'Сообщение отправлено' });
+    } catch (e: any) {
+      console.error('Chat send error:', e);
+      toast({ title: 'Ошибка', description: e.message || 'Не удалось отправить сообщение', variant: 'destructive' });
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
