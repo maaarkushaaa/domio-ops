@@ -19,20 +19,65 @@ import {
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { UserCreateDialog } from '@/components/admin/UserCreateDialog';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Admin() {
   const { user } = useAuth();
   const { tasks, projects, clients, products, financialOperations, suppliers } = useApp();
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string; role: string; created_at: string }>>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Redirect if not admin
   if (!user || user.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Load users list from Supabase (profiles + user_roles)
+  useEffect(() => {
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        // Load profiles
+        const { data: profiles, error: profilesError } = await (supabase as any)
+          .from('profiles')
+          .select('id, email, full_name, created_at');
+        if (profilesError) throw profilesError;
+
+        // Load roles
+        const { data: roles, error: rolesError } = await (supabase as any)
+          .from('user_roles')
+          .select('user_id, role');
+        if (rolesError) throw rolesError;
+
+        const userIdToRole = new Map<string, string>();
+        (roles || []).forEach((r: any) => userIdToRole.set(r.user_id, r.role));
+
+        const merged = (profiles || []).map((p: any) => ({
+          id: p.id,
+          name: p.full_name || (p.email ? String(p.email).split('@')[0] : ''),
+          email: p.email || '',
+          role: userIdToRole.get(p.id) || 'user',
+          created_at: p.created_at,
+        }));
+        setUsers(merged);
+      } catch (e) {
+        console.error('Failed to load users:', e);
+        setUsers([]);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    loadUsers();
+  }, []);
+
+  const totalUsers = useMemo(() => users.length || 0, [users]);
+
   const stats = [
     {
       title: 'Всего пользователей',
-      value: '1',
+      value: String(totalUsers),
       icon: Users,
       trend: '+100%',
       color: 'text-blue-500'
@@ -208,20 +253,32 @@ export default function Admin() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow className="hover-lift cursor-pointer transition-colors" onClick={() => window.location.href = '/settings'}>
-                    <TableCell className="font-mono text-xs">{user.id}</TableCell>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant="default">
-                        <Shield className="h-3 w-3 mr-1" />
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(user.created_at).toLocaleDateString('ru-RU')}
-                    </TableCell>
-                  </TableRow>
+                  {loadingUsers && (
+                    <TableRow>
+                      <TableCell colSpan={5}>Загрузка пользователей...</TableCell>
+                    </TableRow>
+                  )}
+                  {!loadingUsers && users.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5}>Пользователи не найдены</TableCell>
+                    </TableRow>
+                  )}
+                  {!loadingUsers && users.map((u) => (
+                    <TableRow key={u.id} className="hover-lift cursor-pointer transition-colors" onClick={() => window.location.href = '/settings'}>
+                      <TableCell className="font-mono text-xs">{u.id}</TableCell>
+                      <TableCell className="font-medium">{u.name}</TableCell>
+                      <TableCell>{u.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={u.role === 'admin' ? 'default' : 'outline'}>
+                          <Shield className="h-3 w-3 mr-1" />
+                          {u.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
