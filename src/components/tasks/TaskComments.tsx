@@ -28,14 +28,18 @@ export function TaskComments({ taskId }: { taskId: string }) {
       .channel(`comments:${taskId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'task_comments', filter: `task_id=eq.${taskId}` }, (payload: any) => {
         const newComment = payload.new;
-        // Подтянуть автора
+        // Подтянуть автора и добавить (с дедупликацией)
         (async () => {
           const { data: profile } = await (supabase as any)
             .from('profiles')
             .select('full_name, email')
             .eq('id', newComment.author_id)
             .single();
-          setComments(prev => [...prev, { ...newComment, author: profile }]);
+          setComments(prev => {
+            // Не добавлять дубликаты
+            if (prev.some(c => c.id === newComment.id)) return prev;
+            return [...prev, { ...newComment, author: profile }];
+          });
         })();
       })
       .subscribe();

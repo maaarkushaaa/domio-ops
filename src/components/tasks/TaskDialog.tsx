@@ -190,6 +190,20 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
             </div>
 
             <div className="space-y-2">
+              <Label>Приоритет</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Низкий</SelectItem>
+                  <SelectItem value="medium">Средний</SelectItem>
+                  <SelectItem value="high">Высокий</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label>Исполнитель</Label>
               <Select value={assigneeId} onValueChange={setAssigneeId}>
                 <SelectTrigger>

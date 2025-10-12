@@ -62,13 +62,18 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
 
   const handleDrop = async (columnId: TaskStatus) => {
     if (draggedTask && draggedTask.status !== columnId) {
-      const colTasks = tasksByColumn[columnId] || [];
-      const newOrder = colTasks.length > 0 ? Math.max(...colTasks.map((t: any) => t.order || 0)) + 1 : 0;
-      await updateTask({
-        id: draggedTask.id,
-        status: columnId,
-        order: newOrder,
-      });
+      try {
+        const colTasks = tasksByColumn[columnId] || [];
+        const newOrder = colTasks.length > 0 ? Math.max(...colTasks.map((t: any) => t.order || 0)) + 1 : 0;
+        console.log('Dropping task', draggedTask.id, 'to', columnId, 'order', newOrder);
+        await updateTask({
+          id: draggedTask.id,
+          status: columnId,
+          order: newOrder,
+        });
+      } catch (e) {
+        console.error('Drop task error', e);
+      }
     }
     setDraggedTask(null);
   };

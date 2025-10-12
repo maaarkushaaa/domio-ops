@@ -80,11 +80,17 @@ export default function Projects() {
 
   const toggleArchive = async (projectId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'archived' : 'active';
-    const { error } = await (supabase as any)
-      .from('projects')
-      .update({ status: newStatus })
-      .eq('id', projectId);
-    if (error) console.error('Toggle archive error', error);
+    try {
+      const { error } = await (supabase as any)
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', projectId);
+      if (error) throw error;
+      // Обновляем локально (realtime может не сработать сразу)
+      window.location.reload();
+    } catch (e) {
+      console.error('Toggle archive error', e);
+    }
   };
 
   return (

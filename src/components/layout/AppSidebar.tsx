@@ -34,8 +34,8 @@ import {
 
 const menuItems = [
   { title: "Дашборд", url: "/", icon: LayoutDashboard },
-  { title: "Задачи", url: "/tasks", icon: CheckSquare },
   { title: "Проекты", url: "/projects", icon: FolderKanban },
+  { title: "Задачи", url: "/tasks", icon: CheckSquare },
   { title: "Календарь", url: "/calendar", icon: Calendar },
   { title: "Производство", url: "/production", icon: Factory },
   { title: "Финансы", url: "/finance", icon: DollarSign },
