@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
-import { MessageCircle, Send, X, Minimize2, Mic, Square, Hash, List } from 'lucide-react';
+import { MessageCircle, Send, X, Minimize2, Mic, Square, Hash, List, Play, Pause } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,6 +20,77 @@ interface ChatMessage {
   audioUrl?: string;
   channel?: string;
   taskId?: string | null;
+}
+
+function AudioMessage({ url }: { url: string | undefined }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const audio = new Audio(url || '');
+    audioRef.current = audio;
+    const onLoaded = () => setDuration(audio.duration || 0);
+    const onTime = () => setCurrent(audio.currentTime || 0);
+    const onEnded = () => setIsPlaying(false);
+    audio.addEventListener('loadedmetadata', onLoaded);
+    audio.addEventListener('timeupdate', onTime);
+    audio.addEventListener('ended', onEnded);
+    return () => {
+      audio.pause();
+      audio.removeEventListener('loadedmetadata', onLoaded);
+      audio.removeEventListener('timeupdate', onTime);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [url]);
+
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const onSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const t = Number(e.target.value);
+    audio.currentTime = t;
+    setCurrent(t);
+  };
+
+  const fmt = (s: number) => {
+    if (!isFinite(s)) return '0:00';
+    const m = Math.floor(s / 60);
+    const ss = Math.floor(s % 60).toString().padStart(2, '0');
+    return `${m}:${ss}`;
+  };
+
+  return (
+    <div className="w-full flex items-center gap-3 p-2 rounded-lg bg-muted">
+      <Button type="button" size="icon" variant="secondary" className="h-8 w-8" onClick={toggle}>
+        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </Button>
+      <input
+        type="range"
+        min={0}
+        max={duration || 0}
+        step={0.1}
+        value={Math.min(current, duration || 0)}
+        onChange={onSeek}
+        className="w-full accent-primary"
+      />
+      <div className="text-xs text-muted-foreground min-w-[68px] text-right">
+        {fmt(current)} / {fmt(duration)}
+      </div>
+    </div>
+  );
 }
 
 export function ChatWidget() {
@@ -365,9 +436,7 @@ export function ChatWidget() {
                       </span>
                     </div>
                     {msg.type === 'audio' ? (
-                      <div className={`p-2 rounded-lg bg-muted w-full`}>
-                        <audio src={msg.audioUrl} controls preload="metadata" className="w-full" />
-                      </div>
+                      <AudioMessage url={msg.audioUrl} />
                     ) : (
                       <div className={`p-3 rounded-lg ${
                         msg.userId === user?.id
