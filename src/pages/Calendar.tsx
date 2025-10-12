@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EventDetailsDialog } from "@/components/calendar/EventDetailsDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Event {
   id: number;
@@ -51,6 +52,29 @@ export default function Calendar() {
 
   const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
   const monthName = currentDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  // Load from Supabase + realtime
+  useState(() => {
+    let ch: ReturnType<typeof supabase.channel> | null = null;
+    const load = async () => {
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+      const { data } = await (supabase as any)
+        .from('calendar_events')
+        .select('id, title, start_at, end_at, type, description')
+        .gte('start_at', monthStart.toISOString())
+        .lte('start_at', monthEnd.toISOString())
+        .order('start_at', { ascending: true });
+      setEvents((data || []).map((r: any) => ({ id: r.id, title: r.title, date: new Date(r.start_at), endDate: r.end_at ? new Date(r.end_at) : undefined, type: r.type, description: r.description })));
+
+      ch = supabase
+        .channel('calendar_events_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, () => load())
+        .subscribe();
+    };
+    load();
+    return () => { if (ch) supabase.removeChannel(ch); };
+  });
+
 
   const previousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
@@ -94,10 +118,18 @@ export default function Calendar() {
               const start = new Date(newEventStart);
               const end = newEventEnd ? new Date(newEventEnd) : undefined;
               if (editingEvent) {
-                setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, title: newEventName, date: start, endDate: end, type: newEventType, description: newEventDescription || undefined } : ev));
+                // Update in Supabase
+                await (supabase as any)
+                  .from('calendar_events')
+                  .update({ title: newEventName, start_at: start.toISOString(), end_at: end ? end.toISOString() : null, type: newEventType, description: newEventDescription || null })
+                  .eq('id', editingEvent.id);
               } else {
-                const nextId = (events.at(-1)?.id || 0) + 1;
-                setEvents(prev => [...prev, { id: nextId, title: newEventName, date: start, endDate: end, type: newEventType, description: newEventDescription || undefined }]);
+                // Insert in Supabase
+                await (supabase as any)
+                  .from('calendar_events')
+                  .insert({ title: newEventName, start_at: start.toISOString(), end_at: end ? end.toISOString() : null, type: newEventType, description: newEventDescription || null, created_by: (await supabase.auth.getUser()).data.user?.id })
+                  .select()
+                  .single();
               }
               setEditingEvent(null);
               setNewEventName(''); setNewEventStart(''); setNewEventEnd(''); setNewEventType(''); setNewEventDescription('');
@@ -324,7 +356,7 @@ export default function Calendar() {
                   }}>
                     <Edit2 className="h-3 w-3 mr-1" /> Редактировать
                   </Button>
-                  <Button size="sm" variant="destructive" onClick={() => setEvents(prev => prev.filter(e => e.id !== ev.id))}>
+                  <Button size="sm" variant="destructive" onClick={async () => { await (supabase as any).from('calendar_events').delete().eq('id', ev.id); }}>
                     <Trash2 className="h-3 w-3 mr-1" /> Удалить
                   </Button>
                 </div>
@@ -343,7 +375,7 @@ export default function Calendar() {
         event={selectedEvent}
         open={eventDetailsOpen}
         onOpenChange={(v)=>{ setEventDetailsOpen(v); if(!v) setSelectedEvent(null); }}
-        onEdit={(ev)=>{ setDayDialogOpen(false); setEditingEvent(ev); setNewEventName(ev.title); setNewEventStart(ev.date.toISOString().slice(0,16)); setNewEventEnd(ev.endDate? ev.endDate.toISOString().slice(0,16):''); setNewEventType(ev.type); setNewEventDescription(ev.description||''); setDialogOpen(true); }}
+        onEdit={(ev)=>{ setEventDetailsOpen(false); setDayDialogOpen(false); setEditingEvent(ev); setNewEventName(ev.title); setNewEventStart(ev.date.toISOString().slice(0,16)); setNewEventEnd(ev.endDate? ev.endDate.toISOString().slice(0,16):''); setNewEventType(ev.type); setNewEventDescription(ev.description||''); setDialogOpen(true); }}
         onDelete={(ev)=>{ setEvents(prev=>prev.filter(e=>e.id!==ev.id)); setEventDetailsOpen(false); }}
       />
     </div>

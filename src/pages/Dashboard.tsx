@@ -271,11 +271,12 @@ export default function Dashboard() {
         <CardContent>
           <div className="space-y-3">
             {/* Здесь предполагается подключение к реальному источнику событий; пока агрегируем из задач как дедлайны */}
+            {/* Если подключим таблицу calendar_events, заменим на её выборку */}
             {tasks
               .filter((t:any)=>t.due_date)
-              .slice(0,10)
               .map((t:any)=>({ id:t.id, title:t.title, date:new Date(t.due_date), endDate: t.due_end? new Date(t.due_end): undefined, type:'deadline' }))
               .sort((a:any,b:any)=>a.date.getTime()-b.date.getTime())
+              .slice(0,10)
               .map((ev:any)=> (
                 <div key={`ev-${ev.id}`} className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50" onClick={()=>setEventsColOpen({open:true,event:ev})}>
                   <div>
