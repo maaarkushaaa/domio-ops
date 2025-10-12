@@ -119,106 +119,23 @@ interface AppContextType extends AppState {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Mock data generator
-const generateMockData = (): AppState => {
-  const now = new Date().toISOString();
-  
+// Initialize with empty data - all data comes from Supabase
+const getInitialState = (): AppState => {
   return {
     user: null,
-    tasks: [
-      {
-        id: '1',
-        title: 'Complete project proposal',
-        description: 'Finish the Q4 project proposal document',
-        status: 'in_progress',
-        priority: 'high',
-        due_date: '2025-10-15',
-        created_at: now,
-        updated_at: now,
-      },
-      {
-        id: '2',
-        title: 'Review code changes',
-        status: 'todo',
-        priority: 'medium',
-        created_at: now,
-        updated_at: now,
-      },
-    ],
-    projects: [
-      {
-        id: '1',
-        name: 'Website Redesign',
-        description: 'Complete overhaul of company website',
-        status: 'active',
-        budget: 50000,
-        start_date: '2025-10-01',
-        created_at: now,
-      },
-    ],
-    clients: [
-      {
-        id: '1',
-        name: 'Acme Corporation',
-        email: 'contact@acme.com',
-        phone: '+1234567890',
-        company: 'Acme Corp',
-        status: 'active',
-        created_at: now,
-      },
-    ],
-    products: [
-      {
-        id: '1',
-        name: 'Premium Widget',
-        sku: 'WDG-001',
-        description: 'High-quality widget for industrial use',
-        status: 'in_progress',
-        progress: 60,
-        unit_price: 299.99,
-        quantity_in_stock: 150,
-        created_at: now,
-      },
-    ],
-    financialOperations: [
-      {
-        id: '1',
-        type: 'income',
-        amount: 5000,
-        currency: 'RUB',
-        category: 'Sales',
-        description: 'Product sale',
-        date: now,
-        created_at: now,
-      },
-    ],
-    suppliers: [
-      {
-        id: '1',
-        name: 'Global Supply Co',
-        email: 'orders@globalsupply.com',
-        phone: '+1987654321',
-        status: 'active',
-        created_at: now,
-      },
-    ],
+    tasks: [],
+    projects: [],
+    clients: [],
+    products: [],
+    financialOperations: [],
+    suppliers: [],
   };
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  console.log('🏗️ AppProvider initializing - ULTRA CLEAN MODE');
+  console.log('🏗️ AppProvider initializing - Supabase Auth Only');
   
-  const [state, setState] = useState<AppState>(() => {
-    // Always start with clean state - no user from localStorage
-    const initialState = generateMockData();
-    initialState.user = null; // Ensure no user is loaded
-    console.log('📊 Initial state: No user (clean start)');
-    return initialState;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('appState', JSON.stringify(state));
-  }, [state]);
+  const [state, setState] = useState<AppState>(getInitialState);
 
   // Initialize user from Supabase session
   useEffect(() => {
@@ -306,98 +223,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      // Supabase authentication only
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.includes('@') ? email : `${email}@domio-group.ru`, // Handle username login
-        password: password,
-      });
-
-      if (authError) {
-        console.error('Supabase auth error:', authError);
-        throw new Error(authError.message);
-      }
-
-      if (authData.user) {
-        // Get user profile and role from database
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authData.user.id)
-          .single();
-
-        const { data: userRole } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', authData.user.id)
-          .single();
-
-        const user: User = {
-          id: authData.user.id,
-          email: authData.user.email || email,
-          name: profile?.full_name || authData.user.email?.split('@')[0] || email,
-          role: userRole?.role || 'user',
-          created_at: authData.user.created_at,
-        };
-
-        console.log('✅ Supabase login successful:', user.email, 'Role:', user.role);
-        setUser(user);
-        return;
-      }
-    } catch (error) {
-      console.error('Authentication failed:', error);
-      throw error; // Re-throw error to show in UI
+    if (!password || password.trim().length === 0) {
+      throw new Error('Пароль не может быть пустым');
     }
+
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      console.error('❌ Login failed:', authError.message);
+      throw new Error('Неверный email или пароль');
+    }
+
+    if (!authData.user) {
+      throw new Error('Ошибка аутентификации');
+    }
+
+    // Auth state change listener will handle setting the user
+    console.log('✅ Login successful');
   };
 
   const signUp = async (email: string, password: string, name: string) => {
-    try {
-      // Supabase registration only
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          }
-        }
+    if (!email || !password || !name) {
+      throw new Error('Все поля обязательны для заполнения');
+    }
+
+    if (password.length < 6) {
+      throw new Error('Пароль должен быть не менее 6 символов');
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+        },
+        emailRedirectTo: `${window.location.origin}/`,
+      }
+    });
+
+    if (authError) {
+      console.error('❌ Signup failed:', authError.message);
+      throw new Error(authError.message === 'User already registered' 
+        ? 'Пользователь с таким email уже зарегистрирован'
+        : 'Ошибка регистрации');
+    }
+
+    if (!authData.user) {
+      throw new Error('Ошибка создания пользователя');
+    }
+
+    // Assign default role
+    const { error: roleError } = await supabase
+      .from('user_roles')
+      .insert({
+        user_id: authData.user.id,
+        role: 'user'
       });
 
-      if (authError) {
-        console.error('Supabase signup error:', authError);
-        throw new Error(authError.message);
-      }
-
-      if (authData.user) {
-        // User will be created automatically by trigger
-        // Assign default role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role: 'user'
-          });
-
-        if (roleError) {
-          console.error('Role assignment error:', roleError);
-        }
-
-        const user: User = {
-          id: authData.user.id,
-          email: authData.user.email || email,
-          name: name,
-          role: 'user',
-          created_at: authData.user.created_at,
-        };
-        
-        console.log('✅ Supabase registration successful:', user.email);
-        setUser(user);
-        return;
-      }
-    } catch (error) {
-      console.error('Registration failed:', error);
-      throw error; // Re-throw error to show in UI
+    if (roleError) {
+      console.error('Role assignment error:', roleError);
     }
+
+    console.log('✅ Registration successful');
   };
 
   const signOut = async () => {
