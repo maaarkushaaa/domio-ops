@@ -35,6 +35,7 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const draggedElementRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const autoScrollIntervalRef = useRef<number | null>(null);
+  const autoScrollRafRef = useRef<number | null>(null);
   const touchPosRef = useRef<{ x: number; y: number } | null>(null); // Синхронный доступ к позиции
   
   const displayTasks = filteredTasks || tasks;
@@ -67,16 +68,17 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
     e.preventDefault();
   };
 
-  // Автопрокрутка при приближении к краю
+  // Автопрокрутка при приближении к краю (версия на requestAnimationFrame)
   const startAutoScroll = () => {
     // Запускаем только если ещё не запущен
-    if (autoScrollIntervalRef.current !== null) return;
+    if (autoScrollRafRef.current !== null) return;
     if (!containerRef.current) return;
 
     const scrollThreshold = 100; // Зона активации автопрокрутки (px от края)
-    const scrollSpeed = 15; // Скорость прокрутки
+    const maxSpeed = 22; // Максимальная скорость px/frame
+    const minSpeed = 6;  // Минимальная скорость px/frame
 
-    autoScrollIntervalRef.current = window.setInterval(() => {
+    const loop = () => {
       if (!containerRef.current || !touchPosRef.current) {
         stopAutoScroll();
         return;
@@ -84,38 +86,49 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
 
       const container = containerRef.current;
       const pos = touchPosRef.current;
-      
-      // Получаем границы ВИДИМОЙ области контейнера
-      const containerRect = container.getBoundingClientRect();
-      
-      // Вычисляем края плавающей карточки (width: 300px, centered at pos.x - 150)
+      const rect = container.getBoundingClientRect();
+
+      // Параметры плавающей карточки (должны соответствовать preview)
       const cardWidth = 300;
-      const cardLeftEdge = pos.x - 150;
-      const cardRightEdge = pos.x - 150 + cardWidth;
-      
-      // Проверяем расстояние КРАЁВ КАРТОЧКИ до КРАЁВ ВИДИМОЙ ОБЛАСТИ КОНТЕЙНЕРА
-      const distanceLeftEdgeToContainer = cardLeftEdge - containerRect.left;
-      const distanceRightEdgeToContainer = containerRect.right - cardRightEdge;
+      const cardLeft = pos.x - 150;
+      const cardRight = pos.x - 150 + cardWidth;
 
-      const canScrollLeft = container.scrollLeft > 0;
-      const canScrollRight = container.scrollLeft < (container.scrollWidth - container.clientWidth);
+      // Дистанция от краёв карточки до видимой области контейнера
+      const distLeft = cardLeft - rect.left;
+      const distRight = rect.right - cardRight;
 
-      if (distanceLeftEdgeToContainer < scrollThreshold && canScrollLeft) {
-        // Левый край карточки близко к левому краю видимой области - прокручиваем влево
-        container.scrollLeft -= scrollSpeed;
-        console.log('[AUTOSCROLL] Scrolling LEFT, cardLeft:', cardLeftEdge, 'containerLeft:', containerRect.left, 'distance:', distanceLeftEdgeToContainer);
-      } else if (distanceRightEdgeToContainer < scrollThreshold && canScrollRight) {
-        // Правый край карточки близко к правому краю видимой области - прокручиваем вправо
-        container.scrollLeft += scrollSpeed;
-        console.log('[AUTOSCROLL] Scrolling RIGHT, cardRight:', cardRightEdge, 'containerRight:', containerRect.right, 'distance:', distanceRightEdgeToContainer);
+      const canLeft = container.scrollLeft > 0;
+      const canRight = container.scrollLeft < (container.scrollWidth - container.clientWidth);
+
+      // Функция перевода дистанции в скорость (чем ближе к краю, тем быстрее)
+      const speedFromDistance = (d: number) => {
+        const clamped = Math.max(0, Math.min(scrollThreshold, scrollThreshold - d));
+        const ratio = clamped / scrollThreshold; // 0..1
+        return minSpeed + (maxSpeed - minSpeed) * ratio;
+      };
+
+      if (distLeft < scrollThreshold && canLeft) {
+        const v = speedFromDistance(distLeft);
+        container.scrollLeft -= v;
+      } else if (distRight < scrollThreshold && canRight) {
+        const v = speedFromDistance(distRight);
+        container.scrollLeft += v;
       }
-    }, 16); // ~60fps
+
+      autoScrollRafRef.current = window.requestAnimationFrame(loop);
+    };
+
+    autoScrollRafRef.current = window.requestAnimationFrame(loop);
   };
 
   const stopAutoScroll = () => {
     if (autoScrollIntervalRef.current) {
       clearInterval(autoScrollIntervalRef.current);
       autoScrollIntervalRef.current = null;
+    }
+    if (autoScrollRafRef.current !== null) {
+      cancelAnimationFrame(autoScrollRafRef.current);
+      autoScrollRafRef.current = null;
     }
   };
 
