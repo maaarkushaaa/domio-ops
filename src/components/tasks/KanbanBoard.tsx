@@ -37,6 +37,19 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const autoScrollIntervalRef = useRef<number | null>(null);
   const autoScrollRafRef = useRef<number | null>(null);
   const touchPosRef = useRef<{ x: number; y: number } | null>(null); // Синхронный доступ к позиции
+  const scrollElRef = useRef<HTMLElement | null>(null);
+
+  const findHorizontalScrollable = (start: HTMLElement | null): HTMLElement | null => {
+    let el: HTMLElement | null = start;
+    while (el) {
+      const style = window.getComputedStyle(el);
+      const overflowX = style.overflowX;
+      const canScroll = (overflowX === 'auto' || overflowX === 'scroll') && el.scrollWidth > el.clientWidth;
+      if (canScroll) return el;
+      el = el.parentElement as HTMLElement | null;
+    }
+    return null;
+  };
   
   const displayTasks = filteredTasks || tasks;
 
@@ -73,18 +86,22 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
     // Запускаем только если ещё не запущен
     if (autoScrollRafRef.current !== null) return;
     if (!containerRef.current) return;
+    if (!scrollElRef.current) {
+      scrollElRef.current = findHorizontalScrollable(containerRef.current);
+    }
+    const target = scrollElRef.current || containerRef.current;
 
-    const scrollThreshold = 100; // Зона активации автопрокрутки (px от края)
-    const maxSpeed = 22; // Максимальная скорость px/frame
+    const scrollThreshold = 140; // Чуть шире зона у края
+    const maxSpeed = 28; // Быстрее для больших досок
     const minSpeed = 6;  // Минимальная скорость px/frame
 
     const loop = () => {
-      if (!containerRef.current || !touchPosRef.current) {
+      if (!target || !touchPosRef.current) {
         stopAutoScroll();
         return;
       }
 
-      const container = containerRef.current;
+      const container = target;
       const pos = touchPosRef.current;
       const rect = container.getBoundingClientRect();
 
@@ -207,7 +224,7 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
         </div>
       )}
       
-      <div ref={containerRef} className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+      <div ref={containerRef} className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'auto' }}>
         {columns.map((column) => (
         <div
           key={column.id}
@@ -285,6 +302,18 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           }
                           
                           // Запускаем автопрокрутку (запустится только один раз)
+                          // Подталкиваем container при импульсах, если rAF ещё не догнал
+                          const el = scrollElRef.current || containerRef.current;
+                          if (el && pos && touchPosRef.current) {
+                            const rect = el.getBoundingClientRect();
+                            const cardLeft = pos.x - 150;
+                            const cardRight = pos.x + 150;
+                            if (cardRight > rect.right - 4 && el.scrollLeft < (el.scrollWidth - el.clientWidth)) {
+                              el.scrollLeft += 2; // микродвижение, чтобы активировать rAF
+                            } else if (cardLeft < rect.left + 4 && el.scrollLeft > 0) {
+                              el.scrollLeft -= 2;
+                            }
+                          }
                           startAutoScroll();
                         }}
                         onTouchEnd={(e) => {
