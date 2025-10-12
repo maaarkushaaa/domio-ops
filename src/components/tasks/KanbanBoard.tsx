@@ -23,12 +23,14 @@ const columns: Column[] = [
   { id: 'done', title: 'Готово', color: 'bg-success/10' },
 ];
 
-export function KanbanBoard() {
+export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const { tasks, updateTask } = useTasks();
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [openFor, setOpenFor] = useState<TaskStatus | null>(null);
+  
+  const displayTasks = filteredTasks || tasks;
 
-  const tasksByColumn = tasks.reduce((acc, task) => {
+  const tasksByColumn = displayTasks.reduce((acc, task) => {
     if (!acc[task.status]) acc[task.status] = [];
     acc[task.status].push(task);
     return acc;

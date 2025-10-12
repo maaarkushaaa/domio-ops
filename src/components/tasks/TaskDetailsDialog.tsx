@@ -6,6 +6,7 @@ import { X, Upload } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { TaskDialog } from '@/components/tasks/TaskDialog';
 import { TaskComments } from '@/components/tasks/TaskComments';
+import { TaskChecklists } from '@/components/tasks/TaskChecklists';
 import { supabase } from '@/integrations/supabase/client';
 
 function ruStatus(s?: string) {
@@ -155,6 +156,8 @@ export function TaskDetailsDialog({ task, trigger }: { task: any; trigger: React
               {uploading && <span className="text-xs text-muted-foreground">Загрузка...</span>}
             </div>
           </div>
+
+          <TaskChecklists taskId={task.id} />
 
           <TaskComments taskId={task.id} />
         </div>

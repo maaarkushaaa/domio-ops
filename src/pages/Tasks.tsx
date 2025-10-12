@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { useTasks } from "@/hooks/use-tasks";
 import { TaskDialog, ProjectDialog } from "@/components/tasks/TaskDialog";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
 import { TaskActionsMenu } from "@/components/tasks/TaskActionsMenu";
+import { TaskFilters, TaskFiltersType } from "@/components/tasks/TaskFilters";
 
 const columns = [
   { id: "backlog", title: "Backlog", color: "bg-muted" },
@@ -22,6 +23,28 @@ export default function Tasks() {
   const [view, setView] = useState<'list' | 'kanban'>('kanban');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogStatus, setDialogStatus] = useState<any>('backlog');
+  const [filters, setFilters] = useState<TaskFiltersType>({
+    search: '',
+    status: 'all',
+    priority: 'all',
+    assignee: 'all',
+    tags: [],
+    project: 'all',
+  });
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const matchSearch = !filters.search || 
+        task.title.toLowerCase().includes(filters.search.toLowerCase()) ||
+        task.description?.toLowerCase().includes(filters.search.toLowerCase());
+      const matchStatus = filters.status === 'all' || task.status === filters.status;
+      const matchPriority = filters.priority === 'all' || task.priority === filters.priority;
+      const matchAssignee = filters.assignee === 'all' || (task as any).assignee_id === filters.assignee;
+      const matchProject = filters.project === 'all' || (task as any).project_id === filters.project;
+      const matchTags = filters.tags.length === 0 || filters.tags.some(t => (task as any).tags?.includes(t));
+      return matchSearch && matchStatus && matchPriority && matchAssignee && matchProject && matchTags;
+    });
+  }, [tasks, filters]);
 
   const tasksByColumn = tasks.reduce((acc, task) => {
     if (!acc[task.status]) acc[task.status] = [];
@@ -43,7 +66,7 @@ export default function Tasks() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Задачи</h1>
-          <p className="text-muted-foreground">Управление задачами проектов</p>
+          <p className="text-muted-foreground">Управление задачами проектов ({filteredTasks.length})</p>
         </div>
         <div className="flex gap-2">
           <div className="flex border rounded-lg">
@@ -79,8 +102,10 @@ export default function Tasks() {
         </div>
       </div>
 
+      <TaskFilters filters={filters} onChange={setFilters} />
+
       {view === 'kanban' ? (
-        <KanbanBoard />
+        <KanbanBoard filteredTasks={filteredTasks} />
       ) : (
         <div className="space-y-4">
           {columns.map((column) => (
