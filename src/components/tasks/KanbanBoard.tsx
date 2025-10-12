@@ -29,9 +29,12 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [openFor, setOpenFor] = useState<TaskStatus | null>(null);
   const [wipLimits, setWipLimits] = useState<Record<TaskStatus, number>>({} as any);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [touchStartPos, setTouchStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [currentTouchPos, setCurrentTouchPos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const draggedElementRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const autoScrollIntervalRef = useRef<number | null>(null);
   
   const displayTasks = filteredTasks || tasks;
 
@@ -61,6 +64,46 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+  };
+
+  // Автопрокрутка при приближении к краю
+  const startAutoScroll = (touchX: number) => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const scrollThreshold = 100; // Зона активации автопрокрутки (px от края)
+    const scrollSpeed = 15; // Скорость прокрутки
+
+    // Очищаем предыдущий interval
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+    }
+
+    // Проверяем, близко ли к краям
+    const distanceFromLeft = touchX - rect.left;
+    const distanceFromRight = rect.right - touchX;
+
+    if (distanceFromLeft < scrollThreshold || distanceFromRight < scrollThreshold) {
+      autoScrollIntervalRef.current = window.setInterval(() => {
+        if (!containerRef.current) return;
+
+        if (distanceFromLeft < scrollThreshold && container.scrollLeft > 0) {
+          // Прокрутка влево
+          container.scrollLeft -= scrollSpeed;
+        } else if (distanceFromRight < scrollThreshold) {
+          // Прокрутка вправо
+          container.scrollLeft += scrollSpeed;
+        }
+      }, 16); // ~60fps
+    }
+  };
+
+  const stopAutoScroll = () => {
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
   };
 
   const handleDrop = async (columnId: TaskStatus) => {
@@ -115,8 +158,31 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-      {columns.map((column) => (
+    <>
+      {/* Floating drag preview */}
+      {isDragging && draggedTask && currentTouchPos && (
+        <div
+          className="fixed pointer-events-none z-50 opacity-80"
+          style={{
+            left: currentTouchPos.x - 150,
+            top: currentTouchPos.y - 40,
+            width: '300px',
+            transform: 'scale(1.05)',
+          }}
+        >
+          <Card className="bg-card shadow-2xl border-primary">
+            <CardContent className="p-3">
+              <h4 className="text-sm font-medium">{draggedTask.title}</h4>
+              <Badge variant="outline" className="text-xs mt-2">
+                {draggedTask.project?.name || 'Без проекта'}
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
+      <div ref={containerRef} className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+        {columns.map((column) => (
         <div
           key={column.id}
           className="flex-shrink-0 w-80"
@@ -166,29 +232,38 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           e.stopPropagation();
                           e.preventDefault();
                           const touch = e.touches[0];
-                          setTouchStartY(touch.clientY);
+                          setTouchStartPos({ x: touch.clientX, y: touch.clientY });
+                          setCurrentTouchPos({ x: touch.clientX, y: touch.clientY });
                           setDraggedTask(task);
                           setIsDragging(true);
-                          // Отключаем выделение текста и прокрутку
+                          // Отключаем выделение текста
                           document.body.style.userSelect = 'none';
                           document.body.style.webkitUserSelect = 'none';
-                          document.body.style.overflow = 'hidden';
                         }}
                         onTouchMove={(e) => {
                           if (!draggedTask) return;
                           e.preventDefault();
                           e.stopPropagation();
-                          // Визуальная обратная связь включена
-                          setIsDragging(true);
+                          
+                          const touch = e.touches[0];
+                          setCurrentTouchPos({ x: touch.clientX, y: touch.clientY });
+                          
+                          // Запускаем автопрокрутку
+                          startAutoScroll(touch.clientX);
                         }}
                         onTouchEnd={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           
+                          // Останавливаем автопрокрутку
+                          stopAutoScroll();
+                          
                           if (!draggedTask) {
                             document.body.style.userSelect = '';
                             document.body.style.webkitUserSelect = '';
-                            document.body.style.overflow = '';
+                            setTouchStartPos(null);
+                            setCurrentTouchPos(null);
+                            setIsDragging(false);
                             return;
                           }
                           
@@ -204,20 +279,21 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           
                           // Сбрасываем состояние
                           setDraggedTask(null);
-                          setTouchStartY(null);
+                          setTouchStartPos(null);
+                          setCurrentTouchPos(null);
                           setIsDragging(false);
                           document.body.style.userSelect = '';
                           document.body.style.webkitUserSelect = '';
-                          document.body.style.overflow = '';
                         }}
                         onTouchCancel={() => {
                           // На случай если touch прервался
+                          stopAutoScroll();
                           setDraggedTask(null);
-                          setTouchStartY(null);
+                          setTouchStartPos(null);
+                          setCurrentTouchPos(null);
                           setIsDragging(false);
                           document.body.style.userSelect = '';
                           document.body.style.webkitUserSelect = '';
-                          document.body.style.overflow = '';
                         }}
                       >
                         <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -283,6 +359,7 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
           </Card>
         </div>
       ))}
-    </div>
+      </div>
+    </>
   );
 }

@@ -16,6 +16,8 @@ export default function Projects() {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
   
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -91,20 +93,19 @@ export default function Projects() {
   };
 
   const handleDelete = (projectId: string, projectName: string) => {
-    // Используем setTimeout для обхода проблем с touch events на iOS
-    setTimeout(async () => {
-      try {
-        const confirmed = window.confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Это действие необратимо.`);
-        
-        if (!confirmed) {
-          return;
-        }
-        
-        await deleteProject(projectId);
-      } catch (e) {
-        alert('Ошибка при удалении проекта: ' + (e as any)?.message);
-      }
-    }, 0);
+    setProjectToDelete({ id: projectId, name: projectName });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!projectToDelete) return;
+    try {
+      await deleteProject(projectToDelete.id);
+      setDeleteDialogOpen(false);
+      setProjectToDelete(null);
+    } catch (e) {
+      alert('Ошибка при удалении проекта: ' + (e as any)?.message);
+    }
   };
 
   return (
@@ -238,6 +239,32 @@ export default function Projects() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
               <Button onClick={handleSave}>Сохранить</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог подтверждения удаления */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Подтверждение удаления</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>
+              Вы уверены, что хотите полностью удалить проект{' '}
+              <strong>"{projectToDelete?.name}"</strong>?
+            </p>
+            <p className="text-sm text-destructive">
+              Это действие необратимо. Все данные проекта будут удалены.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                Удалить
+              </Button>
             </div>
           </div>
         </DialogContent>
