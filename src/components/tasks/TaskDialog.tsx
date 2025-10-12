@@ -55,7 +55,12 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
       setAssigneeId(initialTask.assignee_id || '');
       if (initialTask.due_date) {
         setDueDate(initialTask.due_date);
-        try { setDueRange({ from: new Date(initialTask.due_date) }); } catch {}
+        try { 
+          setDueRange({ 
+            from: new Date(initialTask.due_date),
+            to: initialTask.due_end ? new Date(initialTask.due_end) : undefined
+          }); 
+        } catch {}
       }
     }
   }, [mode, initialTask, defaultStatus]);

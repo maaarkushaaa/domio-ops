@@ -35,6 +35,7 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   const draggedElementRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const autoScrollIntervalRef = useRef<number | null>(null);
+  const touchPosRef = useRef<{ x: number; y: number } | null>(null); // Синхронный доступ к позиции
   
   const displayTasks = filteredTasks || tasks;
 
@@ -76,17 +77,18 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
     const scrollSpeed = 15; // Скорость прокрутки
 
     autoScrollIntervalRef.current = window.setInterval(() => {
-      if (!containerRef.current || !currentTouchPos) {
+      if (!containerRef.current || !touchPosRef.current) {
         stopAutoScroll();
         return;
       }
 
       const container = containerRef.current;
+      const pos = touchPosRef.current;
       
-      // Вычисляем края плавающей карточки (width: 300px, centered at currentTouchPos.x - 150)
+      // Вычисляем края плавающей карточки (width: 300px, centered at pos.x - 150)
       const cardWidth = 300;
-      const cardLeftEdge = currentTouchPos.x - 150;
-      const cardRightEdge = currentTouchPos.x - 150 + cardWidth;
+      const cardLeftEdge = pos.x - 150;
+      const cardRightEdge = pos.x - 150 + cardWidth;
       
       // Проверяем расстояние КРАЁВ КАРТОЧКИ до краёв экрана
       const distanceLeftEdgeToScreen = cardLeftEdge;
@@ -236,13 +238,16 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           e.stopPropagation();
                           e.preventDefault();
                           const touch = e.touches[0];
-                          setTouchStartPos({ x: touch.clientX, y: touch.clientY });
-                          setCurrentTouchPos({ x: touch.clientX, y: touch.clientY });
+                          const pos = { x: touch.clientX, y: touch.clientY };
+                          setTouchStartPos(pos);
+                          setCurrentTouchPos(pos);
+                          touchPosRef.current = pos; // Синхронное обновление
                           setDraggedTask(task);
                           setIsDragging(true);
-                          // Отключаем выделение текста
+                          // Отключаем выделение текста и прокрутку страницы
                           document.body.style.userSelect = 'none';
                           document.body.style.webkitUserSelect = 'none';
+                          document.body.style.overflow = 'hidden';
                         }}
                         onTouchMove={(e) => {
                           if (!draggedTask) return;
@@ -250,7 +255,9 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           e.stopPropagation();
                           
                           const touch = e.touches[0];
-                          setCurrentTouchPos({ x: touch.clientX, y: touch.clientY });
+                          const pos = { x: touch.clientX, y: touch.clientY };
+                          setCurrentTouchPos(pos);
+                          touchPosRef.current = pos; // Синхронное обновление для автопрокрутки
                           
                           // Запускаем автопрокрутку (запустится только один раз)
                           startAutoScroll();
@@ -265,8 +272,10 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           if (!draggedTask) {
                             document.body.style.userSelect = '';
                             document.body.style.webkitUserSelect = '';
+                            document.body.style.overflow = '';
                             setTouchStartPos(null);
                             setCurrentTouchPos(null);
+                            touchPosRef.current = null;
                             setIsDragging(false);
                             return;
                           }
@@ -285,9 +294,11 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           setDraggedTask(null);
                           setTouchStartPos(null);
                           setCurrentTouchPos(null);
+                          touchPosRef.current = null;
                           setIsDragging(false);
                           document.body.style.userSelect = '';
                           document.body.style.webkitUserSelect = '';
+                          document.body.style.overflow = '';
                         }}
                         onTouchCancel={() => {
                           // На случай если touch прервался
@@ -295,9 +306,11 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           setDraggedTask(null);
                           setTouchStartPos(null);
                           setCurrentTouchPos(null);
+                          touchPosRef.current = null;
                           setIsDragging(false);
                           document.body.style.userSelect = '';
                           document.body.style.webkitUserSelect = '';
+                          document.body.style.overflow = '';
                         }}
                       >
                         <GripVertical className="h-4 w-4 text-muted-foreground" />
