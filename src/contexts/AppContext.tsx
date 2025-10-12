@@ -144,35 +144,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          // Get user profile and role from database
-          // @ts-ignore - Types will be regenerated after migration
-          const { data: profile } = await supabase
-            // @ts-ignore
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          // @ts-ignore - Types will be regenerated after migration
-          const { data: userRole } = await supabase
-            // @ts-ignore
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-
-          const user: User = {
+          // Set a minimal user immediately to avoid UI hanging
+          const baseUser: User = {
             id: session.user.id,
             email: session.user.email || '',
-            // @ts-ignore
-            name: (profile && profile.full_name) || session.user.email?.split('@')[0] || '',
-            // @ts-ignore
-            role: ((userRole && userRole.role) as any) || 'member',
+            name: session.user.email?.split('@')[0] || '',
+            role: 'member',
             created_at: session.user.created_at,
           };
+          setUser(baseUser);
 
-          console.log('✅ User initialized from Supabase session:', user.email, 'Role:', user.role);
-          setUser(user);
+          // Fetch profile and role in background and update when ready
+          (async () => {
+            try {
+              // @ts-ignore - Types will be regenerated after migration
+              const { data: profile } = await supabase
+                // @ts-ignore
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+              // @ts-ignore - Types will be regenerated after migration
+              const { data: userRole } = await supabase
+                // @ts-ignore
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+
+              const hydratedUser: User = {
+                ...baseUser,
+                // @ts-ignore
+                name: (profile && profile.full_name) || baseUser.name,
+                // @ts-ignore
+                role: ((userRole && userRole.role) as any) || baseUser.role,
+              };
+              console.log('✅ User initialized from Supabase session:', hydratedUser.email, 'Role:', hydratedUser.role);
+              setUser(hydratedUser);
+            } catch (innerError) {
+              console.error('Error hydrating user profile/role:', innerError);
+            }
+          })();
         }
       } catch (error) {
         console.error('Error initializing user:', error);
@@ -187,35 +200,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       if (event === 'SIGNED_IN' && session?.user) {
         try {
-          // Get user profile and role from database
-          // @ts-ignore - Types will be regenerated after migration
-          const { data: profile } = await supabase
-            // @ts-ignore
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          // @ts-ignore - Types will be regenerated after migration
-          const { data: userRole } = await supabase
-            // @ts-ignore
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-
-          const user: User = {
+          // Set minimal user immediately
+          const baseUser: User = {
             id: session.user.id,
             email: session.user.email || '',
-            // @ts-ignore
-            name: (profile && profile.full_name) || session.user.email?.split('@')[0] || '',
-            // @ts-ignore
-            role: ((userRole && userRole.role) as any) || 'member',
+            name: session.user.email?.split('@')[0] || '',
+            role: 'member',
             created_at: session.user.created_at,
           };
+          setUser(baseUser);
 
-          console.log('✅ User signed in:', user.email, 'Role:', user.role);
-          setUser(user);
+          // Hydrate with profile and role in background
+          (async () => {
+            try {
+              // @ts-ignore - Types will be regenerated after migration
+              const { data: profile } = await supabase
+                // @ts-ignore
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+              // @ts-ignore - Types will be regenerated after migration
+              const { data: userRole } = await supabase
+                // @ts-ignore
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+
+              const hydratedUser: User = {
+                ...baseUser,
+                // @ts-ignore
+                name: (profile && profile.full_name) || baseUser.name,
+                // @ts-ignore
+                role: ((userRole && userRole.role) as any) || baseUser.role,
+              };
+              console.log('✅ User signed in:', hydratedUser.email, 'Role:', hydratedUser.role);
+              setUser(hydratedUser);
+            } catch (innerError) {
+              console.error('Error getting user data on sign in:', innerError);
+            }
+          })();
         } catch (error) {
           console.error('Error getting user data on sign in:', error);
           setUser(null);

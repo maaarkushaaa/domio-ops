@@ -127,9 +127,8 @@ export function UserCreateDialog({ trigger }: UserCreateDialogProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">Администратор</SelectItem>
-                <SelectItem value="manager">Менеджер</SelectItem>
-                <SelectItem value="worker">Сотрудник</SelectItem>
-                <SelectItem value="viewer">Наблюдатель</SelectItem>
+                <SelectItem value="moderator">Модератор</SelectItem>
+                <SelectItem value="user">Пользователь</SelectItem>
               </SelectContent>
             </Select>
           </div>
