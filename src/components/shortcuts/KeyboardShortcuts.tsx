@@ -28,7 +28,7 @@ const shortcuts: Shortcut[] = [
     category: 'Навигация',
   },
   {
-    keys: ['?'],
+    keys: ['Ctrl', 'Shift', '7'],
     description: 'Показать горячие клавиши',
     category: 'Помощь',
   },
@@ -84,7 +84,8 @@ export function KeyboardShortcuts() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+      // Ctrl+Shift+7 для горячих клавиш
+      if (e.key === '7' && e.ctrlKey && e.shiftKey) {
         e.preventDefault();
         setOpen((open) => !open);
       }

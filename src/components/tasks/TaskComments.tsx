@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useTasks } from '@/hooks/use-tasks';
 import { useAuth } from '@/hooks/use-auth';
+import { supabase } from '@/integrations/supabase/client';
 
 export function TaskComments({ taskId }: { taskId: string }) {
   const { listComments, createComment } = useTasks();
@@ -21,14 +22,35 @@ export function TaskComments({ taskId }: { taskId: string }) {
       }
     };
     load();
-  }, [taskId]);
+
+    // Realtime для комментариев
+    const channel = (supabase as any)
+      .channel(`comments:${taskId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'task_comments', filter: `task_id=eq.${taskId}` }, (payload: any) => {
+        const newComment = payload.new;
+        // Подтянуть автора
+        (async () => {
+          const { data: profile } = await (supabase as any)
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', newComment.author_id)
+            .single();
+          setComments(prev => [...prev, { ...newComment, author: profile }]);
+        })();
+      })
+      .subscribe();
+
+    return () => {
+      (supabase as any).removeChannel(channel);
+    };
+  }, [taskId, listComments]);
 
   const add = async () => {
     if (!text.trim() || !user) return;
     setLoading(true);
     try {
-      const row = await createComment(taskId, user.id, text.trim());
-      setComments(prev => [...prev, { ...row, author: { full_name: user.name, email: user.email } }]);
+      await createComment(taskId, user.id, text.trim());
+      // Не добавляем локально — Realtime сделает это автоматически
       setText('');
     } catch (e) {
       console.error('create comment', e);

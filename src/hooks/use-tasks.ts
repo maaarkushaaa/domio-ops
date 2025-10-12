@@ -15,10 +15,10 @@ export const useTasks = () => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     const load = async () => {
       try {
-        // Подсчёт комментариев через подзапрос
+        // Подсчёт комментариев через подзапрос + связь с проектом
         const { data, error } = await (supabase as any)
           .from('tasks')
-          .select('*, comment_count:task_comments(count)')
+          .select('*, comment_count:task_comments(count), project:projects(id,name)')
           .order('order', { ascending: true });
         if (error) throw error;
         (data || []).forEach((t: any) => {
@@ -34,6 +34,7 @@ export const useTasks = () => {
             created_at: t.created_at,
             updated_at: t.updated_at,
             _comment_count: t.comment_count?.[0]?.count || 0,
+            project: t.project,
           } as any);
         });
       } catch (e) {
