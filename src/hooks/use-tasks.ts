@@ -93,22 +93,34 @@ export const useTasks = () => {
   };
 
   const updateTaskWithNotification = async (updates: any) => {
-    const { error } = await (supabase as any)
-      .from('tasks')
-      .update(updates)
-      .eq('id', updates.id);
-    if (error) throw error;
-    updateTask(updates.id, updates);
+    try {
+      console.log('Updating task', updates.id, 'with', updates);
+      const { data, error } = await (supabase as any)
+        .from('tasks')
+        .update(updates)
+        .eq('id', updates.id)
+        .select()
+        .single();
+      if (error) {
+        console.error('Update task error:', error);
+        throw error;
+      }
+      console.log('Task updated successfully', data);
+      updateTask(updates.id, data);
 
-    // Log activity
-    await (supabase as any)
-      .from('task_activity')
-      .insert({
-        task_id: updates.id,
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
-        event: `Задача обновлена`,
-        payload: updates,
-      });
+      // Log activity
+      await (supabase as any)
+        .from('task_activity')
+        .insert({
+          task_id: updates.id,
+          actor_id: (await supabase.auth.getUser()).data.user?.id,
+          event: `Задача обновлена`,
+          payload: updates,
+        });
+    } catch (err) {
+      console.error('Update task failed:', err);
+      throw err;
+    }
   };
 
   const deleteTaskWithSupabase = async (id: string) => {
@@ -122,13 +134,23 @@ export const useTasks = () => {
 
   // Comments API
   const createComment = async (taskId: string, authorId: string, content: string) => {
-    const { data, error } = await (supabase as any)
-      .from('task_comments')
-      .insert({ task_id: taskId, author_id: authorId, content })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    try {
+      console.log('Creating comment for task', taskId, 'by', authorId);
+      const { data, error } = await (supabase as any)
+        .from('task_comments')
+        .insert({ task_id: taskId, author_id: authorId, content })
+        .select()
+        .single();
+      if (error) {
+        console.error('Create comment error:', error);
+        throw error;
+      }
+      console.log('Comment created successfully', data);
+      return data;
+    } catch (err) {
+      console.error('Create comment failed:', err);
+      throw err;
+    }
   };
 
   const listComments = async (taskId: string) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Archive, Edit2, ArchiveRestore } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { useProjects } from '@/hooks/use-projects';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Projects() {
-  const { projects } = useProjects();
+  const { projects, updateProjectStatus } = useProjects();
   const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -81,13 +81,7 @@ export default function Projects() {
   const toggleArchive = async (projectId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'archived' : 'active';
     try {
-      const { error } = await (supabase as any)
-        .from('projects')
-        .update({ status: newStatus })
-        .eq('id', projectId);
-      if (error) throw error;
-      // Обновляем локально (realtime может не сработать сразу)
-      window.location.reload();
+      await updateProjectStatus(projectId, newStatus);
     } catch (e) {
       console.error('Toggle archive error', e);
     }

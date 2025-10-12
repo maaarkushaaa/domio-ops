@@ -126,9 +126,11 @@ export function TaskDetailsDialog({ task, trigger }: { task: any; trigger: React
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>{task.title}</span>
-            <Button size="sm" variant="outline" onClick={() => setOpenEdit(true)}>Редактировать</Button>
+          <DialogTitle className="flex items-center justify-between pr-8">
+            <span className="flex-1">{task.title}</span>
+            <Button size="sm" variant="outline" onClick={() => setOpenEdit(true)} className="mr-2">
+              Редактировать
+            </Button>
           </DialogTitle>
         </DialogHeader>
 

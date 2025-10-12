@@ -63,9 +63,32 @@ export const useProjects = () => {
     }
   };
 
+  const updateProjectStatus = async (projectId: string, status: 'active' | 'archived') => {
+    try {
+      console.log('Updating project', projectId, 'status to', status);
+      const { data, error } = await (supabase as any)
+        .from('projects')
+        .update({ status })
+        .eq('id', projectId)
+        .select()
+        .single();
+      if (error) {
+        console.error('Update project error:', error);
+        throw error;
+      }
+      console.log('Project updated successfully', data);
+      updateProject(projectId, data);
+      return data;
+    } catch (err) {
+      console.error('Update project failed:', err);
+      throw err;
+    }
+  };
+
   return {
     projects,
     isLoading: false,
     createProject,
+    updateProjectStatus,
   };
 };
