@@ -9,6 +9,9 @@ import { useTasks, TaskStatus, TaskPriority } from '@/hooks/use-tasks';
 import { useProjects } from '@/hooks/use-projects';
 import { VoiceInput } from '@/components/voice/VoiceInput';
 import { supabase } from '@/integrations/supabase/client';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 interface TaskDialogProps {
   trigger?: React.ReactNode;
@@ -114,6 +117,22 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label>Проекты (список)</Label>
+            <div className="max-h-28 overflow-y-auto rounded-md border p-2 text-sm space-y-1">
+              {(projects || []).length === 0 ? (
+                <div className="text-muted-foreground">Нет проектов</div>
+              ) : (
+                projects.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between">
+                    <span className="truncate max-w-[70%]">{p.name}</span>
+                    <span className="text-xs text-muted-foreground">{p.status}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Проект</Label>
@@ -162,8 +181,23 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="due">Дедлайн</Label>
-              <Input id="due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <Label>Дедлайн</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dueDate ? new Date(dueDate).toLocaleDateString('ru-RU') : 'Выберите дату'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dueDate ? new Date(dueDate) as any : undefined}
+                    onSelect={(d: any) => setDueDate(d ? new Date(d).toISOString().slice(0,10) : '')}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

@@ -15,9 +15,10 @@ export const useProjects = () => {
           .select('id, name, description, status, start_date, end_date, created_at')
           .order('created_at', { ascending: true });
         if (error) throw error;
+        const seen = new Set<string>();
         (data || []).forEach((p: any) => {
-          addProject({ name: p.name, description: p.description, status: p.status, start_date: p.start_date } as any);
-          updateProject(p.id, { id: p.id, end_date: p.end_date, created_at: p.created_at } as any);
+          if (seen.has(p.id)) return; seen.add(p.id);
+          addProject({ id: p.id, name: p.name, description: p.description, status: p.status, start_date: p.start_date, created_at: p.created_at } as any);
         });
       } catch (e) {
         console.error('load projects error', e);
@@ -28,8 +29,7 @@ export const useProjects = () => {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
           const row: any = payload.new || payload.old;
           if (payload.eventType === 'INSERT') {
-            addProject({ name: row.name, description: row.description, status: row.status, start_date: row.start_date } as any);
-            updateProject(row.id, { id: row.id, created_at: row.created_at } as any);
+            addProject({ id: row.id, name: row.name, description: row.description, status: row.status, start_date: row.start_date, created_at: row.created_at } as any);
           } else if (payload.eventType === 'UPDATE') {
             updateProject(row.id, row);
           }
@@ -55,9 +55,7 @@ export const useProjects = () => {
         .select()
         .single();
       if (error) throw error;
-      // local state will be updated by realtime, but ensure immediate UX
-      addProject({ name: data.name, description: data.description, status: data.status, start_date: data.start_date } as any);
-      updateProject(data.id, { id: data.id, created_at: data.created_at } as any);
+      addProject({ id: data.id, name: data.name, description: data.description, status: data.status, start_date: data.start_date, created_at: data.created_at } as any);
       return data;
     } catch (e) {
       console.error('createProject error', e);

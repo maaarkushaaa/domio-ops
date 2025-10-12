@@ -870,7 +870,7 @@ export function ChatWidget() {
               </div>
             )}
           </div>
-        </div>
+          </div>
 
         <div className={`border-t relative flex-shrink-0 bg-background ${isMobile ? 'p-2 pb-safe' : 'p-3'}`}>
           <div className="flex gap-2 items-center w-full">
