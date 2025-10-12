@@ -13,5 +13,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  // Ensure the apikey header is present on ALL requests (PostgREST requires it)
+  global: {
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+    },
+  },
 });
