@@ -472,16 +472,86 @@ export function ChatWidget() {
   // Helper: last read key per channel
   const getLastReadKey = () => (channel === 'task' ? `chat:lastRead:task:${taskId || 'none'}` : 'chat:lastRead:global');
 
-  // Scroll helpers
+  // Scroll helpers (robust)
+  const scrollContainerTo = (top: number) => {
+    const el = messagesWrapRef.current;
+    if (!el) return;
+    el.scrollTop = top;
+  };
   const scrollToBottom = (smooth = false) => {
-    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+    const el = messagesWrapRef.current;
+    if (!el) {
+      messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+      return;
+    }
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
   };
   const scrollToMessage = (id: string) => {
+    const wrap = messagesWrapRef.current;
     const el = document.getElementById(`msg-${id}`);
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'auto' });
+    if (wrap && el) {
+      const parentTop = wrap.getBoundingClientRect().top;
+      const elTop = el.getBoundingClientRect().top;
+      const current = wrap.scrollTop;
+      const delta = elTop - parentTop - 16; // padding offset
+      wrap.scrollTop = current + delta;
+    } else if (el) {
+      el.scrollIntoView({ block: 'start', behavior: 'auto' });
+    }
+  };
+  const ensureScrollBottom = (attempts = 3) => {
+    const run = (left: number) => {
+      if (left <= 0) return;
+      requestAnimationFrame(() => {
+        scrollToBottom(false);
+        setTimeout(() => run(left - 1), 32);
+      });
+    };
+    run(attempts);
+  };
+  const ensureScrollToMsg = (id: string, attempts = 3) => {
+    const run = (left: number) => {
+      if (left <= 0) return;
+      requestAnimationFrame(() => {
+        scrollToMessage(id);
+        setTimeout(() => run(left - 1), 32);
+      });
+    };
+    run(attempts);
   };
 
-  // Trigger autoscroll when opening the chat window
+  // After loading messages: go to first unread or bottom
+  useEffect(() => {
+    if (loadingMessages) return;
+    if (!isOpen) return;
+    const key = getLastReadKey();
+    const lastReadAt = localStorage.getItem(key);
+    if (messages.length === 0) return;
+
+    if (lastReadAt) {
+      const ts = new Date(lastReadAt).getTime();
+      const target = messages.find(m => new Date(m.timestamp).getTime() > ts);
+      if (target) {
+        ensureScrollToMsg(target.id, 4);
+        return;
+      }
+    }
+    ensureScrollBottom(4);
+  }, [loadingMessages, channel, taskId, isOpen]);
+
+  // On new message appended by self -> scroll to bottom
+  useEffect(() => {
+    if (!isOpen) return;
+    if (messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last.userId === user?.id) ensureScrollBottom(2);
+  }, [messages.length, isOpen]);
+
+  // Also trigger when чат открывается без перезагрузки данных
   useEffect(() => {
     if (!isOpen) return;
     if (messages.length === 0) return;
@@ -491,19 +561,12 @@ export function ChatWidget() {
       const ts = new Date(lastReadAt).getTime();
       const target = messages.find(m => new Date(m.timestamp).getTime() > ts);
       if (target) {
-        requestAnimationFrame(() => scrollToMessage(target.id));
+        ensureScrollToMsg(target.id, 4);
         return;
       }
     }
-    requestAnimationFrame(() => scrollToBottom(false));
+    ensureScrollBottom(4);
   }, [isOpen]);
-
-  // On new message appended by self -> scroll to bottom
-  useEffect(() => {
-    if (messages.length === 0) return;
-    const last = messages[messages.length - 1];
-    if (last.userId === user?.id) scrollToBottom(true);
-  }, [messages.length]);
 
   // Persist last read when closing or switching channel
   useEffect(() => {
