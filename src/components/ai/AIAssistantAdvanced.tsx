@@ -116,8 +116,8 @@ export function AIAssistantAdvanced() {
     return (
       <Button
         onClick={() => setOpen(true)}
-        size="lg"
-        className="fixed bottom-24 right-6 rounded-full h-14 w-14 shadow-lg z-50 bg-gradient-to-r from-primary to-purple-600 hover:shadow-xl transition-all"
+        size="icon"
+        className="fixed bottom-[calc(96px+env(safe-area-inset-bottom))] right-6 rounded-full h-14 w-14 shadow-lg z-[55] bg-gradient-to-r from-primary to-purple-600 hover:shadow-xl transition-all"
       >
         <Sparkles className="h-6 w-6" />
       </Button>
@@ -125,7 +125,7 @@ export function AIAssistantAdvanced() {
   }
 
   return (
-    <Card className="fixed bottom-24 right-6 w-[420px] h-[600px] shadow-2xl z-50 flex flex-col border-2">
+    <Card className="fixed bottom-[calc(96px+env(safe-area-inset-bottom))] right-6 w-[420px] h-[600px] shadow-2xl z-[55] flex flex-col border-2">
       <CardHeader className="pb-3 bg-gradient-to-r from-primary/10 to-purple-600/10">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
