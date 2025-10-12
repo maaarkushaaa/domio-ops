@@ -337,13 +337,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const addTask = (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
+  const addTask = (task: any) => {
     const now = new Date().toISOString();
     const newTask: Task = {
       ...task,
-      id: Date.now().toString(),
-      created_at: now,
-      updated_at: now,
+      id: task.id || Date.now().toString(),
+      created_at: task.created_at || now,
+      updated_at: task.updated_at || now,
     };
     setState(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }));
   };
@@ -364,12 +364,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const addProject = (project: Omit<Project, 'id' | 'created_at'>) => {
+  const addProject = (project: any) => {
     const newProject: Project = {
       ...project,
-      id: Date.now().toString(),
-      created_at: new Date().toISOString(),
-    };
+      id: project.id || Date.now().toString(),
+      created_at: project.created_at || new Date().toISOString(),
+    } as Project;
     setState(prev => ({ ...prev, projects: [...prev.projects, newProject] }));
   };
 

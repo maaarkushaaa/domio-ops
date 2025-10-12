@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTasks, TaskStatus, TaskPriority } from '@/hooks/use-tasks';
 import { useProjects } from '@/hooks/use-projects';
 import { VoiceInput } from '@/components/voice/VoiceInput';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaskDialogProps {
   trigger?: React.ReactNode;
@@ -29,27 +30,46 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [projectId, setProjectId] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [profiles, setProfiles] = useState<Array<{ id: string; name: string }>>([]);
 
   const { createTask } = useTasks();
   const { projects } = useProjects();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => { setStatus(defaultStatus); }, [defaultStatus]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name, email')
+        .order('full_name', { ascending: true });
+      setProfiles((data || []).map((p: any) => ({ id: p.id, name: p.full_name || (p.email ? String(p.email).split('@')[0] : 'Пользователь') })));
+    })();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !projectId) return;
 
-    createTask({
+    await createTask({
       title: title.trim(),
       description: description.trim() || undefined,
       status,
       priority,
       project_id: projectId,
-    });
+      assignee_id: assigneeId || null,
+      due_date: dueDate || null,
+    } as any);
 
     setTitle('');
     setDescription('');
     setStatus(defaultStatus);
     setPriority('medium');
     setProjectId('');
+    setAssigneeId('');
+    setDueDate('');
     setOpen(false);
     onClose?.();
   };
@@ -102,7 +122,7 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
                   <SelectValue placeholder="Выберите проект" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((project) => (
+                  {(projects || []).map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
                     </SelectItem>
@@ -128,17 +148,22 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
             </div>
 
             <div className="space-y-2">
-              <Label>Приоритет</Label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+              <Label>Исполнитель</Label>
+              <Select value={assigneeId} onValueChange={setAssigneeId}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Выберите исполнителя" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Низкий</SelectItem>
-                  <SelectItem value="medium">Средний</SelectItem>
-                  <SelectItem value="high">Высокий</SelectItem>
+                  {profiles.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="due">Дедлайн</Label>
+              <Input id="due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
           </div>
 
