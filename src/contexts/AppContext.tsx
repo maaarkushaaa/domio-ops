@@ -100,6 +100,7 @@ interface AppState {
 }
 
 interface AppContextType extends AppState {
+  isLoadingAuth: boolean;
   setUser: (user: User | null) => void;
   addTask: (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => void;
   updateTask: (id: string, task: Partial<Task>) => void;
@@ -136,6 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   console.log('🏗️ AppProvider initializing - Supabase Auth Only');
   
   const [state, setState] = useState<AppState>(getInitialState);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   // Initialize user from Supabase session
   useEffect(() => {
@@ -184,11 +186,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
               setUser(hydratedUser);
             } catch (innerError) {
               console.error('Error hydrating user profile/role:', innerError);
+            } finally {
+              setIsLoadingAuth(false);
             }
           })();
+        } else {
+          setIsLoadingAuth(false);
         }
       } catch (error) {
         console.error('Error initializing user:', error);
+        setIsLoadingAuth(false);
       }
     };
 
@@ -436,6 +443,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider
       value={{
         ...state,
+        isLoadingAuth,
         setUser,
         addTask,
         updateTask,

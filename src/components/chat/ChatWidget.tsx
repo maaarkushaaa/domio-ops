@@ -29,14 +29,20 @@ function AudioMessage({ url }: { url: string | undefined }) {
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    const audio = new Audio(url || '');
+    if (!url) return;
+    const audio = new Audio(url);
     audioRef.current = audio;
-    const onLoaded = () => setDuration(audio.duration || 0);
-    const onTime = () => setCurrent(audio.currentTime || 0);
-    const onEnded = () => setIsPlaying(false);
+    const onLoaded = () => {
+      if (isFinite(audio.duration)) setDuration(audio.duration);
+    };
+    const onTime = () => {
+      if (isFinite(audio.currentTime)) setCurrent(audio.currentTime);
+    };
+    const onEnded = () => { setIsPlaying(false); setCurrent(0); };
     audio.addEventListener('loadedmetadata', onLoaded);
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('ended', onEnded);
+    audio.load();
     return () => {
       audio.pause();
       audio.removeEventListener('loadedmetadata', onLoaded);
@@ -61,8 +67,10 @@ function AudioMessage({ url }: { url: string | undefined }) {
     const audio = audioRef.current;
     if (!audio) return;
     const t = Number(e.target.value);
-    audio.currentTime = t;
-    setCurrent(t);
+    if (isFinite(t) && t >= 0 && t <= (duration || 0)) {
+      audio.currentTime = t;
+      setCurrent(t);
+    }
   };
 
   const fmt = (s: number) => {
@@ -112,6 +120,7 @@ export function ChatWidget() {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Drag/resize state
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
   const draggingRef = useRef<{ type: 'fab' | 'chat' | 'resize' | null; dx: number; dy: number }>({ type: null, dx: 0, dy: 0 });
   const [fabPos, setFabPos] = useState<{ x: number; y: number }>(() => ({
     x: typeof window !== 'undefined' ? window.innerWidth - 88 : 300,
@@ -122,6 +131,13 @@ export function ChatWidget() {
     y: typeof window !== 'undefined' ? window.innerHeight - 620 : 100,
   }));
   const [chatSize, setChatSize] = useState<{ w: number; h: number }>({ w: 420, h: 560 });
+
+  // Detect mobile resize
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   // Load messages from Supabase and subscribe to realtime
@@ -393,18 +409,21 @@ export function ChatWidget() {
   };
 
   if (!isOpen) {
+    const fabStyle = isMobile
+      ? { right: 24, bottom: 90 } // статично на мобильном: справа внизу, выше AI assistant
+      : { left: fabPos.x, top: fabPos.y };
     return (
       <Button
-        onMouseDown={(e) => {
+        onMouseDown={!isMobile ? (e) => {
           draggingRef.current = { type: 'fab', dx: e.clientX - fabPos.x, dy: e.clientY - fabPos.y };
           const onMove = (ev: MouseEvent) => setFabPos({ x: ev.clientX - draggingRef.current.dx, y: ev.clientY - draggingRef.current.dy });
           const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); draggingRef.current.type = null; };
           window.addEventListener('mousemove', onMove);
           window.addEventListener('mouseup', onUp);
-        }}
+        } : undefined}
         onClick={() => setIsOpen(true)}
         className="fixed h-14 w-14 rounded-full shadow-glow hover-lift animate-scale-in z-50"
-        style={{ left: fabPos.x, top: fabPos.y }}
+        style={fabStyle}
         size="icon"
       >
         <MessageCircle className="h-6 w-6" />
@@ -448,28 +467,14 @@ export function ChatWidget() {
           <MessageCircle className="h-4 w-4 text-primary" />
           Чат команды
         </CardTitle>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 text-xs flex-wrap">
             <Button variant={channel==='global'? 'default':'outline'} size="sm" onClick={() => { setChannel('global'); setUnread(0); }}>
               <Hash className="h-3 w-3 mr-1" /> Общий
             </Button>
             <Button variant={channel==='task'? 'default':'outline'} size="sm" onClick={() => { setChannel('task'); setUnread(0); }}>
               <List className="h-3 w-3 mr-1" /> Задача
             </Button>
-            {channel === 'task' && (
-              <div className="min-w-[220px]">
-                <Select value={taskId} onValueChange={(v) => setTaskId(v)}>
-                  <SelectTrigger className="h-7">
-                    <SelectValue placeholder="Выберите задачу" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tasks.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsMinimized(true)}>
             <Minimize2 className="h-3 w-3" />
@@ -478,6 +483,20 @@ export function ChatWidget() {
             <X className="h-3 w-3" />
           </Button>
         </div>
+        {channel === 'task' && (
+          <div className="px-4 pb-2">
+            <Select value={taskId} onValueChange={(v) => setTaskId(v)}>
+              <SelectTrigger className="h-8 w-full">
+                <SelectValue placeholder="Выберите задачу" />
+              </SelectTrigger>
+              <SelectContent>
+                {tasks.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 p-0 flex flex-col">
@@ -541,10 +560,10 @@ export function ChatWidget() {
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t relative">
-          <div className="flex gap-2">
+        <div className="p-3 border-t relative">
+          <div className="flex gap-2 flex-wrap">
             <Input
-              placeholder="Напишите сообщение..."
+              placeholder="Сообщение..."
               value={newMessage}
               onChange={(e) => {
                 setNewMessage(e.target.value);
@@ -553,21 +572,17 @@ export function ChatWidget() {
                 typingTimeoutRef.current = window.setTimeout(() => bumpTyping(false), 1200);
               }}
               onKeyPress={handleKeyPress}
-              className="interactive focus-elegant"
+              className="interactive focus-elegant flex-1 min-w-0"
             />
-            <Button onClick={handleSend} size="icon" className="hover-lift" disabled={isUploadingAudio}>
+            <Button onClick={handleSend} size="icon" className="hover-lift flex-shrink-0" disabled={isUploadingAudio}>
               <Send className="h-4 w-4" />
             </Button>
             {!isRecording ? (
-              <div className="relative">
-                <Button onClick={startRecording} size="icon" variant="outline" title="Записать голосовое" disabled={isUploadingAudio}>
-                  {isUploadingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
-                </Button>
-                {/* бейдж длительности до воспроизведения не знаем; после загрузки покажем 0:00 */}
-                <span className="absolute -top-1 -right-1 text-[10px] px-1 py-0.5 rounded bg-muted">rec</span>
-              </div>
+              <Button onClick={startRecording} size="icon" variant="outline" title="Записать голосовое" disabled={isUploadingAudio} className="flex-shrink-0">
+                {isUploadingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+              </Button>
             ) : (
-              <Button onClick={stopRecording} size="icon" variant="destructive" title="Остановить запись">
+              <Button onClick={stopRecording} size="icon" variant="destructive" title="Остановить запись" className="flex-shrink-0">
                 <Square className="h-4 w-4" />
               </Button>
             )}

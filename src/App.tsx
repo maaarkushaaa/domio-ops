@@ -33,9 +33,15 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useApp();
+  const { user, isLoadingAuth } = useApp();
   
-  console.log('🔐 ProtectedRoute check - User:', user ? `${user.email} (${user.role})` : 'Not authenticated');
+  console.log('🔐 ProtectedRoute check - User:', user ? `${user.email} (${user.role})` : 'Not authenticated', 'Loading:', isLoadingAuth);
+  
+  if (isLoadingAuth) {
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>;
+  }
   
   if (!user) {
     console.log('🚪 Redirecting to /auth');
