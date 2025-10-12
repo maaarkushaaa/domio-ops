@@ -159,27 +159,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Fetch profile and role in background and update when ready
           (async () => {
             try {
-              // @ts-ignore - Types will be regenerated after migration
-              const { data: profile } = await supabase
-                // @ts-ignore
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle();
+          // @ts-ignore - Types will be regenerated after migration
+          const { data: profile } = await supabase
+            // @ts-ignore
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
 
-              // @ts-ignore - Types will be regenerated after migration
-              const { data: userRole } = await supabase
-                // @ts-ignore
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
+          // @ts-ignore - Types will be regenerated after migration
+          const { data: userRole } = await supabase
+            // @ts-ignore
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
 
               const hydratedUser: User = {
                 ...baseUser,
-                // @ts-ignore
+            // @ts-ignore
                 name: (profile && profile.full_name) || baseUser.name,
-                // @ts-ignore
+            // @ts-ignore
                 role: ((userRole && userRole.role) as any) || baseUser.role,
               };
               console.log('✅ User initialized from Supabase session:', hydratedUser.email, 'Role:', hydratedUser.role);
@@ -220,27 +220,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Hydrate with profile and role in background
           (async () => {
             try {
-              // @ts-ignore - Types will be regenerated after migration
-              const { data: profile } = await supabase
-                // @ts-ignore
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle();
+          // @ts-ignore - Types will be regenerated after migration
+          const { data: profile } = await supabase
+            // @ts-ignore
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
 
-              // @ts-ignore - Types will be regenerated after migration
-              const { data: userRole } = await supabase
-                // @ts-ignore
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
+          // @ts-ignore - Types will be regenerated after migration
+          const { data: userRole } = await supabase
+            // @ts-ignore
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
 
               const hydratedUser: User = {
                 ...baseUser,
-                // @ts-ignore
+            // @ts-ignore
                 name: (profile && profile.full_name) || baseUser.name,
-                // @ts-ignore
+            // @ts-ignore
                 role: ((userRole && userRole.role) as any) || baseUser.role,
               };
               console.log('✅ User signed in:', hydratedUser.email, 'Role:', hydratedUser.role);

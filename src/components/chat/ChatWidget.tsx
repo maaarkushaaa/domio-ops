@@ -211,7 +211,7 @@ export function ChatWidget() {
 
   // Load messages from Supabase and subscribe to realtime
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let rtChannel: ReturnType<typeof supabase.channel> | null = null;
 
     const load = async () => {
       try {
@@ -248,7 +248,7 @@ export function ChatWidget() {
         }));
         setMessages(loaded);
         // Ensure scroll after first paint
-        setTimeout(() => scrollToBottom(false), 0);
+        requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom(false)));
 
         // Backfill names
         const uniqueUserIds = Array.from(new Set(loaded.map(m => m.userId)));
@@ -270,10 +270,13 @@ export function ChatWidget() {
       }
 
       // Realtime subscription (listen to all new messages to raise notifications)
-      channel = supabase
+      rtChannel = supabase
         .channel('team_messages_changes')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, async (payload) => {
           const m = payload.new as any;
+          // Ignore self realtime echo (уже отрисовали оптимистично)
+          if (m.user_id === user?.id) return;
+
           const base: ChatMessage = {
             id: m.id,
             userId: m.user_id,
@@ -299,12 +302,19 @@ export function ChatWidget() {
 
           const enriched = { ...base, userName: name || base.userName || 'Пользователь' };
 
-          // If message belongs to current view, append; otherwise, increment unread
+          // Prevent duplicates
+          let alreadyHas = false;
+          setMessages(prev => {
+            alreadyHas = prev.some(mm => mm.id === enriched.id);
+            if (alreadyHas) return prev;
+            return [...prev, enriched];
+          });
+          if (alreadyHas) return;
+
           const isForCurrent = (channel === 'global' && enriched.channel === 'global') ||
             (channel === 'task' && enriched.channel === 'task' && taskId && enriched.taskId === taskId);
 
           if (isForCurrent) {
-            setMessages(prev => [...prev, enriched]);
             requestAnimationFrame(() => scrollToBottom(true));
           } else {
             if (enriched.channel === 'global') setUnreadGlobal(c => c + 1);
@@ -332,7 +342,7 @@ export function ChatWidget() {
     load();
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      if (rtChannel) supabase.removeChannel(rtChannel);
     };
   }, [channel, taskId]);
 
@@ -461,14 +471,12 @@ export function ChatWidget() {
     if (el) el.scrollIntoView({ block: 'start', behavior: 'auto' });
   };
 
-  // After loading messages: go to first unread or bottom
+  // Trigger autoscroll when opening the chat window
   useEffect(() => {
-    if (loadingMessages) return;
+    if (!isOpen) return;
+    if (messages.length === 0) return;
     const key = getLastReadKey();
     const lastReadAt = localStorage.getItem(key);
-    if (messages.length === 0) return;
-
-    // Try to scroll to first unread
     if (lastReadAt) {
       const ts = new Date(lastReadAt).getTime();
       const target = messages.find(m => new Date(m.timestamp).getTime() > ts);
@@ -477,9 +485,8 @@ export function ChatWidget() {
         return;
       }
     }
-    // Fallback: bottom
     requestAnimationFrame(() => scrollToBottom(false));
-  }, [loadingMessages, channel, taskId]);
+  }, [isOpen]);
 
   // On new message appended by self -> scroll to bottom
   useEffect(() => {
