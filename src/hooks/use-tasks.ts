@@ -1,4 +1,4 @@
-import { useEffect } from '@/components/ai/AIAssistantAdvanced';
+import { useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Task } from '@/contexts/AppContext';
 import { sendTelegramNotification } from '@/services/telegram';
