@@ -10,7 +10,7 @@ import { ProductDialog } from "@/components/production/ProductDialog";
 import { ProductionDetailsDialog } from "@/components/production/ProductionDetailsDialog";
 import { QualityInspectionDialog } from "@/components/production/QualityInspectionDialog";
 import { ProductMaterialsDialog } from "@/components/production/ProductMaterialsDialog";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Production() {
   const { products, isLoading } = useProducts();
@@ -27,18 +28,68 @@ export default function Production() {
   const [selectedProductForInspection, setSelectedProductForInspection] = useState<string | null>(null);
   const [selectedChecklistForNew, setSelectedChecklistForNew] = useState<string | null>(null);
   const [selectedProductForMaterials, setSelectedProductForMaterials] = useState<{ id: string; name: string } | null>(null);
+  
+  // Состояние для материалов и их остатков
+  const [materialsData, setMaterialsData] = useState<any[]>([]);
+  const [productMaterialsData, setProductMaterialsData] = useState<any[]>([]);
+
+  // Загрузка данных о материалах
+  useEffect(() => {
+    const loadMaterialsData = async () => {
+      try {
+        // Загружаем справочник материалов
+        const { data: materials } = await (supabase as any)
+          .from('materials')
+          .select('id, name, stock_quantity, min_stock');
+
+        // Загружаем связи изделий с материалами
+        const { data: productMaterials } = await (supabase as any)
+          .from('product_materials')
+          .select('product_id, material_id, quantity, material:materials(id, name, stock_quantity, min_stock)');
+
+        setMaterialsData(materials || []);
+        setProductMaterialsData(productMaterials || []);
+      } catch (error) {
+        console.error('Error loading materials data:', error);
+      }
+    };
+
+    loadMaterialsData();
+  }, []);
 
   // Вычисление статистики на основе реальных данных
   const stats = useMemo(() => {
     const inProgress = products.filter(p => p.status === 'in_progress').length;
     const qualityCheck = products.filter(p => p.status === 'quality_check').length;
     const completed = products.filter(p => p.status === 'completed').length;
-    // Для "требуют материалов" и "на складе" нужны будут дополнительные данные из БД материалов
-    const needsMaterials = 0; // TODO: подключить таблицу материалов
-    const warehouse = 0; // TODO: подключить склад
+    
+    // Подсчёт изделий, которым не хватает материалов
+    const needsMaterials = products.filter(product => {
+      const productMaterials = productMaterialsData.filter(pm => pm.product_id === product.id);
+      
+      // Если у изделия нет материалов, считаем что материалы нужны
+      if (productMaterials.length === 0) return true;
+      
+      // Проверяем, хватает ли материалов для каждого
+      return productMaterials.some(pm => {
+        const material = pm.material;
+        if (!material) return true; // Если материал не найден, считаем что нужен
+        
+        const required = pm.quantity;
+        const available = material.stock_quantity || 0;
+        
+        return available < required;
+      });
+    }).length;
+    
+    // Подсчёт готовых изделий на складе (статус completed с quantity_in_stock > 0)
+    const warehouse = products.filter(p => 
+      p.status === 'completed' && 
+      (p.quantity_in_stock || 0) > 0
+    ).length;
     
     return { inProgress: inProgress + qualityCheck, completed, needsMaterials, warehouse };
-  }, [products]);
+  }, [products, productMaterialsData]);
 
   const handleStartInspection = async () => {
     if (!selectedProductForInspection || !selectedChecklistForNew) return;
@@ -155,6 +206,9 @@ export default function Production() {
         type={detailsType || 'inProgress'}
         open={!!detailsType}
         onOpenChange={(open) => !open && setDetailsType(null)}
+        products={products}
+        productMaterials={productMaterialsData}
+        materials={materialsData}
       />
 
       <Tabs defaultValue="products" className="space-y-4">
@@ -321,10 +375,10 @@ export default function Production() {
                         <div className="text-right">
                           <p className="text-2xl font-bold">{inspection.score}%</p>
                           <p className="text-xs text-muted-foreground">Оценка</p>
-                        </div>
+                  </div>
                       )}
-                    </div>
-                  ))}
+                </div>
+              ))}
                 </div>
               )}
             </CardContent>

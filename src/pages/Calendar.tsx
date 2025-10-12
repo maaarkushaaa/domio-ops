@@ -197,7 +197,7 @@ export default function Calendar() {
                   <Button type="submit">Сохранить</Button>
                 </div>
               ) : (
-                <Button type="submit" className="w-full">Создать</Button>
+              <Button type="submit" className="w-full">Создать</Button>
               )}
             </form>
           </DialogContent>
