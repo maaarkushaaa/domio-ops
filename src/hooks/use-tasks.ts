@@ -82,6 +82,7 @@ export const useTasks = () => {
         project_id: (task as any).project_id || null,
         assignee_id: (task as any).assignee_id || null,
         due_date: (task as any).due_date || null,
+        due_end: (task as any).due_end || null,
       })
       .select()
       .single();

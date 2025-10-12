@@ -98,18 +98,42 @@ export const useProjects = () => {
 
   const deleteProjectFromDB = async (projectId: string) => {
     try {
-      const { error } = await (supabase as any)
+      console.log('[PROJECT-DELETE] Starting delete for project', projectId);
+      
+      // Сначала проверяем, существует ли проект
+      const { data: existing, error: checkError } = await (supabase as any)
+        .from('projects')
+        .select('id, name')
+        .eq('id', projectId)
+        .single();
+      
+      if (checkError) {
+        console.error('[PROJECT-DELETE] Project check failed:', checkError);
+        throw checkError;
+      }
+      
+      console.log('[PROJECT-DELETE] Project exists:', existing);
+      
+      const { data: deleteResult, error } = await (supabase as any)
         .from('projects')
         .delete()
-        .eq('id', projectId);
+        .eq('id', projectId)
+        .select(); // Получаем удалённый проект для подтверждения
       
-      if (error) throw error;
+      if (error) {
+        console.error('[PROJECT-DELETE] Delete failed:', error);
+        throw error;
+      }
+      
+      console.log('[PROJECT-DELETE] Delete successful, deleted:', deleteResult);
       
       // Удаляем из локального стейта немедленно (оптимистичное обновление)
       deleteProject(projectId);
+      console.log('[PROJECT-DELETE] Local state updated');
       
       return true;
     } catch (err) {
+      console.error('[PROJECT-DELETE] Delete project failed:', err);
       throw err;
     }
   };

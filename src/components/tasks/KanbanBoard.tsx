@@ -67,16 +67,13 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
   };
 
   // Автопрокрутка при приближении к краю
-  const startAutoScroll = (touchX: number) => {
+  const startAutoScroll = () => {
+    // Запускаем только если ещё не запущен
+    if (autoScrollIntervalRef.current !== null) return;
     if (!containerRef.current) return;
 
     const scrollThreshold = 100; // Зона активации автопрокрутки (px от края)
     const scrollSpeed = 15; // Скорость прокрутки
-
-    // Очищаем предыдущий interval
-    if (autoScrollIntervalRef.current) {
-      clearInterval(autoScrollIntervalRef.current);
-    }
 
     autoScrollIntervalRef.current = window.setInterval(() => {
       if (!containerRef.current || !currentTouchPos) {
@@ -97,10 +94,8 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
       } else if (distanceFromRight < scrollThreshold && container.scrollLeft < (container.scrollWidth - container.clientWidth)) {
         // Прокрутка вправо
         container.scrollLeft += scrollSpeed;
-      } else if (distanceFromLeft >= scrollThreshold && distanceFromRight >= scrollThreshold) {
-        // Палец не в зоне прокрутки - останавливаем
-        stopAutoScroll();
       }
+      // Не останавливаем автоматически, пусть работает пока палец двигается
     }, 16); // ~60fps
   };
 
@@ -253,8 +248,8 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           const touch = e.touches[0];
                           setCurrentTouchPos({ x: touch.clientX, y: touch.clientY });
                           
-                          // Запускаем автопрокрутку
-                          startAutoScroll(touch.clientX);
+                          // Запускаем автопрокрутку (запустится только один раз)
+                          startAutoScroll();
                         }}
                         onTouchEnd={(e) => {
                           e.preventDefault();
