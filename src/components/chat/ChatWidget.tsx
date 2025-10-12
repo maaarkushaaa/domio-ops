@@ -164,6 +164,7 @@ export function ChatWidget() {
   const [unreadGlobal, setUnreadGlobal] = useState(0);
   const [unreadTasks, setUnreadTasks] = useState<Record<string, number>>({});
   const getUnreadCurrent = () => (channel === 'global' ? unreadGlobal : (taskId ? (unreadTasks[taskId] || 0) : 0));
+  const getUnreadTasksTotal = () => Object.values(unreadTasks).reduce((a, b) => a + b, 0);
   const [channel, setChannel] = useState<'global' | 'task'>('global');
   const [taskId, setTaskId] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -320,20 +321,29 @@ export function ChatWidget() {
             if (enriched.channel === 'global') setUnreadGlobal(c => c + 1);
             else if (enriched.channel === 'task' && enriched.taskId) setUnreadTasks(prev => ({ ...prev, [enriched.taskId!]: (prev[enriched.taskId!] || 0) + 1 }));
             setUnread(prev => prev + 1);
+            // Visual toast notification for messages in other channels
+            try {
+              toast({
+                title: enriched.channel === 'global' ? 'Новое сообщение в Общем' : 'Новое сообщение в Задачах',
+                description: enriched.message ? enriched.message.slice(0, 80) : 'Голосовое сообщение',
+              });
+            } catch {}
           }
 
-          // Play a short notification sound
+          // Play a short notification sound only if message is not in current view or чат закрыт
           try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = 880;
-            gain.gain.value = 0.05;
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            setTimeout(() => { osc.stop(); ctx.close(); }, 150);
+            if (!isForCurrent || !isOpen) {
+              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.value = 880;
+              gain.gain.value = 0.05;
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start();
+              setTimeout(() => { osc.stop(); ctx.close(); }, 150);
+            }
           } catch {}
         })
         .subscribe();
@@ -629,6 +639,8 @@ export function ChatWidget() {
     }
   };
 
+  const totalUnread = unreadGlobal + getUnreadTasksTotal();
+
   if (!isOpen) {
     const fabStyle = isMobile
       ? { right: 24, bottom: 150 } // статично на мобильном: справа внизу, выше AI assistant (увеличен отступ)
@@ -648,9 +660,9 @@ export function ChatWidget() {
         size="icon"
       >
         <MessageCircle className="h-6 w-6" />
-        {unread > 0 && (
+        {totalUnread > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] leading-none px-1.5 py-0.5 rounded-full">
-            {unread}
+            {totalUnread}
           </span>
         )}
       </Button>
@@ -704,7 +716,7 @@ export function ChatWidget() {
             </Button>
             <Button variant={channel==='task'? 'default':'outline'} size="sm" onClick={() => { setChannel('task'); setUnread(0); }}>
               <List className="h-3 w-3 mr-1" /> Задача
-              {taskId && (unreadTasks[taskId] || 0) > 0 && <span className="ml-1 inline-flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px]">{unreadTasks[taskId]}</span>}
+              {getUnreadTasksTotal() > 0 && <span className="ml-1 inline-flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px]">{getUnreadTasksTotal()}</span>}
             </Button>
           </div>
         </div>
