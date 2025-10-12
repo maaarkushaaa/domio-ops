@@ -144,18 +144,22 @@ begin
   end if;
 end $$;
 
--- Вставка демо-чек-листа "Стандартная проверка мебели"
-insert into public.quality_checklists (name, description, is_template)
-values ('Стандартная проверка мебели', 'Базовый чек-лист для контроля качества мебельных изделий', true)
+-- Вставка демо чек-листов
+insert into public.quality_checklists (name, description, is_template) values
+('Стандартная проверка мебели', 'Базовый чек-лист для контроля качества мебельных изделий', true),
+('3D модели - полный контроль', 'Проверка качества 3D моделей: полигональность, текстуры, оптимизация', true),
+('Проверка перед отгрузкой', 'Финальная проверка изделия перед отправкой клиенту', true),
+('Входной контроль материалов', 'Проверка качества поступивших материалов и комплектующих', true),
+('Экспресс-проверка', 'Быстрая проверка основных параметров изделия', true)
 on conflict do nothing;
 
--- Получаем ID созданного чек-листа и добавляем пункты проверки
+-- Добавляем пункты для каждого чек-листа
 do $$
 declare
   checklist_uuid uuid;
 begin
+  -- 1. Стандартная проверка мебели
   select id into checklist_uuid from public.quality_checklists where name = 'Стандартная проверка мебели' limit 1;
-  
   if checklist_uuid is not null then
     insert into public.quality_checks (checklist_id, name, category, is_required, sort_order) values
     (checklist_uuid, 'Проверка размеров изделия', 'measurements', true, 1),
@@ -164,8 +168,60 @@ begin
     (checklist_uuid, 'Финишная отделка (лак, краска)', 'finish', true, 4),
     (checklist_uuid, 'Цвет покрытия соответствует образцу', 'visual', false, 5),
     (checklist_uuid, 'Упаковка и маркировка', 'other', false, 6),
-    (checklist_uuid, 'UV-развёртка без наложений', 'visual', false, 7),
-    (checklist_uuid, 'Функциональность механизмов', 'functionality', true, 8)
+    (checklist_uuid, 'Функциональность механизмов', 'functionality', true, 7),
+    (checklist_uuid, 'Соответствие чертежам', 'measurements', true, 8)
+    on conflict do nothing;
+  end if;
+
+  -- 2. 3D модели - полный контроль
+  select id into checklist_uuid from public.quality_checklists where name = '3D модели - полный контроль' limit 1;
+  if checklist_uuid is not null then
+    insert into public.quality_checks (checklist_id, name, category, is_required, sort_order) values
+    (checklist_uuid, 'Поликаунт в пределах нормы (< 100K)', 'measurements', true, 1),
+    (checklist_uuid, 'PBR-карты созданы и оптимизированы', 'visual', true, 2),
+    (checklist_uuid, 'Вес GLB файла < 10MB', 'measurements', true, 3),
+    (checklist_uuid, 'Пройдена glTF-валидация', 'functionality', true, 4),
+    (checklist_uuid, 'Превью-рендер создан (2K, PNG)', 'visual', true, 5),
+    (checklist_uuid, 'UV-развертка без наложений', 'visual', true, 6),
+    (checklist_uuid, 'Нормали корректны', 'visual', false, 7),
+    (checklist_uuid, 'LOD-уровни созданы', 'other', false, 8),
+    (checklist_uuid, 'Материалы именованы правильно', 'other', true, 9),
+    (checklist_uuid, 'Модель центрирована', 'measurements', true, 10)
+    on conflict do nothing;
+  end if;
+
+  -- 3. Проверка перед отгрузкой
+  select id into checklist_uuid from public.quality_checklists where name = 'Проверка перед отгрузкой' limit 1;
+  if checklist_uuid is not null then
+    insert into public.quality_checks (checklist_id, name, category, is_required, sort_order) values
+    (checklist_uuid, 'Финальная визуальная проверка', 'visual', true, 1),
+    (checklist_uuid, 'Соответствие заказу клиента', 'other', true, 2),
+    (checklist_uuid, 'Упаковка (защита от повреждений)', 'other', true, 3),
+    (checklist_uuid, 'Комплектация (все детали на месте)', 'other', true, 4),
+    (checklist_uuid, 'Документация (инструкции, сертификаты)', 'other', true, 5),
+    (checklist_uuid, 'Маркировка и этикетки', 'other', true, 6)
+    on conflict do nothing;
+  end if;
+
+  -- 4. Входной контроль материалов
+  select id into checklist_uuid from public.quality_checklists where name = 'Входной контроль материалов' limit 1;
+  if checklist_uuid is not null then
+    insert into public.quality_checks (checklist_id, name, category, is_required, sort_order) values
+    (checklist_uuid, 'Соответствие спецификации', 'measurements', true, 1),
+    (checklist_uuid, 'Отсутствие повреждений', 'visual', true, 2),
+    (checklist_uuid, 'Сертификаты качества (если требуется)', 'other', true, 3),
+    (checklist_uuid, 'Количество соответствует накладной', 'measurements', true, 4),
+    (checklist_uuid, 'Маркировка и упаковка производителя', 'other', false, 5)
+    on conflict do nothing;
+  end if;
+
+  -- 5. Экспресс-проверка
+  select id into checklist_uuid from public.quality_checklists where name = 'Экспресс-проверка' limit 1;
+  if checklist_uuid is not null then
+    insert into public.quality_checks (checklist_id, name, category, is_required, sort_order) values
+    (checklist_uuid, 'Размеры в норме', 'measurements', true, 1),
+    (checklist_uuid, 'Нет видимых дефектов', 'visual', true, 2),
+    (checklist_uuid, 'Механизмы работают', 'functionality', true, 3)
     on conflict do nothing;
   end if;
 end $$;

@@ -3,12 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Plus, CheckCircle2, Clock, AlertTriangle, Package, ClipboardCheck } from "lucide-react";
+import { Plus, CheckCircle2, Clock, AlertTriangle, Package, ClipboardCheck, ListChecks } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
 import { useQualityControl } from "@/hooks/use-quality-control";
 import { ProductDialog } from "@/components/production/ProductDialog";
 import { ProductionDetailsDialog } from "@/components/production/ProductionDetailsDialog";
 import { QualityInspectionDialog } from "@/components/production/QualityInspectionDialog";
+import { ProductMaterialsDialog } from "@/components/production/ProductMaterialsDialog";
 import { useState, useMemo } from "react";
 import {
   Select,
@@ -25,6 +26,7 @@ export default function Production() {
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
   const [selectedProductForInspection, setSelectedProductForInspection] = useState<string | null>(null);
   const [selectedChecklistForNew, setSelectedChecklistForNew] = useState<string | null>(null);
+  const [selectedProductForMaterials, setSelectedProductForMaterials] = useState<{ id: string; name: string } | null>(null);
 
   // Вычисление статистики на основе реальных данных
   const stats = useMemo(() => {
@@ -40,11 +42,23 @@ export default function Production() {
 
   const handleStartInspection = async () => {
     if (!selectedProductForInspection || !selectedChecklistForNew) return;
-    const inspection = await createInspection(selectedProductForInspection, selectedChecklistForNew);
-    if (inspection) {
-      setSelectedInspectionId(inspection.id);
-      setSelectedProductForInspection(null);
-      setSelectedChecklistForNew(null);
+    
+    try {
+      console.log('Starting inspection for product:', selectedProductForInspection, 'with checklist:', selectedChecklistForNew);
+      const inspection = await createInspection(selectedProductForInspection, selectedChecklistForNew);
+      console.log('Inspection created:', inspection);
+      
+      if (inspection) {
+        setSelectedInspectionId(inspection.id);
+        setSelectedProductForInspection(null);
+        setSelectedChecklistForNew(null);
+      } else {
+        console.error('Failed to create inspection - returned null');
+        alert('Не удалось создать проверку. Проверьте, что таблицы контроля качества созданы в Supabase.');
+      }
+    } catch (error) {
+      console.error('Error creating inspection:', error);
+      alert('Ошибка при создании проверки: ' + (error as Error).message);
     }
   };
 
@@ -155,7 +169,7 @@ export default function Production() {
             <Card key={product.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1">
                     <CardTitle>{product.name}</CardTitle>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{getStatusLabel(product.status)}</Badge>
@@ -164,6 +178,14 @@ export default function Production() {
                       )}
                     </div>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedProductForMaterials({ id: product.id, name: product.name })}
+                  >
+                    <ListChecks className="h-4 w-4 mr-2" />
+                    Материалы
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -315,6 +337,14 @@ export default function Production() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Диалог материалов */}
+      <ProductMaterialsDialog
+        productId={selectedProductForMaterials?.id || null}
+        productName={selectedProductForMaterials?.name}
+        open={!!selectedProductForMaterials}
+        onOpenChange={(open) => !open && setSelectedProductForMaterials(null)}
+      />
     </div>
   );
 }
