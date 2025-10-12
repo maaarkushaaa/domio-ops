@@ -12,13 +12,21 @@ import { VoiceInput } from '@/components/voice/VoiceInput';
 interface TaskDialogProps {
   trigger?: React.ReactNode;
   onClose?: () => void;
+  defaultStatus?: TaskStatus;
+  openExternal?: boolean;
+  onOpenChangeExternal?: (open: boolean) => void;
 }
 
-export function TaskDialog({ trigger, onClose }: TaskDialogProps) {
-  const [open, setOpen] = useState(false);
+export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openExternal, onOpenChangeExternal }: TaskDialogProps) {
+  const [open, setOpenState] = useState(false);
+  const openState = openExternal ?? open;
+  const setOpen = (v: boolean) => {
+    if (onOpenChangeExternal) onOpenChangeExternal(v);
+    else setOpenState(v);
+  };
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<TaskStatus>('backlog');
+  const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [projectId, setProjectId] = useState('');
 
@@ -39,7 +47,7 @@ export function TaskDialog({ trigger, onClose }: TaskDialogProps) {
 
     setTitle('');
     setDescription('');
-    setStatus('backlog');
+    setStatus(defaultStatus);
     setPriority('medium');
     setProjectId('');
     setOpen(false);
@@ -47,7 +55,7 @@ export function TaskDialog({ trigger, onClose }: TaskDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={openState} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || <Button>Новая задача</Button>}
       </DialogTrigger>
@@ -138,6 +146,49 @@ export function TaskDialog({ trigger, onClose }: TaskDialogProps) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Отмена
             </Button>
+            <Button type="submit">Создать</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function ProjectDialog({ trigger }: { trigger?: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const { createProject } = useProjects() as any;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    createProject({ name: name.trim(), description: description.trim() || undefined, status: 'active', start_date: new Date().toISOString(), created_at: new Date().toISOString() } as any);
+    setName('');
+    setDescription('');
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || <Button variant="outline">Новый проект</Button>}
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Создать проект</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="pname">Название</Label>
+            <Input id="pname" value={name} onChange={(e) => setName(e.target.value)} placeholder="Название проекта" required />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pdesc">Описание</Label>
+            <Textarea id="pdesc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Описание проекта" rows={3} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
             <Button type="submit">Создать</Button>
           </div>
         </form>

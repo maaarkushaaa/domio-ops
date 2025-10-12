@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, MoreVertical, User, Kanban, List } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
-import { TaskDialog } from "@/components/tasks/TaskDialog";
+import { TaskDialog, ProjectDialog } from "@/components/tasks/TaskDialog";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
 import { TaskActionsMenu } from "@/components/tasks/TaskActionsMenu";
 
@@ -20,6 +20,8 @@ const columns = [
 export default function Tasks() {
   const { tasks, updateTask } = useTasks();
   const [view, setView] = useState<'list' | 'kanban'>('kanban');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogStatus, setDialogStatus] = useState<any>('backlog');
 
   const tasksByColumn = tasks.reduce((acc, task) => {
     if (!acc[task.status]) acc[task.status] = [];
@@ -62,12 +64,18 @@ export default function Tasks() {
               Список
             </Button>
           </div>
-          <TaskDialog trigger={
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Новая задача
-            </Button>
-          } />
+          <ProjectDialog trigger={<Button variant="outline">Новый проект</Button>} />
+          <TaskDialog
+            defaultStatus={dialogStatus}
+            openExternal={dialogOpen}
+            onOpenChangeExternal={setDialogOpen}
+            trigger={
+              <Button onClick={() => { setDialogStatus('backlog'); setDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Новая задача
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -85,7 +93,7 @@ export default function Tasks() {
                       {tasksByColumn[column.id]?.length || 0}
                     </Badge>
                   </CardTitle>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setDialogStatus(column.id); setDialogOpen(true); }}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
