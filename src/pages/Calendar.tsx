@@ -112,7 +112,7 @@ export default function Calendar() {
             <DialogHeader>
               <DialogTitle>{editingEvent ? 'Редактировать событие' : 'Новое событие'}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
               if (!newEventName || !newEventStart || !newEventType) return;
               const start = new Date(newEventStart);
@@ -125,9 +125,10 @@ export default function Calendar() {
                   .eq('id', editingEvent.id);
               } else {
                 // Insert in Supabase
+                const { data: userData } = await supabase.auth.getUser();
                 await (supabase as any)
                   .from('calendar_events')
-                  .insert({ title: newEventName, start_at: start.toISOString(), end_at: end ? end.toISOString() : null, type: newEventType, description: newEventDescription || null, created_by: (await supabase.auth.getUser()).data.user?.id })
+                  .insert({ title: newEventName, start_at: start.toISOString(), end_at: end ? end.toISOString() : null, type: newEventType, description: newEventDescription || null, created_by: userData.user?.id })
                   .select()
                   .single();
               }
