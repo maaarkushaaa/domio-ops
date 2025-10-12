@@ -345,7 +345,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       created_at: task.created_at || now,
       updated_at: task.updated_at || now,
     };
-    setState(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }));
+    setState(prev => {
+      const exists = prev.tasks.some(t => t.id === newTask.id);
+      return exists
+        ? { ...prev, tasks: prev.tasks.map(t => (t.id === newTask.id ? { ...t, ...newTask } : t)) }
+        : { ...prev, tasks: [...prev.tasks, newTask] };
+    });
   };
 
   const updateTask = (id: string, updates: Partial<Task>) => {
@@ -370,7 +375,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: project.id || Date.now().toString(),
       created_at: project.created_at || new Date().toISOString(),
     } as Project;
-    setState(prev => ({ ...prev, projects: [...prev.projects, newProject] }));
+    setState(prev => {
+      const exists = prev.projects.some(p => p.id === newProject.id);
+      return exists
+        ? { ...prev, projects: prev.projects.map(p => (p.id === newProject.id ? { ...p, ...newProject } : p)) }
+        : { ...prev, projects: [...prev.projects, newProject] };
+    });
   };
 
   const updateProject = (id: string, updates: Partial<Project>) => {

@@ -121,7 +121,10 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
             <Label>Проекты (список)</Label>
             <div className="max-h-28 overflow-y-auto rounded-md border p-2 text-sm space-y-1">
               {(projects || []).length === 0 ? (
-                <div className="text-muted-foreground">Нет проектов</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Нет проектов</span>
+                  <Button type="button" variant="link" className="px-0" onClick={() => window.location.reload()}>Обновить</Button>
+                </div>
               ) : (
                 projects.map((p) => (
                   <div key={p.id} className="flex items-center justify-between">

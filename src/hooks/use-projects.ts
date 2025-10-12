@@ -26,13 +26,13 @@ export const useProjects = () => {
 
       channel = supabase
         .channel('projects_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
-          const row: any = payload.new || payload.old;
-          if (payload.eventType === 'INSERT') {
-            addProject({ id: row.id, name: row.name, description: row.description, status: row.status, start_date: row.start_date, created_at: row.created_at } as any);
-          } else if (payload.eventType === 'UPDATE') {
-            updateProject(row.id, row);
-          }
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'projects' }, (payload) => {
+          const row: any = payload.new;
+          addProject({ id: row.id, name: row.name, description: row.description, status: row.status, start_date: row.start_date, created_at: row.created_at } as any);
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'projects' }, (payload) => {
+          const row: any = payload.new;
+          updateProject(row.id, row);
         })
         .subscribe();
     };
