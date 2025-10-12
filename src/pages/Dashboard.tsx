@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { TaskListDialog } from "@/components/dashboard/TaskListDialog";
 import { Task } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -34,6 +35,31 @@ export default function Dashboard() {
   const [dialogTasks, setDialogTasks] = useState<Task[]>([]);
   const [dialogVariant, setDialogVariant] = useState<'today' | 'overdue' | 'upcoming'>('today');
   const [eventsColOpen, setEventsColOpen] = useState<{open:boolean,event:any|null}>({open:false,event:null});
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  
+  // Загрузка событий календаря из Supabase + Realtime
+  useEffect(() => {
+    let ch: ReturnType<typeof supabase.channel> | null = null;
+    const loadCalendarEvents = async () => {
+      const now = new Date();
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      const threeMonthsLater = new Date(now.getFullYear(), now.getMonth() + 3, 0, 23, 59, 59);
+      const { data } = await (supabase as any)
+        .from('calendar_events')
+        .select('id, title, start_at, end_at, type, description')
+        .gte('start_at', threeMonthsAgo.toISOString())
+        .lte('start_at', threeMonthsLater.toISOString())
+        .order('start_at', { ascending: true });
+      setCalendarEvents(data || []);
+
+      ch = supabase
+        .channel('dashboard_calendar_events')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, () => loadCalendarEvents())
+        .subscribe();
+    };
+    loadCalendarEvents();
+    return () => { if (ch) supabase.removeChannel(ch); };
+  }, []);
   
   // Задачи на сегодня: начинаются сегодня или раньше И заканчиваются сегодня или позже (или не имеют конца)
   const today = new Date();
@@ -270,21 +296,56 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {/* Здесь предполагается подключение к реальному источнику событий; пока агрегируем из задач как дедлайны */}
-            {/* Если подключим таблицу calendar_events, заменим на её выборку */}
-            {tasks
-              .filter((t:any)=>t.due_date)
-              .map((t:any)=>({ id:t.id, title:t.title, date:new Date(t.due_date), endDate: t.due_end? new Date(t.due_end): undefined, type:'deadline' }))
-              .sort((a:any,b:any)=>a.date.getTime()-b.date.getTime())
-              .slice(0,10)
-              .map((ev:any)=> (
-                <div key={`ev-${ev.id}`} className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50" onClick={()=>setEventsColOpen({open:true,event:ev})}>
-                  <div>
-                    <p className="font-medium">{ev.title}</p>
-                    <p className="text-sm text-muted-foreground">{ev.date.toLocaleDateString('ru-RU')} {ev.endDate? '— '+ev.endDate.toLocaleDateString('ru-RU'):''}</p>
+            {/* Объединяем события календаря и задачи с дедлайнами */}
+            {(() => {
+              // Календарные события
+              const calEvs = calendarEvents.map((ce: any) => ({
+                id: ce.id,
+                title: ce.title,
+                date: new Date(ce.start_at),
+                endDate: ce.end_at ? new Date(ce.end_at) : undefined,
+                type: ce.type || 'event',
+                description: ce.description,
+                source: 'calendar'
+              }));
+              // Задачи с дедлайнами
+              const taskEvs = tasks
+                .filter((t: any) => t.due_date)
+                .map((t: any) => ({
+                  id: t.id,
+                  title: t.title,
+                  date: new Date(t.due_date),
+                  endDate: t.due_end ? new Date(t.due_end) : undefined,
+                  type: 'deadline',
+                  description: t.description,
+                  source: 'task'
+                }));
+              // Объединяем и сортируем по дате
+              const allEvents = [...calEvs, ...taskEvs]
+                .sort((a, b) => a.date.getTime() - b.date.getTime())
+                .slice(0, 15);
+              
+              return allEvents.map((ev: any) => (
+                <div
+                  key={`${ev.source}-${ev.id}`}
+                  className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
+                  onClick={() => setEventsColOpen({ open: true, event: ev })}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{ev.title}</p>
+                      <Badge variant={ev.type === 'deadline' ? 'destructive' : 'default'} className="text-xs">
+                        {ev.type === 'deadline' ? 'Дедлайн' : ev.type === 'meeting' ? 'Встреча' : ev.type === 'event' ? 'Событие' : 'Другое'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {ev.date.toLocaleDateString('ru-RU')}
+                      {ev.endDate ? ` — ${ev.endDate.toLocaleDateString('ru-RU')}` : ''}
+                    </p>
                   </div>
                 </div>
-              ))}
+              ));
+            })()}
           </div>
         </CardContent>
       </Card>
