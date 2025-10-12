@@ -111,7 +111,7 @@ interface AppContextType extends AppState {
   deleteProject: (id: string) => void;
   addClient: (client: Omit<Client, 'id' | 'created_at'>) => void;
   updateClient: (id: string, client: Partial<Client>) => void;
-  addProduct: (product: Omit<Product, 'id' | 'created_at'>) => void;
+  addProduct: (product: Omit<Product, 'id' | 'created_at'>) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => void;
   addFinancialOperation: (operation: Omit<FinancialOperation, 'id' | 'created_at'>) => void;
   addSupplier: (supplier: Omit<Supplier, 'id' | 'created_at'>) => void;
@@ -263,6 +263,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Загрузка продуктов из Supabase
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (!state.user) return;
+
+      try {
+        const { data, error } = await (supabase as any)
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error loading products:', error);
+          return;
+        }
+
+        setState(prev => ({ ...prev, products: data || [] }));
+        console.log('✅ Products loaded:', data?.length || 0);
+
+        // Realtime подписка на изменения
+        const channel = supabase
+          .channel('products_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+            loadProducts();
+          })
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      } catch (error) {
+        console.error('Error loading products:', error);
+      }
+    };
+
+    loadProducts();
+  }, [state.user]);
 
   const setUser = (user: User | null) => {
     console.log('👤 Setting user:', user ? `${user.email} (${user.role})` : 'null');
@@ -426,13 +464,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const addProduct = (product: Omit<Product, 'id' | 'created_at'>) => {
-    const newProduct: Product = {
-      ...product,
-      id: Date.now().toString(),
-      created_at: new Date().toISOString(),
-    };
-    setState(prev => ({ ...prev, products: [...prev.products, newProduct] }));
+  const addProduct = async (product: Omit<Product, 'id' | 'created_at'>) => {
+    try {
+      // Сохраняем в Supabase
+      const { data, error } = await (supabase as any)
+        .from('products')
+        .insert({
+          name: product.name,
+          sku: product.sku,
+          description: product.description,
+          status: product.status,
+          progress: product.progress,
+          assignee_id: product.assignee_id,
+          deadline: product.deadline,
+          unit_price: product.unit_price,
+          quantity_in_stock: product.quantity_in_stock,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating product:', error);
+        alert('Ошибка при создании изделия: ' + error.message);
+        return;
+      }
+
+      // Обновляем локальный стейт с реальным UUID из БД
+      setState(prev => ({ ...prev, products: [...prev.products, data] }));
+      console.log('Product created successfully:', data);
+    } catch (error) {
+      console.error('Error creating product:', error);
+      alert('Ошибка при создании изделия: ' + (error as Error).message);
+    }
   };
 
   const updateProduct = (id: string, updates: Partial<Product>) => {

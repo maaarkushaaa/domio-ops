@@ -19,11 +19,11 @@ export function ProductDialog({ trigger }: ProductDialogProps) {
 
   const { createProduct } = useProducts();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    createProduct({
+    await createProduct({
       name: name.trim(),
       description: description.trim() || undefined,
       status,
