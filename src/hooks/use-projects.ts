@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useProjects = () => {
-  const { projects, addProject, updateProject } = useApp();
+  const { projects, addProject, updateProject, deleteProject } = useApp();
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;

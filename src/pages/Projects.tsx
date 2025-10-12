@@ -156,8 +156,8 @@ export default function Projects() {
                   {(project as any).end_date && `Конец: ${new Date((project as any).end_date).toLocaleDateString('ru-RU')}`}
                 </div>
               )}
-              <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <Button size="sm" variant="outline" onClick={() => openEdit(project)} className="flex-1 sm:flex-initial">
+              <div className="flex flex-col gap-2 pt-2">
+                <Button size="sm" variant="outline" onClick={() => openEdit(project)} className="w-full">
                   <Edit2 className="h-3 w-3 mr-1" />
                   Редактировать
                 </Button>
@@ -166,7 +166,7 @@ export default function Projects() {
                     size="sm"
                     variant="outline"
                     onClick={() => toggleArchive(project.id, (project as any).status)}
-                    className="flex-1 sm:flex-initial"
+                    className="w-full"
                   >
                     <Archive className="h-3 w-3 mr-1" />
                     Архивировать
@@ -177,7 +177,7 @@ export default function Projects() {
                       size="sm"
                       variant="outline"
                       onClick={() => toggleArchive(project.id, (project as any).status)}
-                      className="flex-1 sm:flex-initial"
+                      className="w-full"
                     >
                       <ArchiveRestore className="h-3 w-3 mr-1" />
                       Разархивировать
@@ -186,7 +186,7 @@ export default function Projects() {
                       size="sm"
                       variant="destructive"
                       onClick={() => handleDelete(project.id, project.name)}
-                      className="flex-1 sm:flex-initial"
+                      className="w-full"
                     >
                       <Trash2 className="h-3 w-3 mr-1" />
                       Удалить
