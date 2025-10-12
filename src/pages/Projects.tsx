@@ -90,18 +90,21 @@ export default function Projects() {
     }
   };
 
-  const handleDelete = async (projectId: string, projectName: string) => {
-    try {
-      const confirmed = window.confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Это действие необратимо.`);
-      
-      if (!confirmed) {
-        return;
+  const handleDelete = (projectId: string, projectName: string) => {
+    // Используем setTimeout для обхода проблем с touch events на iOS
+    setTimeout(async () => {
+      try {
+        const confirmed = window.confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Это действие необратимо.`);
+        
+        if (!confirmed) {
+          return;
+        }
+        
+        await deleteProject(projectId);
+      } catch (e) {
+        alert('Ошибка при удалении проекта: ' + (e as any)?.message);
       }
-      
-      await deleteProject(projectId);
-    } catch (e) {
-      alert('Ошибка при удалении проекта: ' + (e as any)?.message);
-    }
+    }, 0);
   };
 
   return (
@@ -159,12 +162,9 @@ export default function Projects() {
               <div className="flex flex-col gap-2 pt-2">
                 <Button 
                   size="sm" 
-                  variant="outline" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openEdit(project);
-                  }}
+                  variant="outline"
+                  type="button"
+                  onClick={() => openEdit(project)}
                   className="w-full"
                 >
                   <Edit2 className="h-3 w-3 mr-1" />
@@ -174,11 +174,8 @@ export default function Projects() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggleArchive(project.id, (project as any).status);
-                    }}
+                    type="button"
+                    onClick={() => toggleArchive(project.id, (project as any).status)}
                     className="w-full"
                   >
                     <Archive className="h-3 w-3 mr-1" />
@@ -189,11 +186,8 @@ export default function Projects() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        toggleArchive(project.id, (project as any).status);
-                      }}
+                      type="button"
+                      onClick={() => toggleArchive(project.id, (project as any).status)}
                       className="w-full"
                     >
                       <ArchiveRestore className="h-3 w-3 mr-1" />
@@ -202,16 +196,8 @@ export default function Projects() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDelete(project.id, project.name);
-                      }}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDelete(project.id, project.name);
-                      }}
+                      type="button"
+                      onClick={() => handleDelete(project.id, project.name)}
                       className="w-full"
                     >
                       <Trash2 className="h-3 w-3 mr-1" />

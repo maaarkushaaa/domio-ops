@@ -159,31 +159,38 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                   <CardContent className="p-3 space-y-3">
                     <div className="flex items-start gap-2">
                       {/* Drag handle для мобильных */}
-                      <div
-                        className="touch-none cursor-grab active:cursor-grabbing pt-1 md:hidden"
+                      <button
+                        type="button"
+                        className="touch-none cursor-grab active:cursor-grabbing pt-1 md:hidden flex-shrink-0 p-1 -ml-1"
                         onTouchStart={(e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           const touch = e.touches[0];
                           setTouchStartY(touch.clientY);
                           setDraggedTask(task);
                           setIsDragging(true);
-                          // Отключаем выделение текста
+                          // Отключаем выделение текста и прокрутку
                           document.body.style.userSelect = 'none';
                           document.body.style.webkitUserSelect = 'none';
+                          document.body.style.overflow = 'hidden';
                         }}
                         onTouchMove={(e) => {
-                          if (!draggedTask || !touchStartY) return;
+                          if (!draggedTask) return;
                           e.preventDefault();
-                          const touch = e.touches[0];
-                          const deltaY = touch.clientY - touchStartY;
-                          
-                          // Визуальная обратная связь: прокрутка страницы не происходит
-                          if (Math.abs(deltaY) > 5) {
-                            setIsDragging(true);
-                          }
+                          e.stopPropagation();
+                          // Визуальная обратная связь включена
+                          setIsDragging(true);
                         }}
                         onTouchEnd={(e) => {
-                          if (!draggedTask) return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          
+                          if (!draggedTask) {
+                            document.body.style.userSelect = '';
+                            document.body.style.webkitUserSelect = '';
+                            document.body.style.overflow = '';
+                            return;
+                          }
                           
                           // Определяем, над какой колонкой палец
                           const touch = e.changedTouches[0];
@@ -201,10 +208,20 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                           setIsDragging(false);
                           document.body.style.userSelect = '';
                           document.body.style.webkitUserSelect = '';
+                          document.body.style.overflow = '';
+                        }}
+                        onTouchCancel={() => {
+                          // На случай если touch прервался
+                          setDraggedTask(null);
+                          setTouchStartY(null);
+                          setIsDragging(false);
+                          document.body.style.userSelect = '';
+                          document.body.style.webkitUserSelect = '';
+                          document.body.style.overflow = '';
                         }}
                       >
                         <GripVertical className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                      </button>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
