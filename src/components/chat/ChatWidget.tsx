@@ -160,6 +160,10 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [unread, setUnread] = useState(0);
+  // Per-channel unread counters
+  const [unreadGlobal, setUnreadGlobal] = useState(0);
+  const [unreadTasks, setUnreadTasks] = useState<Record<string, number>>({});
+  const getUnreadCurrent = () => (channel === 'global' ? unreadGlobal : (taskId ? (unreadTasks[taskId] || 0) : 0));
   const [channel, setChannel] = useState<'global' | 'task'>('global');
   const [taskId, setTaskId] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -243,6 +247,8 @@ export function ChatWidget() {
           taskId: m.task_id,
         }));
         setMessages(loaded);
+        // Ensure scroll after first paint
+        setTimeout(() => scrollToBottom(false), 0);
 
         // Backfill names
         const uniqueUserIds = Array.from(new Set(loaded.map(m => m.userId)));
@@ -299,8 +305,10 @@ export function ChatWidget() {
 
           if (isForCurrent) {
             setMessages(prev => [...prev, enriched]);
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            requestAnimationFrame(() => scrollToBottom(true));
           } else {
+            if (enriched.channel === 'global') setUnreadGlobal(c => c + 1);
+            else if (enriched.channel === 'task' && enriched.taskId) setUnreadTasks(prev => ({ ...prev, [enriched.taskId!]: (prev[enriched.taskId!] || 0) + 1 }));
             setUnread(prev => prev + 1);
           }
 
@@ -446,9 +454,7 @@ export function ChatWidget() {
 
   // Scroll helpers
   const scrollToBottom = (smooth = false) => {
-    const el = messagesWrapRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
   };
   const scrollToMessage = (id: string) => {
     const el = document.getElementById(`msg-${id}`);
@@ -461,14 +467,18 @@ export function ChatWidget() {
     const key = getLastReadKey();
     const lastReadAt = localStorage.getItem(key);
     if (messages.length === 0) return;
+
+    // Try to scroll to first unread
     if (lastReadAt) {
-      const target = messages.find(m => new Date(m.timestamp).getTime() > new Date(lastReadAt).getTime());
+      const ts = new Date(lastReadAt).getTime();
+      const target = messages.find(m => new Date(m.timestamp).getTime() > ts);
       if (target) {
-        setTimeout(() => scrollToMessage(target.id), 0);
+        requestAnimationFrame(() => scrollToMessage(target.id));
         return;
       }
     }
-    setTimeout(() => scrollToBottom(false), 0);
+    // Fallback: bottom
+    requestAnimationFrame(() => scrollToBottom(false));
   }, [loadingMessages, channel, taskId]);
 
   // On new message appended by self -> scroll to bottom
@@ -480,9 +490,17 @@ export function ChatWidget() {
 
   // Persist last read when closing or switching channel
   useEffect(() => {
-    return () => {
+    const save = () => {
       const key = getLastReadKey();
       localStorage.setItem(key, new Date().toISOString());
+      // Reset unread counter for current channel
+      if (channel === 'global') setUnreadGlobal(0);
+      else if (channel === 'task' && taskId) setUnreadTasks(prev => ({ ...prev, [taskId]: 0 }));
+    };
+    window.addEventListener('beforeunload', save);
+    return () => {
+      save();
+      window.removeEventListener('beforeunload', save);
     };
   }, [channel, taskId]);
 
@@ -659,7 +677,7 @@ export function ChatWidget() {
 
   return (
     <Card className={chatClasses} style={chatStyle}>
-      <CardHeader className="flex flex-row items-center justify-between p-4 border-b cursor-move flex-shrink-0"
+      <CardHeader className="relative flex flex-row items-center justify-between p-4 border-b cursor-move flex-shrink-0"
         onMouseDown={!isMobile ? (e) => {
           draggingRef.current = { type: 'chat', dx: e.clientX - chatPos.x, dy: e.clientY - chatPos.y };
           const onMove = (ev: MouseEvent) => setChatPos({ x: ev.clientX - draggingRef.current.dx, y: ev.clientY - draggingRef.current.dy });
@@ -671,15 +689,20 @@ export function ChatWidget() {
           <MessageCircle className="h-4 w-4 text-primary" />
           Чат команды
         </CardTitle>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap pr-16">
           <div className="flex items-center gap-1 text-xs flex-wrap">
             <Button variant={channel==='global'? 'default':'outline'} size="sm" onClick={() => { setChannel('global'); setUnread(0); }}>
               <Hash className="h-3 w-3 mr-1" /> Общий
+              {unreadGlobal > 0 && <span className="ml-1 inline-flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px]">{unreadGlobal}</span>}
             </Button>
             <Button variant={channel==='task'? 'default':'outline'} size="sm" onClick={() => { setChannel('task'); setUnread(0); }}>
               <List className="h-3 w-3 mr-1" /> Задача
+              {taskId && (unreadTasks[taskId] || 0) > 0 && <span className="ml-1 inline-flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px]">{unreadTasks[taskId]}</span>}
             </Button>
           </div>
+        </div>
+        {/* Absolute controls on the right to avoid wrapping under buttons */}
+        <div className="absolute right-2 top-2 flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsMinimized(true)}>
             <Minimize2 className="h-3 w-3" />
           </Button>
