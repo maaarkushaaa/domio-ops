@@ -34,6 +34,10 @@ export const useProjects = () => {
           const row: any = payload.new;
           updateProject(row.id, row);
         })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'projects' }, (payload) => {
+          const row: any = payload.old;
+          deleteProject(row.id);
+        })
         .subscribe();
     };
 
@@ -86,10 +90,32 @@ export const useProjects = () => {
     }
   };
 
+  const deleteProjectFromDB = async (projectId: string) => {
+    try {
+      console.log('[PROJECT-DELETE] Deleting project', projectId);
+      const { error } = await (supabase as any)
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+      if (error) {
+        console.error('[PROJECT-DELETE] Delete project error:', error);
+        throw error;
+      }
+      console.log('[PROJECT-DELETE] Project deleted successfully');
+      // Realtime удалит из локального стейта автоматически
+      deleteProject(projectId);
+      return true;
+    } catch (err) {
+      console.error('[PROJECT-DELETE] Delete project failed:', err);
+      throw err;
+    }
+  };
+
   return {
     projects,
     isLoading: false,
     createProject,
     updateProjectStatus,
+    deleteProject: deleteProjectFromDB,
   };
 };

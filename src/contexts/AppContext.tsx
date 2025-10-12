@@ -107,6 +107,7 @@ interface AppContextType extends AppState {
   deleteTask: (id: string) => void;
   addProject: (project: Omit<Project, 'id' | 'created_at'>) => void;
   updateProject: (id: string, project: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
   addClient: (client: Omit<Client, 'id' | 'created_at'>) => void;
   updateClient: (id: string, client: Partial<Client>) => void;
   addProduct: (product: Omit<Product, 'id' | 'created_at'>) => void;
@@ -392,6 +393,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const deleteProject = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      projects: prev.projects.filter(project => project.id !== id),
+    }));
+  };
+
   const addClient = (client: Omit<Client, 'id' | 'created_at'>) => {
     const newClient: Client = {
       ...client,
@@ -460,6 +468,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteTask,
         addProject,
         updateProject,
+        deleteProject,
         addClient,
         updateClient,
         addProduct,

@@ -165,17 +165,45 @@ export const useTasks = () => {
 
   const listComments = async (taskId: string) => {
     console.log('[COMMENT-LIST] Fetching comments for task', taskId);
-    const { data, error } = await (supabase as any)
+    
+    // Сначала получаем комментарии
+    const { data: commentsData, error: commentsError } = await (supabase as any)
       .from('task_comments')
-      .select('id, content, created_at, author:profiles(full_name,email)')
+      .select('id, content, created_at, author_id')
       .eq('task_id', taskId)
       .order('created_at', { ascending: true });
-    if (error) {
-      console.error('[COMMENT-LIST] Error fetching comments:', error);
-      throw error;
+    
+    if (commentsError) {
+      console.error('[COMMENT-LIST] Error fetching comments:', commentsError);
+      throw commentsError;
     }
-    console.log('[COMMENT-LIST] Fetched', data?.length || 0, 'comments');
-    return data;
+    
+    if (!commentsData || commentsData.length === 0) {
+      console.log('[COMMENT-LIST] No comments found');
+      return [];
+    }
+    
+    // Затем получаем профили авторов
+    const authorIds = [...new Set(commentsData.map((c: any) => c.author_id))];
+    const { data: profilesData, error: profilesError } = await (supabase as any)
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', authorIds);
+    
+    if (profilesError) {
+      console.error('[COMMENT-LIST] Error fetching profiles:', profilesError);
+      // Продолжаем без профилей
+    }
+    
+    // Объединяем данные
+    const profilesMap = new Map((profilesData || []).map((p: any) => [p.id, p]));
+    const result = commentsData.map((c: any) => ({
+      ...c,
+      author: profilesMap.get(c.author_id) || { full_name: 'Пользователь', email: '' }
+    }));
+    
+    console.log('[COMMENT-LIST] Fetched', result.length, 'comments with profiles');
+    return result;
   };
 
   return {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Archive, Edit2, ArchiveRestore } from 'lucide-react';
+import { Plus, Archive, Edit2, ArchiveRestore, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { useProjects } from '@/hooks/use-projects';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Projects() {
-  const { projects, updateProjectStatus } = useProjects();
+  const { projects, updateProjectStatus, deleteProject } = useProjects();
   const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -90,6 +90,20 @@ export default function Projects() {
     }
   };
 
+  const handleDelete = async (projectId: string, projectName: string) => {
+    if (!confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Это действие необратимо.`)) {
+      return;
+    }
+    console.log('[PROJECT-DELETE] User confirmed deletion of project', projectId);
+    try {
+      await deleteProject(projectId);
+      console.log('[PROJECT-DELETE] Project deleted successfully from UI');
+    } catch (e) {
+      console.error('[PROJECT-DELETE] Delete error', e);
+      alert('Ошибка при удалении проекта: ' + (e as any)?.message);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -147,24 +161,38 @@ export default function Projects() {
                   <Edit2 className="h-3 w-3 mr-1" />
                   Редактировать
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => toggleArchive(project.id, (project as any).status)}
-                  className="flex-1 sm:flex-initial"
-                >
-                  {(project as any).status === 'active' ? (
-                    <>
-                      <Archive className="h-3 w-3 mr-1" />
-                      Архивировать
-                    </>
-                  ) : (
-                    <>
+                {(project as any).status === 'active' ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => toggleArchive(project.id, (project as any).status)}
+                    className="flex-1 sm:flex-initial"
+                  >
+                    <Archive className="h-3 w-3 mr-1" />
+                    Архивировать
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => toggleArchive(project.id, (project as any).status)}
+                      className="flex-1 sm:flex-initial"
+                    >
                       <ArchiveRestore className="h-3 w-3 mr-1" />
                       Разархивировать
-                    </>
-                  )}
-                </Button>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDelete(project.id, project.name)}
+                      className="flex-1 sm:flex-initial"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Удалить
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
