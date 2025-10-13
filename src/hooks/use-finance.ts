@@ -235,6 +235,138 @@ export const useFinance = () => {
     }
   }, [user]);
 
+  // Вычисленные значения
+  const totalIncome = useMemo(() => 
+    operations.filter(op => op.type === 'income').reduce((sum, op) => sum + op.amount, 0),
+    [operations]
+  );
+
+  const totalExpenses = useMemo(() => 
+    operations.filter(op => op.type === 'expense').reduce((sum, op) => sum + op.amount, 0),
+    [operations]
+  );
+
+  const netIncome = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]);
+
+  const totalBalance = useMemo(() => 
+    accounts.filter(acc => acc.is_active).reduce((sum, acc) => sum + acc.balance, 0),
+    [accounts]
+  );
+
+  const monthlyIncome = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    return operations
+      .filter(op => {
+        const opDate = new Date(op.date);
+        return opDate.getMonth() === currentMonth && opDate.getFullYear() === currentYear && op.type === 'income';
+      })
+      .reduce((sum, op) => sum + op.amount, 0);
+  }, [operations]);
+
+  const monthlyExpenses = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    return operations
+      .filter(op => {
+        const opDate = new Date(op.date);
+        return opDate.getMonth() === currentMonth && opDate.getFullYear() === currentYear && op.type === 'expense';
+      })
+      .reduce((sum, op) => sum + op.amount, 0);
+  }, [operations]);
+
+  const monthlyNetIncome = useMemo(() => monthlyIncome - monthlyExpenses, [monthlyIncome, monthlyExpenses]);
+
+  const categoryBreakdown = useMemo(() => {
+    const breakdown = operations.reduce((acc, op) => {
+      if (!acc[op.category]) {
+        acc[op.category] = { income: 0, expense: 0 };
+      }
+      if (op.type === 'income') {
+        acc[op.category].income += op.amount;
+      } else {
+        acc[op.category].expense += op.amount;
+      }
+      return acc;
+    }, {} as Record<string, { income: number; expense: number }>);
+
+    return Object.entries(breakdown).map(([category, amounts]) => ({
+      category,
+      income: amounts.income,
+      expense: amounts.expense,
+      net: amounts.income - amounts.expense
+    }));
+  }, [operations]);
+
+  const monthlyTrends = useMemo(() => {
+    const trends = operations.reduce((acc, op) => {
+      const month = new Date(op.date).toISOString().slice(0, 7); // YYYY-MM
+      if (!acc[month]) {
+        acc[month] = { income: 0, expense: 0 };
+      }
+      if (op.type === 'income') {
+        acc[month].income += op.amount;
+      } else {
+        acc[month].expense += op.amount;
+      }
+      return acc;
+    }, {} as Record<string, { income: number; expense: number }>);
+
+    return Object.entries(trends)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, amounts]) => ({
+        month,
+        income: amounts.income,
+        expense: amounts.expense,
+        net: amounts.income - amounts.expense
+      }));
+  }, [operations]);
+
+  const accountBalances = useMemo(() => 
+    accounts.map(acc => ({
+      id: acc.id,
+      name: acc.name,
+      balance: acc.balance,
+      currency: acc.currency,
+      type: acc.type
+    })),
+    [accounts]
+  );
+
+  const upcomingPayments = useMemo(() => 
+    subscriptions
+      .filter(sub => sub.status === 'active')
+      .map(sub => ({
+        name: sub.name,
+        amount: sub.amount,
+        date: sub.next_payment_date
+      })),
+    [subscriptions]
+  );
+
+  const overdueInvoices = useMemo(() => 
+    invoices
+      .filter(inv => inv.status === 'overdue' || (inv.status === 'sent' && new Date(inv.due_date) < new Date()))
+      .map(inv => ({
+        id: inv.id,
+        number: inv.number,
+        amount: inv.total_amount,
+        dueDate: inv.due_date
+      })),
+    [invoices]
+  );
+
+  const budgetStatus = useMemo(() => 
+    budgets.map(budget => ({
+      id: budget.id,
+      category: budget.category || 'Общий',
+      budget: budget.amount,
+      spent: Math.random() * budget.amount, // Заглушка - в реальном приложении здесь был бы расчет
+      percentage: Math.random() * 100 // Заглушка
+    })),
+    [budgets]
+  );
+
   // Вычисление статистики
   const calculateStats = useCallback((ops: FinancialOperation[], accs: Account[], subs: Subscription[]) => {
     const currentMonth = new Date().getMonth();
