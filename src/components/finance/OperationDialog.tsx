@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -148,6 +148,9 @@ export function OperationDialog({ trigger, accountId, operation, onSuccess }: Op
           <DialogTitle>
             {isEdit ? 'Редактировать операцию' : 'Создать операцию'}
           </DialogTitle>
+          <DialogDescription>
+            {isEdit ? 'Измените данные финансовой операции' : 'Создайте новую финансовую операцию'}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">

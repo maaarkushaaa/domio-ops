@@ -853,7 +853,7 @@ export const useFinance = () => {
   // Загрузка данных при монтировании
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [user]); // Зависим только от user, а не от loadData
 
   // Realtime подписки
   useEffect(() => {
