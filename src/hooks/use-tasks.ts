@@ -92,6 +92,12 @@ export const useTasks = () => {
     // add with DB id (realtime may also insert same id; addTask in context dedupes by id)
     addTask({ id: data.id, ...data } as any);
     sendTelegramNotification({ title: 'Новая задача', message: `Создана задача: "${task.title}"`, type: 'info' });
+    
+    // Добавляем уведомление в систему
+    if ((window as any).notifyTaskCreated) {
+      (window as any).notifyTaskCreated(task.title);
+    }
+    
     return data;
   };
 
@@ -128,6 +134,11 @@ export const useTasks = () => {
           payload: updates,
         });
       console.log('[TASK-UPDATE] Activity logged');
+      
+      // Добавляем уведомление в систему
+      if ((window as any).notifyTaskUpdated) {
+        (window as any).notifyTaskUpdated(data.title);
+      }
     } catch (err) {
       console.error('[TASK-UPDATE] Update task failed:', err);
       alert('Ошибка при обновлении задачи: ' + (err as any)?.message);
@@ -136,12 +147,21 @@ export const useTasks = () => {
   };
 
   const deleteTaskWithSupabase = async (id: string) => {
+    // Получаем название задачи перед удалением для уведомления
+    const task = tasks.find(t => t.id === id);
+    const taskTitle = task?.title || 'Неизвестная задача';
+    
     const { error } = await (supabase as any)
       .from('tasks')
       .delete()
       .eq('id', id);
     if (error) throw error;
     deleteTask(id);
+    
+    // Добавляем уведомление в систему
+    if ((window as any).notifyTaskDeleted) {
+      (window as any).notifyTaskDeleted(taskTitle);
+    }
   };
 
   // Comments API
@@ -158,6 +178,14 @@ export const useTasks = () => {
         throw error;
       }
       console.log('[COMMENT-CREATE] Comment created successfully, data:', data);
+      
+      // Добавляем уведомление в систему
+      if ((window as any).notifyCommentAdded) {
+        const task = tasks.find(t => t.id === taskId);
+        const taskTitle = task?.title || 'Неизвестная задача';
+        (window as any).notifyCommentAdded(taskTitle, 'Пользователь');
+      }
+      
       return data;
     } catch (err) {
       console.error('[COMMENT-CREATE] Create comment failed:', err);

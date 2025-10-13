@@ -453,6 +453,106 @@ export function useActionNotifications() {
     }
   }, [notifyError, notifyWarning]);
 
+  // Уведомления для задач
+  const notifyTaskCreated = useCallback((taskTitle: string) => {
+    notifySuccess(
+      'Задача создана',
+      `Задача "${taskTitle}" успешно добавлена`,
+      [
+        {
+          label: 'Открыть',
+          action: () => {
+            console.log('Opening task:', taskTitle);
+          }
+        }
+      ]
+    );
+  }, [notifySuccess]);
+
+  const notifyTaskUpdated = useCallback((taskTitle: string) => {
+    notifyInfo(
+      'Задача обновлена',
+      `Задача "${taskTitle}" была изменена`
+    );
+  }, [notifyInfo]);
+
+  const notifyTaskDeleted = useCallback((taskTitle: string) => {
+    notifyWarning(
+      'Задача удалена',
+      `Задача "${taskTitle}" удалена из системы`,
+      [
+        {
+          label: 'Отменить',
+          action: () => {
+            console.log('Restoring task:', taskTitle);
+          },
+          variant: 'outline'
+        }
+      ]
+    );
+  }, [notifyWarning]);
+
+  const notifyTaskCompleted = useCallback((taskTitle: string) => {
+    notifySuccess(
+      'Задача завершена',
+      `Задача "${taskTitle}" успешно выполнена`
+    );
+  }, [notifySuccess]);
+
+  const notifyTaskAssigned = useCallback((taskTitle: string, assigneeName: string) => {
+    notifyInfo(
+      'Задача назначена',
+      `Задача "${taskTitle}" назначена пользователю ${assigneeName}`
+    );
+  }, [notifyInfo]);
+
+  // Уведомления для проектов
+  const notifyProjectCreated = useCallback((projectName: string) => {
+    notifySuccess(
+      'Проект создан',
+      `Проект "${projectName}" успешно добавлен`,
+      [
+        {
+          label: 'Открыть',
+          action: () => {
+            console.log('Opening project:', projectName);
+          }
+        }
+      ]
+    );
+  }, [notifySuccess]);
+
+  const notifyProjectUpdated = useCallback((projectName: string) => {
+    notifyInfo(
+      'Проект обновлен',
+      `Проект "${projectName}" был изменен`
+    );
+  }, [notifyInfo]);
+
+  const notifyProjectDeleted = useCallback((projectName: string) => {
+    notifyWarning(
+      'Проект удален',
+      `Проект "${projectName}" удален из системы`,
+      [
+        {
+          label: 'Отменить',
+          action: () => {
+            console.log('Restoring project:', projectName);
+          },
+          variant: 'outline'
+        }
+      ]
+    );
+  }, [notifyWarning]);
+
+  // Уведомления для комментариев
+  const notifyCommentAdded = useCallback((taskTitle: string, authorName: string) => {
+    notifyInfo(
+      'Новый комментарий',
+      `Добавлен комментарий к задаче "${taskTitle}" от ${authorName}`
+    );
+  }, [notifyInfo]);
+
   return {
     notifySuccess,
     notifyError,
@@ -469,5 +569,14 @@ export function useActionNotifications() {
     notifyProgressUpdated,
     notifyLowStock,
     notifyDeadlineApproaching,
+    notifyTaskCreated,
+    notifyTaskUpdated,
+    notifyTaskDeleted,
+    notifyTaskCompleted,
+    notifyTaskAssigned,
+    notifyProjectCreated,
+    notifyProjectUpdated,
+    notifyProjectDeleted,
+    notifyCommentAdded,
   };
 }

@@ -16,7 +16,16 @@ export function NotificationIntegration() {
     notifyCSVImport,
     notifyProgressUpdated,
     notifyLowStock,
-    notifyDeadlineApproaching
+    notifyDeadlineApproaching,
+    notifyTaskCreated,
+    notifyTaskUpdated,
+    notifyTaskDeleted,
+    notifyTaskCompleted,
+    notifyTaskAssigned,
+    notifyProjectCreated,
+    notifyProjectUpdated,
+    notifyProjectDeleted,
+    notifyCommentAdded
   } = useActionNotifications();
 
   // Экспортируем функции для использования в других компонентах
@@ -33,6 +42,15 @@ export function NotificationIntegration() {
     (window as any).notifyProgressUpdated = notifyProgressUpdated;
     (window as any).notifyLowStock = notifyLowStock;
     (window as any).notifyDeadlineApproaching = notifyDeadlineApproaching;
+    (window as any).notifyTaskCreated = notifyTaskCreated;
+    (window as any).notifyTaskUpdated = notifyTaskUpdated;
+    (window as any).notifyTaskDeleted = notifyTaskDeleted;
+    (window as any).notifyTaskCompleted = notifyTaskCompleted;
+    (window as any).notifyTaskAssigned = notifyTaskAssigned;
+    (window as any).notifyProjectCreated = notifyProjectCreated;
+    (window as any).notifyProjectUpdated = notifyProjectUpdated;
+    (window as any).notifyProjectDeleted = notifyProjectDeleted;
+    (window as any).notifyCommentAdded = notifyCommentAdded;
   }, [
     notifyProductCreated,
     notifyProductUpdated,
@@ -44,7 +62,16 @@ export function NotificationIntegration() {
     notifyCSVImport,
     notifyProgressUpdated,
     notifyLowStock,
-    notifyDeadlineApproaching
+    notifyDeadlineApproaching,
+    notifyTaskCreated,
+    notifyTaskUpdated,
+    notifyTaskDeleted,
+    notifyTaskCompleted,
+    notifyTaskAssigned,
+    notifyProjectCreated,
+    notifyProjectUpdated,
+    notifyProjectDeleted,
+    notifyCommentAdded
   ]);
 
   // Отслеживаем изменения продуктов для оповещений
@@ -69,7 +96,16 @@ export function useAppNotifications() {
     notifyCSVImport,
     notifyProgressUpdated,
     notifyLowStock,
-    notifyDeadlineApproaching
+    notifyDeadlineApproaching,
+    notifyTaskCreated,
+    notifyTaskUpdated,
+    notifyTaskDeleted,
+    notifyTaskCompleted,
+    notifyTaskAssigned,
+    notifyProjectCreated,
+    notifyProjectUpdated,
+    notifyProjectDeleted,
+    notifyCommentAdded
   } = useActionNotifications();
 
   return {
@@ -83,6 +119,15 @@ export function useAppNotifications() {
     notifyCSVImport,
     notifyProgressUpdated,
     notifyLowStock,
-    notifyDeadlineApproaching
+    notifyDeadlineApproaching,
+    notifyTaskCreated,
+    notifyTaskUpdated,
+    notifyTaskDeleted,
+    notifyTaskCompleted,
+    notifyTaskAssigned,
+    notifyProjectCreated,
+    notifyProjectUpdated,
+    notifyProjectDeleted,
+    notifyCommentAdded
   };
 }
