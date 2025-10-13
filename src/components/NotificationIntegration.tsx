@@ -31,6 +31,10 @@ export function NotificationIntegration() {
   // Экспортируем функции для использования в других компонентах
   React.useEffect(() => {
     // Экспортируем функции в window для глобального доступа
+    (window as any).notifySuccess = notifySuccess;
+    (window as any).notifyError = notifyError;
+    (window as any).notifyWarning = notifyWarning;
+    (window as any).notifyInfo = notifyInfo;
     (window as any).notifyProductCreated = notifyProductCreated;
     (window as any).notifyProductUpdated = notifyProductUpdated;
     (window as any).notifyProductDeleted = notifyProductDeleted;
@@ -52,6 +56,10 @@ export function NotificationIntegration() {
     (window as any).notifyProjectDeleted = notifyProjectDeleted;
     (window as any).notifyCommentAdded = notifyCommentAdded;
   }, [
+    notifySuccess,
+    notifyError,
+    notifyWarning,
+    notifyInfo,
     notifyProductCreated,
     notifyProductUpdated,
     notifyProductDeleted,
@@ -86,6 +94,10 @@ export function NotificationIntegration() {
 // Хук для использования оповещений в компонентах
 export function useAppNotifications() {
   const { 
+    notifySuccess,
+    notifyError,
+    notifyWarning,
+    notifyInfo,
     notifyProductCreated, 
     notifyProductUpdated, 
     notifyProductDeleted,
@@ -109,6 +121,10 @@ export function useAppNotifications() {
   } = useActionNotifications();
 
   return {
+    notifySuccess,
+    notifyError,
+    notifyWarning,
+    notifyInfo,
     notifyProductCreated,
     notifyProductUpdated,
     notifyProductDeleted,

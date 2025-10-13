@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "8.0.0-ultra-deep-fix-notifications",
+  "version": "9.0.0-ultra-deep-fix-notifications-missing",
   "type": "module",
   "scripts": {
     "dev": "vite",
