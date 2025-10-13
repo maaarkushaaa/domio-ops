@@ -88,9 +88,46 @@ export function NotificationSettingsPage() {
               />
             </div>
 
+            {/* Выбор типа звука */}
+            {settings.sounds && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Тип звука</Label>
+                <Select
+                  value={settings.soundType}
+                  onValueChange={(value: any) => updateSettings({ soundType: value })}
+                  disabled={!settings.enabled || !settings.sounds}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">По умолчанию</SelectItem>
+                    <SelectItem value="beep">Звуковой сигнал</SelectItem>
+                    <SelectItem value="chime">Мелодичный звон</SelectItem>
+                    <SelectItem value="notification">Уведомление</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <Separator />
 
-            {/* Desktop уведомления */}
+            {/* Режим тестирования */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Режим тестирования</Label>
+                <p className="text-xs text-muted-foreground">
+                  Показывать кнопку принудительного теста в области уведомлений
+                </p>
+              </div>
+              <Switch
+                checked={settings.testMode}
+                onCheckedChange={(checked) => updateSettings({ testMode: checked })}
+                disabled={!settings.enabled}
+              />
+            </div>
+
+            <Separator />
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm font-medium flex items-center gap-2">
