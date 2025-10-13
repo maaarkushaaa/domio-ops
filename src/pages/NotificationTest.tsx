@@ -17,19 +17,27 @@ import {
 } from 'lucide-react';
 
 export function NotificationTestPage() {
-  const { addNotification } = useNotifications();
+  const { addNotification, notifications } = useNotifications();
+
+  // Отладочная информация
+  console.log('Current notifications:', notifications);
+  console.log('addNotification function:', addNotification);
 
   const testScenarios = [
     {
       title: 'Успешное уведомление',
       description: 'Тест успешного уведомления',
       icon: CheckCircle,
-      action: () => addNotification({
-        type: 'success',
-        title: 'Успех!',
-        message: 'Операция выполнена успешно',
-        sound: true
-      }),
+      action: () => {
+        console.log('Adding success notification...');
+        addNotification({
+          type: 'success',
+          title: 'Успех!',
+          message: 'Операция выполнена успешно',
+          sound: true
+        });
+        console.log('Success notification added');
+      },
       color: 'bg-green-500'
     },
     {

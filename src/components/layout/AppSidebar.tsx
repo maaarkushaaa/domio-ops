@@ -51,7 +51,7 @@ const menuItems = [
   { title: "Видеозвонки", url: "/video-calls", icon: Video },
   { title: "Автоматизация", url: "/automation", icon: Sparkles },
   { title: "База знаний", url: "/knowledge", icon: BookOpen },
-  { title: "Настройки уведомлений", url: "/notification-settings", icon: Bell },
+  { title: "Уведомления", url: "/notification-settings", icon: Bell },
   { title: "Функции", url: "/features", icon: Sparkles },
 ];
 

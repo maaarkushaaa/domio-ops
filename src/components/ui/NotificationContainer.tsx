@@ -96,7 +96,7 @@ function NotificationSettings() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            Настройки уведомлений
+            Уведомления
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-6">
@@ -221,9 +221,16 @@ function NotificationSettings() {
 export function NotificationContainer() {
   const { notifications, clearAllNotifications, settings } = useNotifications();
 
-  if (!settings.enabled || notifications.length === 0) {
-    return null;
-  }
+  // Временно убираем условие для отладки
+  // if (!settings.enabled || notifications.length === 0) {
+  //   return null;
+  // }
+
+  console.log('NotificationContainer render:', { 
+    enabled: settings.enabled, 
+    notificationsCount: notifications.length,
+    notifications: notifications 
+  });
 
   const positionClasses = {
     'top-right': 'top-4 right-4',

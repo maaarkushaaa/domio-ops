@@ -62,7 +62,7 @@ export function NotificationSettingsPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Bell className="h-8 w-8" />
-            Настройки уведомлений
+            Уведомления
           </h1>
           <p className="text-muted-foreground mt-2">
             Управление системой оповещений и уведомлений
