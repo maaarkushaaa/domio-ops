@@ -379,6 +379,44 @@ export const useFinance = () => {
     }
   };
 
+  const updateAccount = async (id: string, updates: Partial<Account>) => {
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setAccounts(prev => prev.map(acc => acc.id === id ? data : acc));
+      return data;
+    } catch (error) {
+      console.error('Error updating account:', error);
+      throw error;
+    }
+  };
+
+  const deleteAccount = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setAccounts(prev => prev.filter(acc => acc.id !== id));
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
+    }
+  };
+
   const updateAccountBalance = async (accountId: string, operationType: string, amount: number) => {
     try {
       const account = accounts.find(acc => acc.id === accountId);
@@ -445,6 +483,22 @@ export const useFinance = () => {
     }
   };
 
+  const deleteInvoice = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      throw error;
+    }
+  };
+
   const createBudget = async (budget: Omit<Budget, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
     try {
       const { data, error } = await supabase
@@ -483,6 +537,82 @@ export const useFinance = () => {
       return data;
     } catch (error) {
       console.error('Error creating subscription:', error);
+      throw error;
+    }
+  };
+
+  const updateSubscription = async (id: string, updates: Partial<Subscription>) => {
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSubscriptions(prev => prev.map(sub => sub.id === id ? data : sub));
+      return data;
+    } catch (error) {
+      console.error('Error updating subscription:', error);
+      throw error;
+    }
+  };
+
+  const deleteSubscription = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSubscriptions(prev => prev.filter(sub => sub.id !== id));
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      throw error;
+    }
+  };
+
+  const updateBudget = async (id: string, updates: Partial<Budget>) => {
+    try {
+      const { data, error } = await supabase
+        .from('budgets')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setBudgets(prev => prev.map(budget => budget.id === id ? data : budget));
+      return data;
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      throw error;
+    }
+  };
+
+  const deleteBudget = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setBudgets(prev => prev.filter(budget => budget.id !== id));
+    } catch (error) {
+      console.error('Error deleting budget:', error);
       throw error;
     }
   };
@@ -582,22 +712,64 @@ export const useFinance = () => {
   }, [user, loadData]);
 
   return {
+    // Данные
     operations,
     accounts,
     invoices,
     budgets,
     subscriptions,
+    financialReports,
     stats,
+    
+    // Состояние
     isLoading,
+    error,
+    
+    // Операции
     createOperation,
     updateOperation,
     deleteOperation,
+    
+    // Счета
     createAccount,
+    updateAccount,
+    deleteAccount,
     updateAccountBalance,
+    
+    // Инвойсы
     createInvoice,
     updateInvoice,
+    deleteInvoice,
+    
+    // Бюджеты
     createBudget,
+    updateBudget,
+    deleteBudget,
+    
+    // Подписки
     createSubscription,
+    updateSubscription,
+    deleteSubscription,
+    
+    // Отчеты
+    createFinancialReport,
+    
+    // Расчеты
+    totalIncome,
+    totalExpenses,
+    netIncome,
+    totalBalance,
+    monthlyIncome,
+    monthlyExpenses,
+    monthlyNetIncome,
+    categoryBreakdown,
+    monthlyTrends,
+    accountBalances,
+    upcomingPayments,
+    overdueInvoices,
+    budgetStatus,
+    
+    // Экспорт
     exportData,
     loadData
   };

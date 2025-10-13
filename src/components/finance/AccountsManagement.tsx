@@ -59,7 +59,7 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
   const [accountNumber, setAccountNumber] = useState(account?.account_number || '');
   const [description, setDescription] = useState(account?.description || '');
 
-  const { createAccount, accounts } = useFinance();
+  const { createAccount, updateAccount, deleteAccount, accounts } = useFinance();
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!account;
@@ -90,8 +90,7 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
       };
 
       if (isEdit) {
-        // TODO: Добавить updateAccount в useFinance
-        console.log('Update account:', accountData);
+        await updateAccount(account.id, accountData);
         notifySuccess('Счет обновлен', `Счет "${name}" успешно обновлен`);
       } else {
         await createAccount(accountData);
@@ -281,13 +280,12 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
 }
 
 export function AccountsManagement() {
-  const { accounts, deleteOperation } = useFinance();
+  const { accounts, deleteAccount } = useFinance();
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
   const handleDeleteAccount = async (accountId: string) => {
     try {
-      // TODO: Добавить deleteAccount в useFinance
-      console.log('Delete account:', accountId);
+      await deleteAccount(accountId);
       toast({
         title: 'Счет удален',
         description: 'Счет успешно удален'

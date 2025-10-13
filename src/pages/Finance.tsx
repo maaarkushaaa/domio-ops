@@ -30,6 +30,8 @@ import { useFinance } from "@/hooks/use-finance";
 import { OperationDialog } from "@/components/finance/OperationDialog";
 import { AccountsManagement } from "@/components/finance/AccountsManagement";
 import { InvoicesManagement } from "@/components/finance/InvoicesManagement";
+import { SubscriptionsManagement } from "@/components/finance/SubscriptionsManagement";
+import { BudgetManagement } from "@/components/finance/BudgetManagement";
 import { useState, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -544,95 +546,11 @@ export default function Finance() {
         </TabsContent>
 
         <TabsContent value="subscriptions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Активные подписки</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {subscriptions.filter(sub => sub.is_active).map((sub) => (
-                  <div
-                    key={sub.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{sub.name}</p>
-                        {sub.category && (
-                          <Badge variant="outline" className="text-xs">
-                            {sub.category}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{sub.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Следующий платеж: {format(new Date(sub.next_payment_date), 'dd.MM.yyyy', { locale: ru })}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">{sub.amount.toLocaleString('ru-RU')} {sub.currency}</p>
-                      <p className="text-sm text-muted-foreground">{sub.period}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-4 p-4 rounded-lg bg-muted">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">Итого в месяц</p>
-                  <p className="text-xl font-bold">
-                    {subscriptions
-                      .filter(sub => sub.is_active && sub.period === 'monthly')
-                      .reduce((sum, sub) => sum + sub.amount, 0)
-                      .toLocaleString('ru-RU')} ₽
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <SubscriptionsManagement />
         </TabsContent>
 
         <TabsContent value="budget" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Бюджет: {format(new Date(), 'MMMM yyyy', { locale: ru })}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {budgets.filter(budget => budget.is_active).map((budget) => {
-                  const percentage = budget.planned_amount > 0 ? (budget.actual_amount / budget.planned_amount) * 100 : 0;
-                  const isOverBudget = percentage > 100;
-                  
-                  return (
-                    <div key={budget.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{budget.category}</p>
-                          {budget.subcategory && (
-                            <Badge variant="outline" className="text-xs">
-                              {budget.subcategory}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">
-                            {budget.actual_amount.toLocaleString('ru-RU')} ₽ / {budget.planned_amount.toLocaleString('ru-RU')} ₽
-                          </p>
-                          <p className={`text-xs ${isOverBudget ? 'text-red-600' : 'text-muted-foreground'}`}>
-                            {percentage.toFixed(1)}% использовано
-                          </p>
-                        </div>
-                      </div>
-                      <Progress 
-                        value={Math.min(percentage, 100)} 
-                        className={isOverBudget ? 'bg-red-100' : ''}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          <BudgetManagement />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">

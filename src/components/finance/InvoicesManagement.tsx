@@ -63,7 +63,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
   const [description, setDescription] = useState(invoice?.description || '');
   const [notes, setNotes] = useState(invoice?.notes || '');
 
-  const { createInvoice } = useFinance();
+  const { createInvoice, updateInvoice, deleteInvoice } = useFinance();
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!invoice;
@@ -101,8 +101,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
       };
 
       if (isEdit) {
-        // TODO: Добавить updateInvoice в useFinance
-        console.log('Update invoice:', invoiceData);
+        await updateInvoice(invoice.id, invoiceData);
         notifySuccess('Инвойс обновлен', `Инвойс "${number}" успешно обновлен`);
       } else {
         await createInvoice(invoiceData);
@@ -295,6 +294,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
 export function InvoicesManagement() {
   const { invoices } = useFinance();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
 
   const getStatusInfo = (status: string) => {
     return INVOICE_STATUSES.find(s => s.value === status) || INVOICE_STATUSES[0];
@@ -302,8 +302,7 @@ export function InvoicesManagement() {
 
   const handleStatusChange = async (invoiceId: string, newStatus: Invoice['status']) => {
     try {
-      // TODO: Добавить updateInvoice в useFinance
-      console.log('Update invoice status:', invoiceId, newStatus);
+      await updateInvoice(invoiceId, { status: newStatus });
       toast({
         title: 'Статус обновлен',
         description: 'Статус инвойса успешно изменен'
@@ -319,8 +318,7 @@ export function InvoicesManagement() {
 
   const handleDeleteInvoice = async (invoiceId: string) => {
     try {
-      // TODO: Добавить deleteInvoice в useFinance
-      console.log('Delete invoice:', invoiceId);
+      await deleteInvoice(invoiceId);
       toast({
         title: 'Инвойс удален',
         description: 'Инвойс успешно удален'
@@ -332,6 +330,37 @@ export function InvoicesManagement() {
         variant: 'destructive'
       });
     }
+  };
+
+  const handleDownloadInvoice = (invoice: Invoice) => {
+    // Создаем PDF или Excel файл
+    const invoiceData = {
+      number: invoice.number,
+      type: INVOICE_TYPES.find(t => t.value === invoice.type)?.label,
+      status: getStatusInfo(invoice.status).label,
+      amount: invoice.amount,
+      taxAmount: invoice.tax_amount,
+      totalAmount: invoice.total_amount,
+      issueDate: invoice.issue_date,
+      dueDate: invoice.due_date,
+      description: invoice.description,
+      notes: invoice.notes
+    };
+
+    // Простой экспорт в JSON (в реальном проекте здесь был бы PDF/Excel)
+    const dataStr = JSON.stringify(invoiceData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `invoice-${invoice.number}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Инвойс скачан',
+      description: `Инвойс ${invoice.number} скачан`
+    });
   };
 
   return (
@@ -435,13 +464,13 @@ export function InvoicesManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(invoice)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
                           <Download className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleDeleteInvoice(invoice.id)}>
@@ -463,6 +492,76 @@ export function InvoicesManagement() {
           invoice={selectedInvoice}
           onSuccess={() => setSelectedInvoice(null)}
         />
+      )}
+
+      {/* Диалог просмотра */}
+      {viewInvoice && (
+        <Dialog open={!!viewInvoice} onOpenChange={() => setViewInvoice(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Просмотр инвойса {viewInvoice.number}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Тип</Label>
+                  <p className="text-sm">{INVOICE_TYPES.find(t => t.value === viewInvoice.type)?.label}</p>
+                </div>
+                <div>
+                  <Label>Статус</Label>
+                  <Badge className={getStatusInfo(viewInvoice.status).color}>
+                    {getStatusInfo(viewInvoice.status).label}
+                  </Badge>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Сумма</Label>
+                  <p className="text-lg font-bold">{viewInvoice.amount.toLocaleString('ru-RU')} ₽</p>
+                </div>
+                <div>
+                  <Label>НДС</Label>
+                  <p className="text-lg">{viewInvoice.tax_amount.toLocaleString('ru-RU')} ₽</p>
+                </div>
+                <div>
+                  <Label>Итого</Label>
+                  <p className="text-xl font-bold text-green-600">{viewInvoice.total_amount.toLocaleString('ru-RU')} ₽</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Дата выставления</Label>
+                  <p className="text-sm">{viewInvoice.issue_date ? format(new Date(viewInvoice.issue_date), 'dd.MM.yyyy', { locale: ru }) : '-'}</p>
+                </div>
+                <div>
+                  <Label>Срок оплаты</Label>
+                  <p className="text-sm">{viewInvoice.due_date ? format(new Date(viewInvoice.due_date), 'dd.MM.yyyy', { locale: ru }) : '-'}</p>
+                </div>
+              </div>
+              {viewInvoice.description && (
+                <div>
+                  <Label>Описание</Label>
+                  <p className="text-sm">{viewInvoice.description}</p>
+                </div>
+              )}
+              {viewInvoice.notes && (
+                <div>
+                  <Label>Примечания</Label>
+                  <p className="text-sm">{viewInvoice.notes}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setViewInvoice(null)}>
+                Закрыть
+              </Button>
+              <Button onClick={() => handleDownloadInvoice(viewInvoice)}>
+                <Download className="h-4 w-4 mr-2" />
+                Скачать
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
