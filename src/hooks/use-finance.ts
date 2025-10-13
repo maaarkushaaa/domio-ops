@@ -127,7 +127,18 @@ export const useFinance = () => {
     try {
       setIsLoading(true);
       
+      // Тестовый запрос для проверки таблиц
+      console.log('Testing table existence...');
+      const testAccounts = await supabase.from('accounts').select('count').limit(1);
+      const testOperations = await supabase.from('financial_operations').select('count').limit(1);
+      console.log('Table test results:', {
+        accounts: testAccounts,
+        operations: testOperations
+      });
+
       // Загружаем все данные параллельно с обработкой ошибок
+      console.log('Starting to load finance data for user:', user?.id);
+      
       const [operationsRes, accountsRes, invoicesRes, budgetsRes, subscriptionsRes] = await Promise.allSettled([
         supabase.from('financial_operations').select('*').order('date', { ascending: false }),
         supabase.from('accounts').select('*').order('created_at', { ascending: false }),
@@ -135,6 +146,15 @@ export const useFinance = () => {
         supabase.from('budgets').select('*').order('created_at', { ascending: false }),
         supabase.from('subscriptions').select('*').order('next_payment_date', { ascending: true })
       ]);
+
+      // Детальная отладка каждого запроса
+      console.log('Finance queries results:', {
+        operations: operationsRes,
+        accounts: accountsRes,
+        invoices: invoicesRes,
+        budgets: budgetsRes,
+        subscriptions: subscriptionsRes
+      });
 
       // Обрабатываем результаты с fallback для отсутствующих таблиц
       const operations = operationsRes.status === 'fulfilled' && !operationsRes.value.error 
