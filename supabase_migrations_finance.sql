@@ -1,8 +1,18 @@
 -- Миграция для финансовых операций
--- ВАЖНО: Создаем таблицы в правильном порядке!
+-- ВАЖНО: Сначала удаляем существующие таблицы, если они есть
 
--- Сначала создаем таблицу accounts (счета)
-CREATE TABLE IF NOT EXISTS public.accounts (
+-- Удаляем таблицы в обратном порядке (сначала дочерние, потом родительские)
+DROP TABLE IF EXISTS public.financial_operations CASCADE;
+DROP TABLE IF EXISTS public.subscriptions CASCADE;
+DROP TABLE IF EXISTS public.budgets CASCADE;
+DROP TABLE IF EXISTS public.invoices CASCADE;
+DROP TABLE IF EXISTS public.accounts CASCADE;
+DROP TABLE IF EXISTS public.financial_reports CASCADE;
+
+-- Теперь создаем таблицы в правильном порядке
+
+-- 1. Сначала создаем таблицу accounts (счета)
+CREATE TABLE public.accounts (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     type VARCHAR(50) NOT NULL CHECK (type IN ('bank', 'cash', 'credit', 'investment', 'crypto')),
@@ -18,8 +28,8 @@ CREATE TABLE IF NOT EXISTS public.accounts (
     created_by UUID REFERENCES auth.users(id)
 );
 
--- Создание таблицы invoices (счета-фактуры)
-CREATE TABLE IF NOT EXISTS public.invoices (
+-- 2. Создание таблицы invoices (счета-фактуры)
+CREATE TABLE public.invoices (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     number VARCHAR(100) NOT NULL UNIQUE,
     type VARCHAR(20) NOT NULL CHECK (type IN ('invoice', 'receipt', 'estimate')),
@@ -43,8 +53,8 @@ CREATE TABLE IF NOT EXISTS public.invoices (
     created_by UUID REFERENCES auth.users(id)
 );
 
--- Создание таблицы budgets (бюджеты)
-CREATE TABLE IF NOT EXISTS public.budgets (
+-- 3. Создание таблицы budgets (бюджеты)
+CREATE TABLE public.budgets (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     category VARCHAR(100) NOT NULL,
@@ -61,8 +71,8 @@ CREATE TABLE IF NOT EXISTS public.budgets (
     created_by UUID REFERENCES auth.users(id)
 );
 
--- Создание таблицы subscriptions (подписки)
-CREATE TABLE IF NOT EXISTS public.subscriptions (
+-- 4. Создание таблицы subscriptions (подписки)
+CREATE TABLE public.subscriptions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     description TEXT,
@@ -80,8 +90,8 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
     created_by UUID REFERENCES auth.users(id)
 );
 
--- Создание таблицы financial_reports (финансовые отчеты)
-CREATE TABLE IF NOT EXISTS public.financial_reports (
+-- 5. Создание таблицы financial_reports (финансовые отчеты)
+CREATE TABLE public.financial_reports (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     type VARCHAR(50) NOT NULL CHECK (type IN ('income_statement', 'balance_sheet', 'cash_flow', 'budget_variance')),
@@ -94,8 +104,8 @@ CREATE TABLE IF NOT EXISTS public.financial_reports (
     created_by UUID REFERENCES auth.users(id)
 );
 
--- Теперь создаем таблицу financial_operations (после создания всех зависимых таблиц)
-CREATE TABLE IF NOT EXISTS public.financial_operations (
+-- 6. Теперь создаем таблицу financial_operations (после создания всех зависимых таблиц)
+CREATE TABLE public.financial_operations (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense', 'transfer')),
     amount DECIMAL(15,2) NOT NULL,
@@ -118,14 +128,14 @@ CREATE TABLE IF NOT EXISTS public.financial_operations (
 );
 
 -- Индексы для оптимизации
-CREATE INDEX IF NOT EXISTS idx_financial_operations_date ON public.financial_operations(date);
-CREATE INDEX IF NOT EXISTS idx_financial_operations_type ON public.financial_operations(type);
-CREATE INDEX IF NOT EXISTS idx_financial_operations_category ON public.financial_operations(category);
-CREATE INDEX IF NOT EXISTS idx_financial_operations_account ON public.financial_operations(account_id);
-CREATE INDEX IF NOT EXISTS idx_invoices_status ON public.invoices(status);
-CREATE INDEX IF NOT EXISTS idx_invoices_due_date ON public.invoices(due_date);
-CREATE INDEX IF NOT EXISTS idx_budgets_period ON public.budgets(year, month, quarter);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_next_payment ON public.subscriptions(next_payment_date);
+CREATE INDEX idx_financial_operations_date ON public.financial_operations(date);
+CREATE INDEX idx_financial_operations_type ON public.financial_operations(type);
+CREATE INDEX idx_financial_operations_category ON public.financial_operations(category);
+CREATE INDEX idx_financial_operations_account ON public.financial_operations(account_id);
+CREATE INDEX idx_invoices_status ON public.invoices(status);
+CREATE INDEX idx_invoices_due_date ON public.invoices(due_date);
+CREATE INDEX idx_budgets_period ON public.budgets(year, month, quarter);
+CREATE INDEX idx_subscriptions_next_payment ON public.subscriptions(next_payment_date);
 
 -- RLS политики
 ALTER TABLE public.financial_operations ENABLE ROW LEVEL SECURITY;
