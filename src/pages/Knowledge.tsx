@@ -10,14 +10,6 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github.css';
 
-// Функция для создания блоков кода
-const createCodeBlock = (language: string, content: string) => {
-  return (
-    <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-      <code className={`language-${language}`}>{content}</code>
-    </pre>
-  );
-};
 import { 
   BookOpen, 
   FileText, 
@@ -79,7 +71,16 @@ export default function Knowledge() {
 
 Добавьте в файл '.env.local':
 
-{createCodeBlock('bash', '# Базис МойСклад API\nBASIS_MOYSKLAD_API_URL=https://api.moysklad.ru/api/remap/1.2\nBASIS_MOYSKLAD_API_TOKEN=your_api_token_here\nBASIS_MOYSKLAD_WAREHOUSE_ID=your_warehouse_id\n\n# Настройки синхронизации\nSYNC_INTERVAL_MINUTES=30\nAUTO_SYNC_ENABLED=true')}
+\`\`\`bash
+# Базис МойСклад API
+BASIS_MOYSKLAD_API_URL=https://api.moysklad.ru/api/remap/1.2
+BASIS_MOYSKLAD_API_TOKEN=your_api_token_here
+BASIS_MOYSKLAD_WAREHOUSE_ID=your_warehouse_id
+
+# Настройки синхронизации
+SYNC_INTERVAL_MINUTES=30
+AUTO_SYNC_ENABLED=true
+\`\`\`
 
 ### Шаг 3: Настройка webhook
 
@@ -140,7 +141,11 @@ export default function Knowledge() {
 
 ### Формат CSV для импорта BOM
 
-{createCodeBlock('csv', 'Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Цена\nШкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,2500\nШкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,150')}
+\`\`\`csv
+Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Цена
+Шкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,2500
+Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,150
+\`\`\`
 
 ## 🚨 Обработка ошибок
 
@@ -162,7 +167,18 @@ export default function Knowledge() {
 
 Просмотр логов в базе данных:
 
-{createCodeBlock('sql', 'SELECT \n  created_at,\n  operation_type,\n  status,\n  error_message,\n  records_processed\nFROM sync_logs \nWHERE source = \'basis_moysklad\'\nORDER BY created_at DESC \nLIMIT 20;')}
+\`\`\`sql
+SELECT 
+  created_at,
+  operation_type,
+  status,
+  error_message,
+  records_processed
+FROM sync_logs 
+WHERE source = 'basis_moysklad'
+ORDER BY created_at DESC 
+LIMIT 20;
+\`\`\`
 
 ## 🔔 Уведомления о синхронизации
 
@@ -170,7 +186,9 @@ export default function Knowledge() {
 
 Настройте уведомления о результатах синхронизации:
 
-{createCodeBlock('bash', 'SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL')}
+\`\`\`bash
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+\`\`\`
 
 Примеры уведомлений:
 - ✅ Синхронизация Базис: обновлено 150 материалов
@@ -199,13 +217,31 @@ export default function Knowledge() {
 
 Настройте фильтры для синхронизации только нужных товаров:
 
-{createCodeBlock('json', '{\n  "filters": {\n    "groups": ["ЛДСП", "Фурнитура", "Кромка"],\n    "price_min": 100,\n    "price_max": 10000,\n    "stock_min": 1\n  }\n}')}
+\`\`\`json
+{
+  "filters": {
+    "groups": ["ЛДСП", "Фурнитура", "Кромка"],
+    "price_min": 100,
+    "price_max": 10000,
+    "stock_min": 1
+  }
+}
+\`\`\`
 
 ### Кастомные поля
 
 Добавьте дополнительные поля для синхронизации:
 
-{createCodeBlock('json', '{\n  "custom_fields": {\n    "supplier": "Поставщик",\n    "color": "Цвет",\n    "texture": "Текстура",\n    "thickness": "Толщина"\n  }\n}')}
+\`\`\`json
+{
+  "custom_fields": {
+    "supplier": "Поставщик",
+    "color": "Цвет",
+    "texture": "Текстура",
+    "thickness": "Толщина"
+  }
+}
+\`\`\`
 
 ## 📞 Поддержка
 
@@ -258,7 +294,13 @@ export default function Knowledge() {
 
 ### Формат файла materials.csv
 
-{createCodeBlock('csv', 'Название,Артикул,Категория,Остаток,Мин.остаток,Поставщик,Единица,Цена,Цвет,Текстура,Толщина\nEGGER H1137 ST9,H1137-ST9,ЛДСП,50,10,EGGER,м²,2500,Белый,Дуб,16\nEGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,16\nКромка ABS 2мм,ABS-2MM,Кромка,200,50,EGGER,м,45,Белый,Глянец,2\nПетля Blum,BLUM-H-100,Фурнитура,500,50,Blum,шт,150,Хром,Глянец,0')}
+\`\`\`csv
+Название,Артикул,Категория,Остаток,Мин.остаток,Поставщик,Единица,Цена,Цвет,Текстура,Толщина
+EGGER H1137 ST9,H1137-ST9,ЛДСП,50,10,EGGER,м²,2500,Белый,Дуб,16
+EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,16
+Кромка ABS 2мм,ABS-2MM,Кромка,200,50,EGGER,м,45,Белый,Глянец,2
+Петля Blum,BLUM-H-100,Фурнитура,500,50,Blum,шт,150,Хром,Глянец,0
+\`\`\`
 
 ### Обязательные поля
 
@@ -281,7 +323,12 @@ export default function Knowledge() {
 
 ### Формат файла bom.csv
 
-{createCodeBlock('csv', 'Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Коэффициент,Примечание\nШкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,1.1,С запасом на обрезку\nШкаф кухонный,SK-001,Кромка ABS 2мм,ABS-2MM,8,м,1.05,С запасом на стыки\nШкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,1,Стандартная комплектация')}
+```csv
+Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Коэффициент,Примечание
+Шкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,1.1,С запасом на обрезку
+Шкаф кухонный,SK-001,Кромка ABS 2мм,ABS-2MM,8,м,1.05,С запасом на стыки
+Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,1,Стандартная комплектация
+```
 
 ### Поля спецификации
 
@@ -304,26 +351,96 @@ export default function Knowledge() {
    'C:\\csv-imports\\'
 
 2. **Настройте структуру папок:**
-{createCodeBlock('text', 'csv-imports/\n├── materials/          # Материалы\n├── bom/               # Спецификации\n├── processed/         # Обработанные файлы\n└── errors/           # Файлы с ошибками')}
+```text
+csv-imports/
+├── materials/          # Материалы
+├── bom/               # Спецификации
+├── processed/         # Обработанные файлы
+└── errors/           # Файлы с ошибками
+```
 
 3. **Запустите мониторинг:**
-{createCodeBlock('bash', 'npm run csv-watcher')}
+```bash
+npm run csv-watcher
+```
 
 ### Планировщик задач
 
 Настройте регулярный импорт по расписанию:
 
-{createCodeBlock('json', '{\n  "tasks": [\n    {\n      "name": "daily-materials-sync",\n      "schedule": "0 8 * * *",\n      "type": "materials",\n      "source": {\n        "type": "url",\n        "url": "https://supplier.com/api/materials.csv",\n        "headers": {\n          "Authorization": "Bearer your-token"\n        }\n      }\n    },\n    {\n      "name": "weekly-bom-sync",\n      "schedule": "0 9 * * 1",\n      "type": "bom",\n      "source": {\n        "type": "ftp",\n        "host": "ftp.supplier.com",\n        "path": "/exports/bom.csv"\n      }\n    }\n  ]\n}')}
+```json
+{
+  "tasks": [
+    {
+      "name": "daily-materials-sync",
+      "schedule": "0 8 * * *",
+      "type": "materials",
+      "source": {
+        "type": "url",
+        "url": "https://supplier.com/api/materials.csv",
+        "headers": {
+          "Authorization": "Bearer your-token"
+        }
+      }
+    },
+    {
+      "name": "weekly-bom-sync",
+      "schedule": "0 9 * * 1",
+      "type": "bom",
+      "source": {
+        "type": "ftp",
+        "host": "ftp.supplier.com",
+        "path": "/exports/bom.csv"
+      }
+    }
+  ]
+}
+```
 
 ## 🌐 API интеграция
 
 ### Endpoint для импорта
 
-{createCodeBlock('bash', 'POST /api/csv-import\nContent-Type: multipart/form-data\nAuthorization: Bearer your-api-key\n\n{\n  "type": "materials",\n  "file": "materials.csv",\n  "options": {\n    "skip_duplicates": true,\n    "update_existing": true,\n    "validate_data": true\n  }\n}')}
+```bash
+POST /api/csv-import
+Content-Type: multipart/form-data
+Authorization: Bearer your-api-key
+
+{
+  "type": "materials",
+  "file": "materials.csv",
+  "options": {
+    "skip_duplicates": true,
+    "update_existing": true,
+    "validate_data": true
+  }
+}
+```
 
 ### Webhook для внешних систем
 
-{createCodeBlock('bash', 'POST /api/webhook/csv-import\nContent-Type: application/json\nX-Webhook-Signature: sha256=...\n\n{\n  "type": "materials",\n  "data": [\n    {\n      "name": "EGGER H1137 ST9",\n      "sku": "H1137-ST9",\n      "stock_quantity": 50,\n      "unit": "м²",\n      "price": 2500\n    }\n  ],\n  "metadata": {\n    "source": "basis_moysklad",\n    "timestamp": "2024-12-19T10:00:00Z"\n  }\n}')}
+```bash
+POST /api/webhook/csv-import
+Content-Type: application/json
+X-Webhook-Signature: sha256=...
+
+{
+  "type": "materials",
+  "data": [
+    {
+      "name": "EGGER H1137 ST9",
+      "sku": "H1137-ST9",
+      "stock_quantity": 50,
+      "unit": "м²",
+      "price": 2500
+    }
+  ],
+  "metadata": {
+    "source": "basis_moysklad",
+    "timestamp": "2024-12-19T10:00:00Z"
+  }
+}
+```
 
 ## 🛠️ Обработка ошибок
 
@@ -357,7 +474,11 @@ export default function Knowledge() {
    - Проверьте уникальность артикулов
 
 3. **Проверьте логи:**
-{createCodeBlock('sql', 'SELECT * FROM import_logs \nWHERE created_at >= NOW() - INTERVAL \'1 hour\'\nORDER BY created_at DESC;')}
+```sql
+SELECT * FROM import_logs 
+WHERE created_at >= NOW() - INTERVAL '1 hour'
+ORDER BY created_at DESC;
+```
 
 ## 📊 Мониторинг импорта
 

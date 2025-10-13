@@ -2,232 +2,22 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { NotificationTester } from '@/components/ui/NotificationContainer';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNotifications } from '@/hooks/use-notifications';
 import { 
-  Package, 
-  CheckCircle, 
-  AlertTriangle, 
-  XCircle, 
-  Info,
-  Upload,
-  Download,
+  Bell,
+  Volume2,
+  VolumeX,
+  Monitor,
   Settings,
-  Bell
+  BellOff
 } from 'lucide-react';
 
 export function NotificationTestPage() {
-  const { addNotification, notifications, settings } = useNotifications();
-
-  // Отладочная информация
-  console.log('NotificationTestPage render:', { 
-    notifications: notifications.length,
-    settings: settings,
-    addNotification: typeof addNotification 
-  });
-
-  // Простая функция для тестирования
-  const testNotification = (type: 'success' | 'error' | 'warning' | 'info') => {
-    console.log(`Testing ${type} notification...`);
-    try {
-      addNotification({
-        type,
-        title: `Тест ${type}`,
-        message: `Это тестовое уведомление типа ${type}`,
-        sound: true
-      });
-      console.log(`${type} notification added successfully`);
-    } catch (error) {
-      console.error(`Error adding ${type} notification:`, error);
-    }
-  };
-
-  const testScenarios = [
-    {
-      title: 'Успешное уведомление',
-      description: 'Тест успешного уведомления',
-      icon: CheckCircle,
-      action: () => testNotification('success'),
-      color: 'bg-green-500'
-    },
-    {
-      title: 'Ошибка',
-      description: 'Тест уведомления об ошибке',
-      icon: XCircle,
-      action: () => testNotification('error'),
-      color: 'bg-red-500'
-    },
-    {
-      title: 'Предупреждение',
-      description: 'Тест предупреждающего уведомления',
-      icon: AlertTriangle,
-      action: () => testNotification('warning'),
-      color: 'bg-yellow-500'
-    },
-    {
-      title: 'Информация',
-      description: 'Тест информационного уведомления',
-      icon: Info,
-      action: () => testNotification('info'),
-      color: 'bg-blue-500'
-    },
-    {
-      title: 'Создание изделия',
-      description: 'Тест оповещения о создании нового изделия',
-      icon: Package,
-      action: () => addNotification({
-        type: 'success',
-        title: 'Изделие создано',
-        message: 'Тестовое изделие успешно создано',
-        sound: true
-      }),
-      color: 'bg-green-500'
-    },
-    {
-      title: 'Обновление изделия',
-      description: 'Тест оповещения об обновлении изделия',
-      icon: CheckCircle,
-      action: () => addNotification({
-        type: 'info',
-        title: 'Изделие обновлено',
-        message: 'Тестовое изделие успешно обновлено',
-        sound: true
-      }),
-      color: 'bg-blue-500'
-    },
-    {
-      title: 'Удаление изделия',
-      description: 'Тест оповещения об удалении изделия',
-      icon: XCircle,
-      action: () => addNotification({
-        type: 'warning',
-        title: 'Изделие удалено',
-        message: 'Тестовое изделие было удалено',
-        sound: true
-      }),
-      color: 'bg-red-500'
-    },
-    {
-      title: 'Добавление материала',
-      description: 'Тест оповещения о добавлении материала',
-      icon: Package,
-      action: () => addNotification({
-        type: 'success',
-        title: 'Материал добавлен',
-        message: 'EGGER H1137 ST9 Дуб Галифакс белый добавлен в базу',
-        sound: true
-      }),
-      color: 'bg-green-500'
-    },
-    {
-      title: 'Обновление остатков',
-      description: 'Тест оповещения об обновлении остатков материала',
-      icon: CheckCircle,
-      action: () => addNotification({
-        type: 'info',
-        title: 'Остатки обновлены',
-        message: 'Остатки материала EGGER H1137 ST9 обновлены',
-        sound: true
-      }),
-      color: 'bg-blue-500'
-    },
-    {
-      title: 'Начало проверки',
-      description: 'Тест оповещения о начале проверки качества',
-      icon: Info,
-      action: () => addNotification({
-        type: 'info',
-        title: 'Проверка начата',
-        message: 'Начата проверка качества для Тестовое изделие',
-        sound: true
-      }),
-      color: 'bg-blue-500'
-    },
-    {
-      title: 'Проверка пройдена',
-      description: 'Тест оповещения о прохождении проверки',
-      icon: CheckCircle,
-      action: () => addNotification({
-        type: 'success',
-        title: 'Проверка пройдена',
-        message: 'Проверка качества пройдена успешно (95%)',
-        sound: true
-      }),
-      color: 'bg-green-500'
-    },
-    {
-      title: 'Проверка не пройдена',
-      description: 'Тест оповещения о непрохождении проверки',
-      icon: XCircle,
-      action: () => addNotification({
-        type: 'error',
-        title: 'Проверка не пройдена',
-        message: 'Проверка качества не пройдена (45%)',
-        sound: true
-      }),
-      color: 'bg-red-500'
-    },
-    {
-      title: 'CSV импорт успешен',
-      description: 'Тест оповещения об успешном импорте CSV',
-      icon: Upload,
-      action: () => addNotification({
-        type: 'success',
-        title: 'CSV импорт завершен',
-        message: 'Успешно импортировано 15 записей материалов',
-        sound: true
-      }),
-      color: 'bg-green-500'
-    },
-    {
-      title: 'CSV импорт с ошибками',
-      description: 'Тест оповещения об импорте CSV с ошибками',
-      icon: Upload,
-      action: () => addNotification({
-        type: 'warning',
-        title: 'CSV импорт завершен с ошибками',
-        message: 'Импортировано 10 записей, 3 ошибки',
-        sound: true
-      }),
-      color: 'bg-yellow-500'
-    },
-    {
-      title: 'Обновление прогресса',
-      description: 'Тест оповещения об обновлении прогресса',
-      icon: Settings,
-      action: () => addNotification({
-        type: 'info',
-        title: 'Прогресс обновлен',
-        message: 'Прогресс изделия обновлен до 75%',
-        sound: true
-      }),
-      color: 'bg-blue-500'
-    },
-    {
-      title: 'Низкие остатки',
-      description: 'Тест оповещения о низких остатках',
-      icon: AlertTriangle,
-      action: () => addNotification({
-        type: 'warning',
-        title: 'Низкие остатки',
-        message: 'У материала EGGER H1137 ST9 осталось менее 10 единиц',
-        sound: true
-      }),
-      color: 'bg-yellow-500'
-    },
-    {
-      title: 'Приближается дедлайн',
-      description: 'Тест оповещения о приближающемся дедлайне',
-      icon: Bell,
-      action: () => addNotification({
-        type: 'warning',
-        title: 'Приближается дедлайн',
-        message: 'До завершения изделия осталось 2 дня',
-        sound: true
-      }),
-      color: 'bg-yellow-500'
-    }
-  ];
+  const { notifications, settings, updateSettings } = useNotifications();
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -235,47 +25,191 @@ export function NotificationTestPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Bell className="h-8 w-8" />
-            Тестирование системы оповещений
+            Уведомления
           </h1>
           <p className="text-muted-foreground mt-2">
-            Проверьте работу системы оповещений с различными сценариями
+            Управление системой оповещений и уведомлений
           </p>
         </div>
         <Badge variant="outline" className="text-sm">
-          Система активна
+          {notifications.length} активных
         </Badge>
       </div>
 
-
-      {/* Сценарии оповещений */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {testScenarios.map((scenario, index) => {
-          const Icon = scenario.icon;
-          return (
-            <Card key={index} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <div className={`p-2 rounded-lg ${scenario.color} text-white`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  {scenario.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  {scenario.description}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Основные настройки */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Основные настройки
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Включение уведомлений */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  {settings.enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                  Система уведомлений
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Включить или отключить все уведомления
                 </p>
-                <Button 
-                  onClick={scenario.action}
-                  className="w-full"
-                  variant="outline"
+              </div>
+              <Switch
+                checked={settings.enabled}
+                onCheckedChange={(checked) => updateSettings({ enabled: checked })}
+              />
+            </div>
+
+            {/* Звуковые уведомления */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  {settings.sounds ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  Звуковые уведомления
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Воспроизводить звуки для разных типов событий
+                </p>
+              </div>
+              <Switch
+                checked={settings.sounds}
+                onCheckedChange={(checked) => updateSettings({ sounds: checked })}
+                disabled={!settings.enabled}
+              />
+            </div>
+
+            {/* Выбор типа звука */}
+            {settings.sounds && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Тип звука</Label>
+                <Select
+                  value={settings.soundType}
+                  onValueChange={(value: any) => updateSettings({ soundType: value })}
+                  disabled={!settings.enabled || !settings.sounds}
                 >
-                  Тестировать
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">По умолчанию</SelectItem>
+                    <SelectItem value="beep">Звуковой сигнал</SelectItem>
+                    <SelectItem value="chime">Мелодичный звон</SelectItem>
+                    <SelectItem value="notification">Уведомление</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Desktop уведомления */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  {settings.desktop ? <Monitor className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+                  Системные уведомления
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Показывать уведомления операционной системы
+                </p>
+              </div>
+              <Switch
+                checked={settings.desktop}
+                onCheckedChange={(checked) => updateSettings({ desktop: checked })}
+                disabled={!settings.enabled}
+              />
+            </div>
+
+            {/* Режим тестирования */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Режим тестирования</Label>
+                <p className="text-xs text-muted-foreground">
+                  Показывать кнопку принудительного теста в области уведомлений
+                </p>
+              </div>
+              <Switch
+                checked={settings.testMode}
+                onCheckedChange={(checked) => updateSettings({ testMode: checked })}
+                disabled={!settings.enabled}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Настройки отображения */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Настройки отображения
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Позиция уведомлений */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Позиция на экране</Label>
+              <Select
+                value={settings.position}
+                onValueChange={(value: any) => updateSettings({ position: value })}
+                disabled={!settings.enabled}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="top-right">Верхний правый угол</SelectItem>
+                  <SelectItem value="top-left">Верхний левый угол</SelectItem>
+                  <SelectItem value="bottom-right">Нижний правый угол</SelectItem>
+                  <SelectItem value="bottom-left">Нижний левый угол</SelectItem>
+                  <SelectItem value="top-center">Верхний центр</SelectItem>
+                  <SelectItem value="bottom-center">Нижний центр</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Длительность показа */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Длительность показа: {settings.duration / 1000}с
+              </Label>
+              <Slider
+                value={[settings.duration]}
+                onValueChange={([value]) => updateSettings({ duration: value })}
+                min={1000}
+                max={10000}
+                step={500}
+                disabled={!settings.enabled}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1с</span>
+                <span>10с</span>
+              </div>
+            </div>
+
+            {/* Максимальное количество */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Максимум уведомлений: {settings.maxNotifications}
+              </Label>
+              <Slider
+                value={[settings.maxNotifications]}
+                onValueChange={([value]) => updateSettings({ maxNotifications: value })}
+                min={1}
+                max={10}
+                step={1}
+                disabled={!settings.enabled}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1</span>
+                <span>10</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Информация о системе */}
