@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,8 @@ interface AddMaterialDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMaterialAdded?: () => void;
+  defaultSupplier?: string;
+  suppliersList?: string[];
 }
 
 // Популярные категории материалов
@@ -67,6 +69,8 @@ export function AddMaterialDialog({
   open,
   onOpenChange,
   onMaterialAdded,
+  defaultSupplier,
+  suppliersList = [],
 }: AddMaterialDialogProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -77,9 +81,16 @@ export function AddMaterialDialog({
     price_per_unit: '',
     stock_quantity: '',
     min_stock: '',
-    supplier: '',
+    supplier: defaultSupplier || '',
     notes: '',
   });
+
+  // Обновляем поставщика при изменении defaultSupplier
+  useEffect(() => {
+    if (defaultSupplier) {
+      setFormData(prev => ({ ...prev, supplier: defaultSupplier }));
+    }
+  }, [defaultSupplier]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,12 +300,29 @@ export function AddMaterialDialog({
           {/* Поставщик */}
           <div className="space-y-2">
             <Label htmlFor="supplier">Поставщик / Производитель</Label>
-            <Input
-              id="supplier"
-              placeholder="Например: EGGER, Blum, ООО 'Поставщик'"
+            <Select
               value={formData.supplier}
-              onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-            />
+              onValueChange={(value) => setFormData({ ...formData, supplier: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите поставщика или введите нового" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Новый поставщик</SelectItem>
+                {suppliersList.map((supplier) => (
+                  <SelectItem key={supplier} value={supplier}>
+                    {supplier}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formData.supplier === '' && (
+              <Input
+                placeholder="Введите название нового поставщика..."
+                value={formData.supplier}
+                onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+              />
+            )}
           </div>
 
           {/* Заметки */}

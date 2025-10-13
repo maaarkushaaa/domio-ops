@@ -7,6 +7,7 @@ import { Package, Plus, Search, Edit, Trash2, AlertTriangle, Building2, Trending
 import { supabase } from '@/integrations/supabase/client';
 import { AddMaterialDialog } from '@/components/production/AddMaterialDialog';
 import { MaterialsListDialog } from '@/components/production/MaterialsListDialog';
+import { SuppliersDialog } from '@/components/production/SuppliersDialog';
 import {
   Select,
   SelectContent,
@@ -53,6 +54,7 @@ export default function Materials() {
   const [addMaterialDialogOpen, setAddMaterialDialogOpen] = useState(false);
   const [materialsListDialogOpen, setMaterialsListDialogOpen] = useState(false);
   const [materialsListType, setMaterialsListType] = useState<'all' | 'lowStock' | 'suppliers'>('all');
+  const [suppliersDialogOpen, setSuppliersDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [materialToDelete, setMaterialToDelete] = useState<Material | null>(null);
@@ -222,10 +224,7 @@ export default function Materials() {
 
         <Card 
           className="cursor-pointer hover:shadow-md transition-all hover-lift"
-          onClick={() => {
-            setMaterialsListType('suppliers');
-            setMaterialsListDialogOpen(true);
-          }}
+          onClick={() => setSuppliersDialogOpen(true)}
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -369,6 +368,13 @@ export default function Materials() {
         type={materialsListType}
         open={materialsListDialogOpen}
         onOpenChange={setMaterialsListDialogOpen}
+        materials={materials}
+      />
+
+      {/* Диалог поставщиков */}
+      <SuppliersDialog
+        open={suppliersDialogOpen}
+        onOpenChange={setSuppliersDialogOpen}
         materials={materials}
       />
 
