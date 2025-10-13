@@ -163,6 +163,17 @@ export const useFinance = () => {
       setBudgets(budgets);
       setSubscriptions(subscriptions);
 
+      // Отладочная информация
+      console.log('Finance data loaded:', {
+        operationsCount: operations.length,
+        accountsCount: accounts.length,
+        invoicesCount: invoices.length,
+        budgetsCount: budgets.length,
+        subscriptionsCount: subscriptions.length,
+        operations: operations.slice(0, 3).map(op => ({ id: op.id, description: op.description })),
+        accounts: accounts.map(acc => ({ id: acc.id, name: acc.name, is_default: acc.is_default }))
+      });
+
       // Вычисляем статистику
       calculateStats(operations, accounts, subscriptions);
 

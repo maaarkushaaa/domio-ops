@@ -151,7 +151,17 @@ export default function Finance() {
   }
 
   // Проверяем, выполнена ли миграция
-  const isMigrationNeeded = accounts.length === 0 && operations.length === 0;
+  const isMigrationNeeded = accounts.length === 0 && operations.length === 0 && !isLoading;
+  
+  // Отладочная информация
+  console.log('Finance page debug:', {
+    isLoading,
+    accountsCount: accounts.length,
+    operationsCount: operations.length,
+    isMigrationNeeded,
+    accounts: accounts.map(acc => ({ id: acc.id, name: acc.name })),
+    operations: operations.map(op => ({ id: op.id, description: op.description }))
+  });
   
   if (isMigrationNeeded) {
     return (
