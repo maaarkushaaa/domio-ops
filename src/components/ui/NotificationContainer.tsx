@@ -258,6 +258,13 @@ function NotificationSettings() {
 export function NotificationContainer() {
   const { notifications, clearAllNotifications, settings, addNotification, updateSettings } = useNotifications();
 
+  // Отладочная информация
+  console.log('NotificationContainer render:', { 
+    testMode: settings.testMode, 
+    enabled: settings.enabled,
+    notificationsCount: notifications.length 
+  });
+
   // Позиционирование в зависимости от настроек
   const positionClasses = {
     'top-right': 'top-4 right-4',
@@ -328,7 +335,7 @@ export function NotificationContainer() {
       )}
 
       {/* Кнопка для принудительного тестирования (только если включен тест) */}
-      {settings.testMode && (
+      {settings.testMode && settings.enabled && (
         <Button
           onClick={randomNotification}
           className="w-full bg-purple-500 hover:bg-purple-600 text-white text-xs"
