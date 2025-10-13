@@ -5,12 +5,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
 import { AppProvider, useApp } from "./contexts/AppContext";
+import { NotificationProvider } from "./hooks/use-notifications";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { CommandPalette } from "./components/common/CommandPalette";
 import { GlobalSearch } from "./components/search/GlobalSearch";
 import { KeyboardShortcuts } from "./components/shortcuts/KeyboardShortcuts";
 import { TaskHotkeys } from "./components/common/TaskHotkeys";
 import { AIAssistantAdvanced } from "./components/ai/AIAssistantAdvanced";
+import { NotificationContainer } from "./components/ui/NotificationContainer";
+import { NotificationIntegration } from "./components/NotificationIntegration";
+import { NotificationTestPage } from "./pages/NotificationTest";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Projects from "./pages/Projects";
@@ -60,10 +64,13 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         <AppProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+          <NotificationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <NotificationContainer />
+              <NotificationIntegration />
+              <BrowserRouter>
               <CommandPalette />
               <GlobalSearch />
               <KeyboardShortcuts />
@@ -204,10 +211,18 @@ const App = () => {
                     </AppLayout>
                   </ProtectedRoute>
                 } />
+                <Route path="/notifications-test" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <NotificationTestPage />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
+          </NotificationProvider>
         </AppProvider>
       </ThemeProvider>
     </QueryClientProvider>
