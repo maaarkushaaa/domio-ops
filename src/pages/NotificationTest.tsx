@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NotificationTester } from '@/components/ui/NotificationContainer';
-import { useAppNotifications } from '@/components/NotificationIntegration';
+import { useNotifications } from '@/hooks/use-notifications';
 import { 
   Package, 
   CheckCircle, 
@@ -17,118 +17,212 @@ import {
 } from 'lucide-react';
 
 export function NotificationTestPage() {
-  const {
-    notifyProductCreated,
-    notifyProductUpdated,
-    notifyProductDeleted,
-    notifyMaterialAdded,
-    notifyMaterialUpdated,
-    notifyInspectionStarted,
-    notifyInspectionCompleted,
-    notifyCSVImport,
-    notifyProgressUpdated,
-    notifyLowStock,
-    notifyDeadlineApproaching
-  } = useAppNotifications();
+  const { addNotification } = useNotifications();
 
   const testScenarios = [
+    {
+      title: 'Успешное уведомление',
+      description: 'Тест успешного уведомления',
+      icon: CheckCircle,
+      action: () => addNotification({
+        type: 'success',
+        title: 'Успех!',
+        message: 'Операция выполнена успешно',
+        sound: true
+      }),
+      color: 'bg-green-500'
+    },
+    {
+      title: 'Ошибка',
+      description: 'Тест уведомления об ошибке',
+      icon: XCircle,
+      action: () => addNotification({
+        type: 'error',
+        title: 'Ошибка!',
+        message: 'Произошла ошибка при выполнении операции',
+        sound: true
+      }),
+      color: 'bg-red-500'
+    },
+    {
+      title: 'Предупреждение',
+      description: 'Тест предупреждающего уведомления',
+      icon: AlertTriangle,
+      action: () => addNotification({
+        type: 'warning',
+        title: 'Внимание!',
+        message: 'Обратите внимание на это предупреждение',
+        sound: true
+      }),
+      color: 'bg-yellow-500'
+    },
+    {
+      title: 'Информация',
+      description: 'Тест информационного уведомления',
+      icon: Info,
+      action: () => addNotification({
+        type: 'info',
+        title: 'Информация',
+        message: 'Это информационное сообщение',
+        sound: false
+      }),
+      color: 'bg-blue-500'
+    },
     {
       title: 'Создание изделия',
       description: 'Тест оповещения о создании нового изделия',
       icon: Package,
-      action: () => notifyProductCreated('Тестовое изделие'),
+      action: () => addNotification({
+        type: 'success',
+        title: 'Изделие создано',
+        message: 'Тестовое изделие успешно создано',
+        sound: true
+      }),
       color: 'bg-green-500'
     },
     {
       title: 'Обновление изделия',
       description: 'Тест оповещения об обновлении изделия',
       icon: CheckCircle,
-      action: () => notifyProductUpdated('Тестовое изделие'),
+      action: () => addNotification({
+        type: 'info',
+        title: 'Изделие обновлено',
+        message: 'Тестовое изделие успешно обновлено',
+        sound: true
+      }),
       color: 'bg-blue-500'
     },
     {
       title: 'Удаление изделия',
       description: 'Тест оповещения об удалении изделия',
       icon: XCircle,
-      action: () => notifyProductDeleted('Тестовое изделие'),
+      action: () => addNotification({
+        type: 'warning',
+        title: 'Изделие удалено',
+        message: 'Тестовое изделие было удалено',
+        sound: true
+      }),
       color: 'bg-red-500'
     },
     {
       title: 'Добавление материала',
       description: 'Тест оповещения о добавлении материала',
       icon: Package,
-      action: () => notifyMaterialAdded('EGGER H1137 ST9 Дуб Галифакс белый'),
+      action: () => addNotification({
+        type: 'success',
+        title: 'Материал добавлен',
+        message: 'EGGER H1137 ST9 Дуб Галифакс белый добавлен в базу',
+        sound: true
+      }),
       color: 'bg-green-500'
     },
     {
       title: 'Обновление остатков',
       description: 'Тест оповещения об обновлении остатков материала',
       icon: CheckCircle,
-      action: () => notifyMaterialUpdated('EGGER H1137 ST9 Дуб Галифакс белый'),
+      action: () => addNotification({
+        type: 'info',
+        title: 'Остатки обновлены',
+        message: 'Остатки материала EGGER H1137 ST9 обновлены',
+        sound: true
+      }),
       color: 'bg-blue-500'
     },
     {
       title: 'Начало проверки',
       description: 'Тест оповещения о начале проверки качества',
       icon: Info,
-      action: () => notifyInspectionStarted('Тестовое изделие', 'Стандартная проверка мебели'),
+      action: () => addNotification({
+        type: 'info',
+        title: 'Проверка начата',
+        message: 'Начата проверка качества для Тестовое изделие',
+        sound: true
+      }),
       color: 'bg-blue-500'
     },
     {
       title: 'Проверка пройдена',
       description: 'Тест оповещения о прохождении проверки',
       icon: CheckCircle,
-      action: () => notifyInspectionCompleted('Тестовое изделие', 'passed', 95),
+      action: () => addNotification({
+        type: 'success',
+        title: 'Проверка пройдена',
+        message: 'Проверка качества пройдена успешно (95%)',
+        sound: true
+      }),
       color: 'bg-green-500'
     },
     {
       title: 'Проверка не пройдена',
       description: 'Тест оповещения о непрохождении проверки',
       icon: XCircle,
-      action: () => notifyInspectionCompleted('Тестовое изделие', 'failed', 45),
+      action: () => addNotification({
+        type: 'error',
+        title: 'Проверка не пройдена',
+        message: 'Проверка качества не пройдена (45%)',
+        sound: true
+      }),
       color: 'bg-red-500'
     },
     {
       title: 'CSV импорт успешен',
       description: 'Тест оповещения об успешном импорте CSV',
       icon: Upload,
-      action: () => notifyCSVImport('materials', 15, 0),
+      action: () => addNotification({
+        type: 'success',
+        title: 'CSV импорт завершен',
+        message: 'Успешно импортировано 15 записей материалов',
+        sound: true
+      }),
       color: 'bg-green-500'
     },
     {
       title: 'CSV импорт с ошибками',
       description: 'Тест оповещения об импорте CSV с ошибками',
-      icon: AlertTriangle,
-      action: () => notifyCSVImport('bom', 10, 3),
+      icon: Upload,
+      action: () => addNotification({
+        type: 'warning',
+        title: 'CSV импорт завершен с ошибками',
+        message: 'Импортировано 10 записей, 3 ошибки',
+        sound: true
+      }),
       color: 'bg-yellow-500'
     },
     {
-      title: 'Изделие готово',
-      description: 'Тест оповещения о готовности изделия',
-      icon: CheckCircle,
-      action: () => notifyProgressUpdated('Тестовое изделие', 100),
-      color: 'bg-green-500'
+      title: 'Обновление прогресса',
+      description: 'Тест оповещения об обновлении прогресса',
+      icon: Settings,
+      action: () => addNotification({
+        type: 'info',
+        title: 'Прогресс обновлен',
+        message: 'Прогресс изделия обновлен до 75%',
+        sound: true
+      }),
+      color: 'bg-blue-500'
     },
     {
-      title: 'Низкий остаток',
-      description: 'Тест оповещения о низком остатке материала',
+      title: 'Низкие остатки',
+      description: 'Тест оповещения о низких остатках',
       icon: AlertTriangle,
-      action: () => notifyLowStock('EGGER H1137 ST9 Дуб Галифакс белый', 5, 10),
+      action: () => addNotification({
+        type: 'warning',
+        title: 'Низкие остатки',
+        message: 'У материала EGGER H1137 ST9 осталось менее 10 единиц',
+        sound: true
+      }),
       color: 'bg-yellow-500'
     },
     {
-      title: 'Приближается срок',
-      description: 'Тест оповещения о приближающемся сроке',
-      icon: AlertTriangle,
-      action: () => notifyDeadlineApproaching('Тестовое изделие', 2),
+      title: 'Приближается дедлайн',
+      description: 'Тест оповещения о приближающемся дедлайне',
+      icon: Bell,
+      action: () => addNotification({
+        type: 'warning',
+        title: 'Приближается дедлайн',
+        message: 'До завершения изделия осталось 2 дня',
+        sound: true
+      }),
       color: 'bg-yellow-500'
-    },
-    {
-      title: 'Срок просрочен',
-      description: 'Тест оповещения о просроченном сроке',
-      icon: XCircle,
-      action: () => notifyDeadlineApproaching('Тестовое изделие', -1),
-      color: 'bg-red-500'
     }
   ];
 
