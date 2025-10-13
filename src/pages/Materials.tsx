@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Package, Plus, Search, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Package, Plus, Search, Edit, Trash2, AlertTriangle, Building2, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AddMaterialDialog } from '@/components/production/AddMaterialDialog';
+import { MaterialsListDialog } from '@/components/production/MaterialsListDialog';
 import {
   Select,
   SelectContent,
@@ -49,6 +50,9 @@ export default function Materials() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [addMaterialDialogOpen, setAddMaterialDialogOpen] = useState(false);
+  const [materialsListDialogOpen, setMaterialsListDialogOpen] = useState(false);
+  const [materialsListType, setMaterialsListType] = useState<'all' | 'lowStock' | 'suppliers'>('all');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [materialToDelete, setMaterialToDelete] = useState<Material | null>(null);
@@ -166,31 +170,48 @@ export default function Materials() {
 
       {/* Статистика */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-all hover-lift"
+          onClick={() => {
+            setMaterialsListType('all');
+            setMaterialsListDialogOpen(true);
+          }}
+        >
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Package className="h-4 w-4" />
               Всего материалов
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{stats.total}</p>
+            <p className="text-xs text-muted-foreground mt-1">Нажмите для просмотра</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-all hover-lift"
+          onClick={() => {
+            setMaterialsListType('lowStock');
+            setMaterialsListDialogOpen(true);
+          }}
+        >
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
               Требуют закупки
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-destructive">{stats.lowStock}</p>
+            <p className="text-xs text-muted-foreground mt-1">Нажмите для просмотра</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
               Стоимость на складе
             </CardTitle>
           </CardHeader>
@@ -199,14 +220,22 @@ export default function Materials() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-all hover-lift"
+          onClick={() => {
+            setMaterialsListType('suppliers');
+            setMaterialsListDialogOpen(true);
+          }}
+        >
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
               Поставщиков
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{stats.uniqueSuppliers}</p>
+            <p className="text-xs text-muted-foreground mt-1">Нажмите для просмотра</p>
           </CardContent>
         </Card>
       </div>
@@ -333,6 +362,14 @@ export default function Materials() {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         onMaterialAdded={loadMaterials}
+      />
+
+      {/* Диалог списка материалов */}
+      <MaterialsListDialog
+        type={materialsListType}
+        open={materialsListDialogOpen}
+        onOpenChange={setMaterialsListDialogOpen}
+        materials={materials}
       />
 
       {/* Диалог удаления */}
