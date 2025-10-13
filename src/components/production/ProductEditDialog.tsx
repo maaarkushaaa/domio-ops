@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Save, Edit } from 'lucide-react';
+import { Trash2, Save, Edit, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { ProductProgressAnalysis } from './ProductProgressAnalysis';
 
 interface Product {
   id: string;
@@ -76,6 +77,7 @@ export function ProductEditDialog({
   });
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [progressAnalysisOpen, setProgressAnalysisOpen] = useState(false);
 
   // Заполняем форму данными изделия
   useEffect(() => {
@@ -326,6 +328,14 @@ export function ProductEditDialog({
               <Trash2 className="h-4 w-4 mr-2" />
               Удалить
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setProgressAnalysisOpen(true)}
+              disabled={loading}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Анализ прогресса
+            </Button>
             <div className="flex-1" />
             <Button
               variant="outline"
@@ -373,6 +383,21 @@ export function ProductEditDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Диалог анализа прогресса */}
+      <Dialog open={progressAnalysisOpen} onOpenChange={setProgressAnalysisOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Анализ прогресса изделия</DialogTitle>
+          </DialogHeader>
+          <ProductProgressAnalysis
+            productId={product?.id || ''}
+            productName={product?.name || ''}
+            open={progressAnalysisOpen}
+            onOpenChange={setProgressAnalysisOpen}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

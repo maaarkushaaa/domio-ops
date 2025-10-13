@@ -3,9 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Plus, CheckCircle2, Clock, AlertTriangle, Package, ClipboardCheck, ListChecks, Edit } from "lucide-react";
+import { Plus, CheckCircle2, Clock, AlertTriangle, Package, ClipboardCheck, ListChecks, Edit, RefreshCw } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
 import { useQualityControl } from "@/hooks/use-quality-control";
+import { useProductProgress } from "@/hooks/use-product-progress";
 import { ProductDialog } from "@/components/production/ProductDialog";
 import { ProductionDetailsDialog } from "@/components/production/ProductionDetailsDialog";
 import { QualityInspectionDialog } from "@/components/production/QualityInspectionDialog";
@@ -24,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Production() {
   const { products, isLoading } = useProducts();
   const { checklists, inspections, createInspection } = useQualityControl();
+  const { updateAllProductsProgress, isUpdating } = useProductProgress();
   const [detailsType, setDetailsType] = useState<'inProgress' | 'completed' | 'needsMaterials' | 'warehouse' | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
   const [selectedProductForInspection, setSelectedProductForInspection] = useState<string | null>(null);
@@ -137,12 +139,22 @@ export default function Production() {
           <h1 className="text-3xl font-bold">Производство</h1>
           <p className="text-muted-foreground">Управление производственными процессами</p>
         </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={updateAllProductsProgress}
+            disabled={isUpdating}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isUpdating ? 'animate-spin' : ''}`} />
+            {isUpdating ? 'Обновление...' : 'Обновить прогресс'}
+          </Button>
         <ProductDialog trigger={
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             Новое изделие
           </Button>
         } />
+        </div>
       </div>
 
       {/* Статистика (реальные данные из БД) */}
