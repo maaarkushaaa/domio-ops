@@ -103,13 +103,25 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
       console.log('🔧 ACCOUNTS V4.0 - Account data prepared:', accountData);
 
       if (isEdit && account) {
-        console.log('🔧 ACCOUNTS V4.0 - Calling updateAccount with ID:', account.id);
+        console.log('🔧 ACCOUNTS V6.0 - Calling updateAccount with ID:', account.id);
         await updateAccount(account.id, accountData);
-        notifySuccess('Счет обновлен', `Счет "${name}" успешно обновлен`);
+        console.log('🔧 ACCOUNTS V6.0 - Account updated successfully, showing notification');
+        try {
+          notifySuccess('Счет обновлен', `Счет "${name}" успешно обновлен`);
+          console.log('🔧 ACCOUNTS V6.0 - Notification shown successfully');
+        } catch (notifyError) {
+          console.error('🔧 ACCOUNTS V6.0 - Error showing notification:', notifyError);
+        }
       } else {
-        console.log('🔧 ACCOUNTS V4.0 - Calling createAccount');
+        console.log('🔧 ACCOUNTS V6.0 - Calling createAccount');
         await createAccount(accountData);
-        notifySuccess('Счет создан', `Счет "${name}" успешно добавлен`);
+        console.log('🔧 ACCOUNTS V6.0 - Account created successfully, showing notification');
+        try {
+          notifySuccess('Счет создан', `Счет "${name}" успешно добавлен`);
+          console.log('🔧 ACCOUNTS V6.0 - Notification shown successfully');
+        } catch (notifyError) {
+          console.error('🔧 ACCOUNTS V6.0 - Error showing notification:', notifyError);
+        }
       }
 
       // Сброс формы
@@ -122,17 +134,39 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
         setIsDefault(false);
       }
       
-      setOpen(false);
-      onSuccess?.();
-      console.log('🔧 ACCOUNTS V5.0 - AccountDialog: Success, closing dialog');
+      console.log('🔧 ACCOUNTS V6.0 - Closing dialog and calling onSuccess');
+      try {
+        setOpen(false);
+        console.log('🔧 ACCOUNTS V6.0 - Dialog closed successfully');
+      } catch (closeError) {
+        console.error('🔧 ACCOUNTS V6.0 - Error closing dialog:', closeError);
+      }
+      
+      try {
+        onSuccess?.();
+        console.log('🔧 ACCOUNTS V6.0 - onSuccess called successfully');
+      } catch (successError) {
+        console.error('🔧 ACCOUNTS V6.0 - Error calling onSuccess:', successError);
+      }
     } catch (error) {
-      console.error('Error saving account:', error);
-      notifyError('Ошибка сохранения', 'Не удалось сохранить счет');
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось сохранить счет',
-        variant: 'destructive'
-      });
+      console.error('🔧 ACCOUNTS V6.0 - Error saving account:', error);
+      try {
+        notifyError('Ошибка сохранения', 'Не удалось сохранить счет');
+        console.log('🔧 ACCOUNTS V6.0 - Error notification shown successfully');
+      } catch (notifyError) {
+        console.error('🔧 ACCOUNTS V6.0 - Error showing error notification:', notifyError);
+      }
+      
+      try {
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось сохранить счет',
+          variant: 'destructive'
+        });
+        console.log('🔧 ACCOUNTS V6.0 - Toast shown successfully');
+      } catch (toastError) {
+        console.error('🔧 ACCOUNTS V6.0 - Error showing toast:', toastError);
+      }
     } finally {
       setIsLoading(false);
     }
