@@ -528,6 +528,7 @@ export const useFinance = () => {
   };
 
   const updateAccount = async (id: string, updates: Partial<Account>) => {
+    console.log('🔧 FINANCE V4.0 - Updating account:', id, updates);
     try {
       const { data, error } = await supabase
         .from('accounts')
@@ -542,9 +543,10 @@ export const useFinance = () => {
       if (error) throw error;
 
       setAccounts(prev => prev.map(acc => acc.id === id ? data : acc));
+      console.log('✅ FINANCE V4.0 - Account updated successfully:', data);
       return data;
     } catch (error) {
-      console.error('Error updating account:', error);
+      console.error('❌ FINANCE V4.0 - Error updating account:', error);
       throw error;
     }
   };
@@ -610,6 +612,7 @@ export const useFinance = () => {
   };
 
   const updateInvoice = async (id: string, updates: Partial<Invoice>) => {
+    console.log('🔧 FINANCE V4.0 - Updating invoice:', id, updates);
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -624,9 +627,10 @@ export const useFinance = () => {
       if (error) throw error;
 
       setInvoices(prev => prev.map(inv => inv.id === id ? data : inv));
+      console.log('✅ FINANCE V4.0 - Invoice updated successfully:', data);
       return data;
     } catch (error) {
-      console.error('Error updating invoice:', error);
+      console.error('❌ FINANCE V4.0 - Error updating invoice:', error);
       throw error;
     }
   };
@@ -851,11 +855,13 @@ export const useFinance = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Загрузка данных при монтировании - VERSION 2.0 FIX
+  // Загрузка данных при монтировании - VERSION 4.0 FIX - ОДИН РАЗ
   useEffect(() => {
-    console.log('🚀 FINANCE HOOK V2.0 - Loading data for user:', user?.id);
-    loadData();
-  }, [user]); // Зависим только от user, а не от loadData
+    if (user?.id) {
+      console.log('🚀 FINANCE HOOK V4.0 - Loading data ONCE for user:', user.id);
+      loadData();
+    }
+  }, [user?.id]); // Зависим только от user.id, загружаем ОДИН РАЗ
 
   // Realtime подписки (временно отключены для устранения множественных перезагрузок)
   // useEffect(() => {

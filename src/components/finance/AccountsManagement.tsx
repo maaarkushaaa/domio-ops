@@ -67,6 +67,8 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔧 ACCOUNTS V4.0 - Submit started, isEdit:', isEdit, 'account:', account);
+    
     if (!name.trim()) {
       toast({
         title: 'Ошибка',
@@ -90,10 +92,14 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
         description: description.trim() || undefined
       };
 
+      console.log('🔧 ACCOUNTS V4.0 - Account data prepared:', accountData);
+
       if (isEdit && account) {
+        console.log('🔧 ACCOUNTS V4.0 - Calling updateAccount with ID:', account.id);
         await updateAccount(account.id, accountData);
         notifySuccess('Счет обновлен', `Счет "${name}" успешно обновлен`);
       } else {
+        console.log('🔧 ACCOUNTS V4.0 - Calling createAccount');
         await createAccount(accountData);
         notifySuccess('Счет создан', `Счет "${name}" успешно добавлен`);
       }
