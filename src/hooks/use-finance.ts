@@ -117,6 +117,7 @@ export const useFinance = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [financialReports, setFinancialReports] = useState<FinancialReport[]>([]);
   const [stats, setStats] = useState<FinancialStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -139,12 +140,13 @@ export const useFinance = () => {
       // Загружаем все данные параллельно с обработкой ошибок
       console.log('Starting to load finance data for user:', user?.id);
       
-      const [operationsRes, accountsRes, invoicesRes, budgetsRes, subscriptionsRes] = await Promise.allSettled([
+      const [operationsRes, accountsRes, invoicesRes, budgetsRes, subscriptionsRes, reportsRes] = await Promise.allSettled([
         supabase.from('financial_operations').select('*').order('date', { ascending: false }),
         supabase.from('accounts').select('*').order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').order('created_at', { ascending: false }),
         supabase.from('budgets').select('*').order('created_at', { ascending: false }),
-        supabase.from('subscriptions').select('*').order('next_payment_date', { ascending: true })
+        supabase.from('subscriptions').select('*').order('next_payment_date', { ascending: true }),
+        supabase.from('financial_reports').select('*').order('created_at', { ascending: false })
       ]);
 
       // Детальная отладка каждого запроса
@@ -153,7 +155,8 @@ export const useFinance = () => {
         accounts: accountsRes,
         invoices: invoicesRes,
         budgets: budgetsRes,
-        subscriptions: subscriptionsRes
+        subscriptions: subscriptionsRes,
+        reports: reportsRes
       });
 
       // Обрабатываем результаты с fallback для отсутствующих таблиц
@@ -176,12 +179,17 @@ export const useFinance = () => {
       const subscriptions = subscriptionsRes.status === 'fulfilled' && !subscriptionsRes.value.error 
         ? subscriptionsRes.value.data || [] 
         : [];
+      
+      const financialReports = reportsRes.status === 'fulfilled' && !reportsRes.value.error 
+        ? reportsRes.value.data || [] 
+        : [];
 
       setOperations(operations);
       setAccounts(accounts);
       setInvoices(invoices);
       setBudgets(budgets);
       setSubscriptions(subscriptions);
+      setFinancialReports(financialReports);
 
       // Отладочная информация
       console.log('Finance data loaded:', {
@@ -190,6 +198,7 @@ export const useFinance = () => {
         invoicesCount: invoices.length,
         budgetsCount: budgets.length,
         subscriptionsCount: subscriptions.length,
+        reportsCount: financialReports.length,
         operations: operations.slice(0, 3).map(op => ({ id: op.id, description: op.description })),
         accounts: accounts.map(acc => ({ id: acc.id, name: acc.name, is_default: acc.is_default }))
       });
@@ -212,6 +221,9 @@ export const useFinance = () => {
       }
       if (subscriptionsRes.status === 'rejected' || (subscriptionsRes.status === 'fulfilled' && subscriptionsRes.value.error)) {
         console.warn('Subscriptions table not found - migration may not be executed');
+      }
+      if (reportsRes.status === 'rejected' || (reportsRes.status === 'fulfilled' && reportsRes.value.error)) {
+        console.warn('Financial reports table not found - migration may not be executed');
       }
     } catch (error) {
       console.error('Error loading finance data:', error);
