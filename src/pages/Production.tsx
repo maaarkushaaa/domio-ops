@@ -152,7 +152,7 @@ export default function Production() {
       </div>
 
       {/* Статистика (реальные данные из БД) */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card 
           className="cursor-pointer hover:shadow-md transition-all hover-lift"
           onClick={() => setDetailsType('inProgress')}
