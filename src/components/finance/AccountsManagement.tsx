@@ -22,6 +22,7 @@ import {
 import { useFinance, Account } from '@/hooks/use-finance';
 import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
+import { safeFormatCurrency } from '@/utils/safeFormat';
 
 interface AccountDialogProps {
   account?: Account;
@@ -366,7 +367,7 @@ export function AccountsManagement() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Баланс:</span>
                     <span className={`font-bold ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {account.balance.toLocaleString('ru-RU')} {account.currency}
+                      {safeFormatCurrency(account.balance, account.currency)}
                     </span>
                   </div>
                   {account.bank_name && (

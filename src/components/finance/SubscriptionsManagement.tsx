@@ -27,6 +27,7 @@ import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { safeFormatCurrency } from '@/utils/safeFormat';
 
 interface SubscriptionDialogProps {
   subscription?: Subscription;
@@ -438,7 +439,7 @@ export function SubscriptionsManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {subscription.amount.toLocaleString('ru-RU')} {subscription.currency}
+                      {safeFormatCurrency(subscription.amount, subscription.currency)}
                     </TableCell>
                     <TableCell>{getBillingCycleLabel(subscription.billing_cycle)}</TableCell>
                     <TableCell>

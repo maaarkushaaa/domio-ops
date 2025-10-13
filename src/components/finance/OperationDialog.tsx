@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Plus, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { safeFormatCurrency } from '@/utils/safeFormat';
 import { useFinance, FinancialOperation } from '@/hooks/use-finance';
 import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
@@ -287,7 +288,7 @@ export function OperationDialog({ trigger, accountId, operation, onSuccess }: Op
                 <SelectContent>
                   {accounts.filter(acc => acc.is_active).map((account) => (
                     <SelectItem key={account.id} value={account.id}>
-                      {account.name} ({account.balance.toLocaleString('ru-RU')} {account.currency})
+                      {account.name} ({safeFormatCurrency(account.balance, account.currency)})
                     </SelectItem>
                   ))}
                 </SelectContent>

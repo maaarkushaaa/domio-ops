@@ -26,6 +26,7 @@ import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { safeFormatNumber, safeFormatCurrency } from '@/utils/safeFormat';
 
 interface BudgetDialogProps {
   budget?: Budget;
@@ -388,7 +389,7 @@ export function BudgetManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {budgets.reduce((sum, budget) => sum + budget.amount, 0).toLocaleString('ru-RU')} ₽
+              {safeFormatCurrency(budgets.reduce((sum, budget) => sum + budget.amount, 0))}
             </div>
           </CardContent>
         </Card>
@@ -443,7 +444,7 @@ export function BudgetManagement() {
                     <div className="flex justify-between text-sm">
                       <span>Потрачено</span>
                       <span className="font-medium">
-                        {progress.spent.toLocaleString('ru-RU')} ₽ / {budget.amount.toLocaleString('ru-RU')} ₽
+                        {safeFormatCurrency(progress.spent)} / {safeFormatCurrency(budget.amount)}
                       </span>
                     </div>
                     <Progress 
@@ -452,7 +453,7 @@ export function BudgetManagement() {
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>{progress.percentage.toFixed(1)}% использовано</span>
-                      <span>Осталось: {progress.remaining.toLocaleString('ru-RU')} ₽</span>
+                      <span>Осталось: {safeFormatCurrency(progress.remaining)}</span>
                     </div>
                   </div>
 

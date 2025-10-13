@@ -26,6 +26,7 @@ import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { safeFormatCurrency } from '@/utils/safeFormat';
 
 interface InvoiceDialogProps {
   invoice?: Invoice;
@@ -275,7 +276,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
           <div className="p-4 bg-muted rounded-lg">
             <div className="flex justify-between items-center">
               <span className="text-lg font-medium">Итого к оплате:</span>
-              <span className="text-2xl font-bold">{calculateTotal().toLocaleString('ru-RU')} ₽</span>
+              <span className="text-2xl font-bold">{safeFormatCurrency(calculateTotal())}</span>
             </div>
           </div>
 
@@ -457,7 +458,7 @@ export function InvoicesManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {invoice.total_amount.toLocaleString('ru-RU')} ₽
+                      {safeFormatCurrency(invoice.total_amount)}
                     </TableCell>
                     <TableCell>
                       {invoice.issue_date ? format(new Date(invoice.issue_date), 'dd.MM.yyyy', { locale: ru }) : '-'}
@@ -523,15 +524,15 @@ export function InvoicesManagement() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label>Сумма</Label>
-                  <p className="text-lg font-bold">{viewInvoice.amount.toLocaleString('ru-RU')} ₽</p>
+                  <p className="text-lg font-bold">{safeFormatCurrency(viewInvoice.amount)}</p>
                 </div>
                 <div>
                   <Label>НДС</Label>
-                  <p className="text-lg">{viewInvoice.tax_amount.toLocaleString('ru-RU')} ₽</p>
+                  <p className="text-lg">{safeFormatCurrency(viewInvoice.tax_amount)}</p>
                 </div>
                 <div>
                   <Label>Итого</Label>
-                  <p className="text-xl font-bold text-green-600">{viewInvoice.total_amount.toLocaleString('ru-RU')} ₽</p>
+                  <p className="text-xl font-bold text-green-600">{safeFormatCurrency(viewInvoice.total_amount)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
