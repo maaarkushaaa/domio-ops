@@ -79,12 +79,15 @@ export function QualityInspectionDialog({
   const requiredChecks = results.filter(r => r.check?.is_required);
   const requiredChecked = requiredChecks.filter(r => r.checked).length;
   const allRequiredChecked = requiredChecks.length === requiredChecked;
+  
+  // Кнопка "Принять" активна если выбран хотя бы один пункт
+  const hasAnyChecked = results.some(r => r.checked);
 
   if (!inspection) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Проверка качества: {inspection.product?.name || 'Изделие'}
@@ -100,7 +103,7 @@ export function QualityInspectionDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
           {/* Прогресс */}
           <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
             <div className="flex items-center justify-between mb-2">
@@ -115,9 +118,9 @@ export function QualityInspectionDialog({
           </div>
 
           {/* Чек-лист */}
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1 flex flex-col">
             <Label>Чек-лист: {inspection.checklist?.name}</Label>
-            <ScrollArea className="h-[300px] border rounded-lg p-2">
+            <ScrollArea className="flex-1 border rounded-lg p-2">
               <div className="space-y-2">
                 {results.map((result) => (
                   <div
@@ -151,7 +154,7 @@ export function QualityInspectionDialog({
 
           {/* Комментарии */}
           {inspection.status === 'in_progress' && (
-            <div className="space-y-2">
+            <div className="space-y-2 flex-shrink-0">
               <Label>Комментарии инспектора</Label>
               <Textarea
                 placeholder="Дополнительные замечания, рекомендации..."
@@ -173,15 +176,15 @@ export function QualityInspectionDialog({
 
           {/* Действия */}
           {inspection.status === 'in_progress' && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <Button
                 onClick={() => handleComplete('passed')}
-                disabled={!allRequiredChecked || loading}
+                disabled={!hasAnyChecked || loading}
                 className="flex-1"
                 variant="default"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Принять (Passed)
+                Принять
               </Button>
               <Button
                 onClick={() => handleComplete('failed')}
@@ -190,7 +193,7 @@ export function QualityInspectionDialog({
                 variant="destructive"
               >
                 <XCircle className="h-4 w-4 mr-2" />
-                Отклонить (Failed)
+                Отклонить
               </Button>
             </div>
           )}

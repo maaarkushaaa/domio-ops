@@ -234,16 +234,16 @@ export default function Dashboard() {
               .slice(0, 8)
               .map((t: any, i: number) => (
                 <div key={t.id} className="space-y-2 animate-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
                       <p className="font-medium">{t.title}</p>
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">{t.project?.name || 'Без проекта'}</Badge>
                         <Badge variant={t.priority === 'high' ? 'destructive' : t.priority === 'medium' ? 'secondary' : 'outline'} className="text-xs">
                           {t.priority === 'high' ? 'Высокий' : t.priority === 'medium' ? 'Средний' : 'Низкий'}
-                        </Badge>
-                      </div>
+                      </Badge>
                     </div>
+                  </div>
                     {/* Прогресс по дате: сколько прошло процентов периода */}
                     <span className="text-sm font-medium">
                       {(() => {
@@ -256,7 +256,7 @@ export default function Dashboard() {
                         return `${p}%`;
                       })()}
                     </span>
-                  </div>
+                </div>
                   <Progress value={((): number => {
                     if (!t.due_date) return 0;
                     const start = new Date(t.due_date).getTime();
@@ -265,8 +265,8 @@ export default function Dashboard() {
                     if (end <= start) return 0;
                     return Math.max(0, Math.min(100, ((now - start) / (end - start)) * 100));
                   })()} className="interactive" />
-                </div>
-              ))}
+              </div>
+            ))}
           </CardContent>
         </Card>
 
