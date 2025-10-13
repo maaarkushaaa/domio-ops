@@ -13,7 +13,6 @@ import {
   VolumeX, 
   Monitor, 
   Settings, 
-  TestTube,
   CheckCircle,
   XCircle,
   AlertTriangle,
@@ -24,37 +23,6 @@ import { NotificationTester } from '@/components/ui/NotificationContainer';
 
 export function NotificationSettingsPage() {
   const { settings, updateSettings, notifications, clearAllNotifications } = useNotifications();
-
-  const testNotifications = [
-    {
-      type: 'success' as const,
-      title: 'Тест успеха',
-      message: 'Это тестовое уведомление об успешном действии',
-      icon: CheckCircle,
-      color: 'text-green-600'
-    },
-    {
-      type: 'error' as const,
-      title: 'Тест ошибки',
-      message: 'Это тестовое уведомление об ошибке',
-      icon: XCircle,
-      color: 'text-red-600'
-    },
-    {
-      type: 'warning' as const,
-      title: 'Тест предупреждения',
-      message: 'Это тестовое уведомление-предупреждение',
-      icon: AlertTriangle,
-      color: 'text-yellow-600'
-    },
-    {
-      type: 'info' as const,
-      title: 'Тест информации',
-      message: 'Это тестовое информационное уведомление',
-      icon: Info,
-      color: 'text-blue-600'
-    }
-  ];
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -217,55 +185,6 @@ export function NotificationSettingsPage() {
         </Card>
       </div>
 
-      {/* Тестирование уведомлений */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TestTube className="h-5 w-5" />
-            Тестирование уведомлений
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {testNotifications.map((test, index) => {
-              const Icon = test.icon;
-              return (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="h-auto p-4 flex flex-col items-center gap-2"
-                  onClick={() => {
-                    // Здесь будет логика тестирования
-                    console.log('Testing notification:', test.type);
-                  }}
-                >
-                  <Icon className={`h-6 w-6 ${test.color}`} />
-                  <span className="text-sm">{test.title}</span>
-                </Button>
-              );
-            })}
-          </div>
-          
-          <Separator />
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Активные уведомления</p>
-              <p className="text-xs text-muted-foreground">
-                {notifications.length} уведомлений в очереди
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearAllNotifications}
-              disabled={notifications.length === 0}
-            >
-              Очистить все
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Информация о типах уведомлений */}
       <Card>
