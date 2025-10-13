@@ -3,13 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Plus, CheckCircle2, Clock, AlertTriangle, Package, ClipboardCheck, ListChecks } from "lucide-react";
+import { Plus, CheckCircle2, Clock, AlertTriangle, Package, ClipboardCheck, ListChecks, Edit } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
 import { useQualityControl } from "@/hooks/use-quality-control";
 import { ProductDialog } from "@/components/production/ProductDialog";
 import { ProductionDetailsDialog } from "@/components/production/ProductionDetailsDialog";
 import { QualityInspectionDialog } from "@/components/production/QualityInspectionDialog";
 import { ProductMaterialsDialog } from "@/components/production/ProductMaterialsDialog";
+import { ProductEditDialog } from "@/components/production/ProductEditDialog";
 import { useState, useMemo, useEffect } from "react";
 import {
   Select,
@@ -28,6 +29,7 @@ export default function Production() {
   const [selectedProductForInspection, setSelectedProductForInspection] = useState<string | null>(null);
   const [selectedChecklistForNew, setSelectedChecklistForNew] = useState<string | null>(null);
   const [selectedProductForMaterials, setSelectedProductForMaterials] = useState<{ id: string; name: string } | null>(null);
+  const [selectedProductForEdit, setSelectedProductForEdit] = useState<any>(null);
   
   // Состояние для материалов и их остатков
   const [materialsData, setMaterialsData] = useState<any[]>([]);
@@ -220,7 +222,7 @@ export default function Production() {
 
         <TabsContent value="products" className="space-y-4">
           {products.map((product) => (
-            <Card key={product.id} className="hover:shadow-md transition-shadow">
+            <Card key={product.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedProductForEdit(product)}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
@@ -232,14 +234,30 @@ export default function Production() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelectedProductForMaterials({ id: product.id, name: product.name })}
-                  >
-                    <ListChecks className="h-4 w-4 mr-2" />
-                    Материалы
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProductForMaterials({ id: product.id, name: product.name });
+                      }}
+                    >
+                      <ListChecks className="h-4 w-4 mr-2" />
+                      Материалы
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProductForEdit(product);
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Редактировать
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -398,6 +416,21 @@ export default function Production() {
         productName={selectedProductForMaterials?.name}
         open={!!selectedProductForMaterials}
         onOpenChange={(open) => !open && setSelectedProductForMaterials(null)}
+      />
+
+      {/* Диалог редактирования изделия */}
+      <ProductEditDialog
+        product={selectedProductForEdit}
+        open={!!selectedProductForEdit}
+        onOpenChange={(open) => !open && setSelectedProductForEdit(null)}
+        onProductUpdated={() => {
+          // Перезагружаем данные
+          window.location.reload();
+        }}
+        onProductDeleted={() => {
+          // Перезагружаем данные
+          window.location.reload();
+        }}
       />
     </div>
   );
