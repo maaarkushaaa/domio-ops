@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +47,14 @@ const CURRENCIES = [
 
 export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProps) {
   const [open, setOpen] = useState(false);
+
+  // Автоматически открываем диалог при редактировании
+  useEffect(() => {
+    if (account) {
+      console.log('🔧 ACCOUNTS V5.0 - AccountDialog: Account provided, opening dialog');
+      setOpen(true);
+    }
+  }, [account]);
   const [isLoading, setIsLoading] = useState(false);
   
   // Форма
@@ -116,6 +124,7 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
       
       setOpen(false);
       onSuccess?.();
+      console.log('🔧 ACCOUNTS V5.0 - AccountDialog: Success, closing dialog');
     } catch (error) {
       console.error('Error saving account:', error);
       notifyError('Ошибка сохранения', 'Не удалось сохранить счет');
@@ -338,7 +347,11 @@ export function AccountsManagement() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedAccount(account)}
+                      onClick={() => {
+                        console.log('🔧 ACCOUNTS V5.0 - Edit button clicked for account:', account);
+                        setSelectedAccount(account);
+                        console.log('🔧 ACCOUNTS V5.0 - selectedAccount set to:', account);
+                      }}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -402,7 +415,10 @@ export function AccountsManagement() {
       {selectedAccount && (
         <AccountDialog
           account={selectedAccount}
-          onSuccess={() => setSelectedAccount(null)}
+          onSuccess={() => {
+            console.log('🔧 ACCOUNTS V5.0 - Dialog success, closing dialog');
+            setSelectedAccount(null);
+          }}
         />
       )}
     </div>
