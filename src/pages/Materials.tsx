@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { AddMaterialDialog } from '@/components/production/AddMaterialDialog';
 import { MaterialsListDialog } from '@/components/production/MaterialsListDialog';
 import { SuppliersDialog } from '@/components/production/SuppliersDialog';
+import { MaterialStockImportDialog } from '@/components/production/MaterialStockImportDialog';
+import { ProductBOMImportDialog } from '@/components/production/ProductBOMImportDialog';
 import {
   Select,
   SelectContent,
@@ -164,10 +166,14 @@ export default function Materials() {
             Управление каталогом материалов, комплектующих и фурнитуры
           </p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Добавить материал
-        </Button>
+        <div className="flex gap-2">
+          <MaterialStockImportDialog />
+          <ProductBOMImportDialog />
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Добавить материал
+          </Button>
+        </div>
       </div>
 
       {/* Статистика */}
