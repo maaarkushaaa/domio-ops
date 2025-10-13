@@ -542,13 +542,12 @@ export const useFinance = () => {
 
       if (error) throw error;
 
-      setAccounts(prev => prev.map(acc => acc.id === id ? data : acc));
-      console.log('✅ FINANCE V7.0 - Account updated successfully:', data);
+      console.log('✅ FINANCE V11.0 - Account updated successfully:', data);
       
       // Принудительно перезагружаем данные для обновления интерфейса
-      console.log('🔄 FINANCE V7.0 - Reloading data to update UI');
+      console.log('🔄 FINANCE V11.0 - Reloading data to update UI');
       await loadData();
-      console.log('✅ FINANCE V7.0 - Data reloaded successfully');
+      console.log('✅ FINANCE V11.0 - Data reloaded successfully');
       
       return data;
     } catch (error) {
@@ -632,13 +631,12 @@ export const useFinance = () => {
 
       if (error) throw error;
 
-      setInvoices(prev => prev.map(inv => inv.id === id ? data : inv));
-      console.log('✅ FINANCE V7.0 - Invoice updated successfully:', data);
+      console.log('✅ FINANCE V11.0 - Invoice updated successfully:', data);
       
       // Принудительно перезагружаем данные для обновления интерфейса
-      console.log('🔄 FINANCE V7.0 - Reloading data to update UI');
+      console.log('🔄 FINANCE V11.0 - Reloading data to update UI');
       await loadData();
-      console.log('✅ FINANCE V7.0 - Data reloaded successfully');
+      console.log('✅ FINANCE V11.0 - Data reloaded successfully');
       
       return data;
     } catch (error) {
@@ -719,12 +717,12 @@ export const useFinance = () => {
 
       if (error) throw error;
 
-      setSubscriptions(prev => prev.map(sub => sub.id === id ? data : sub));
+      console.log('✅ FINANCE V11.0 - Subscription updated successfully:', data);
       
       // Принудительно перезагружаем данные для обновления интерфейса
-      console.log('🔄 FINANCE V7.0 - Reloading data to update UI');
+      console.log('🔄 FINANCE V11.0 - Reloading data to update UI');
       await loadData();
-      console.log('✅ FINANCE V7.0 - Data reloaded successfully');
+      console.log('✅ FINANCE V11.0 - Data reloaded successfully');
       
       return data;
     } catch (error) {
@@ -763,12 +761,12 @@ export const useFinance = () => {
 
       if (error) throw error;
 
-      setBudgets(prev => prev.map(budget => budget.id === id ? data : budget));
+      console.log('✅ FINANCE V11.0 - Budget updated successfully:', data);
       
       // Принудительно перезагружаем данные для обновления интерфейса
-      console.log('🔄 FINANCE V7.0 - Reloading data to update UI');
+      console.log('🔄 FINANCE V11.0 - Reloading data to update UI');
       await loadData();
-      console.log('✅ FINANCE V7.0 - Data reloaded successfully');
+      console.log('✅ FINANCE V11.0 - Data reloaded successfully');
       
       return data;
     } catch (error) {
