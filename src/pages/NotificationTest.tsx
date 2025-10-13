@@ -17,63 +17,58 @@ import {
 } from 'lucide-react';
 
 export function NotificationTestPage() {
-  const { addNotification, notifications } = useNotifications();
+  const { addNotification, notifications, settings } = useNotifications();
 
   // Отладочная информация
-  console.log('Current notifications:', notifications);
-  console.log('addNotification function:', addNotification);
+  console.log('NotificationTestPage render:', { 
+    notifications: notifications.length,
+    settings: settings,
+    addNotification: typeof addNotification 
+  });
+
+  // Простая функция для тестирования
+  const testNotification = (type: 'success' | 'error' | 'warning' | 'info') => {
+    console.log(`Testing ${type} notification...`);
+    try {
+      addNotification({
+        type,
+        title: `Тест ${type}`,
+        message: `Это тестовое уведомление типа ${type}`,
+        sound: true
+      });
+      console.log(`${type} notification added successfully`);
+    } catch (error) {
+      console.error(`Error adding ${type} notification:`, error);
+    }
+  };
 
   const testScenarios = [
     {
       title: 'Успешное уведомление',
       description: 'Тест успешного уведомления',
       icon: CheckCircle,
-      action: () => {
-        console.log('Adding success notification...');
-        addNotification({
-          type: 'success',
-          title: 'Успех!',
-          message: 'Операция выполнена успешно',
-          sound: true
-        });
-        console.log('Success notification added');
-      },
+      action: () => testNotification('success'),
       color: 'bg-green-500'
     },
     {
       title: 'Ошибка',
       description: 'Тест уведомления об ошибке',
       icon: XCircle,
-      action: () => addNotification({
-        type: 'error',
-        title: 'Ошибка!',
-        message: 'Произошла ошибка при выполнении операции',
-        sound: true
-      }),
+      action: () => testNotification('error'),
       color: 'bg-red-500'
     },
     {
       title: 'Предупреждение',
       description: 'Тест предупреждающего уведомления',
       icon: AlertTriangle,
-      action: () => addNotification({
-        type: 'warning',
-        title: 'Внимание!',
-        message: 'Обратите внимание на это предупреждение',
-        sound: true
-      }),
+      action: () => testNotification('warning'),
       color: 'bg-yellow-500'
     },
     {
       title: 'Информация',
       description: 'Тест информационного уведомления',
       icon: Info,
-      action: () => addNotification({
-        type: 'info',
-        title: 'Информация',
-        message: 'Это информационное сообщение',
-        sound: false
-      }),
+      action: () => testNotification('info'),
       color: 'bg-blue-500'
     },
     {
@@ -259,7 +254,37 @@ export function NotificationTestPage() {
             Базовые тесты
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <Button 
+              onClick={() => testNotification('success')}
+              className="bg-green-500 hover:bg-green-600 text-white"
+            >
+              Тест успеха
+            </Button>
+            <Button 
+              onClick={() => testNotification('error')}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Тест ошибки
+            </Button>
+            <Button 
+              onClick={() => testNotification('warning')}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Тест предупреждения
+            </Button>
+            <Button 
+              onClick={() => testNotification('info')}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              Тест информации
+            </Button>
+          </div>
+          <div className="text-sm text-gray-600">
+            <p>Активных уведомлений: {notifications.length}</p>
+            <p>Уведомления: {settings.enabled ? 'Включены' : 'Отключены'}</p>
+          </div>
           <NotificationTester />
         </CardContent>
       </Card>

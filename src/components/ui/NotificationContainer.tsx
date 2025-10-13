@@ -219,7 +219,7 @@ function NotificationSettings() {
 
 // Основной компонент контейнера уведомлений
 export function NotificationContainer() {
-  const { notifications, clearAllNotifications, settings } = useNotifications();
+  const { notifications, clearAllNotifications, settings, addNotification } = useNotifications();
 
   // Временно показываем контейнер для отладки
   console.log('NotificationContainer render:', { 
@@ -230,17 +230,24 @@ export function NotificationContainer() {
 
   // Всегда показываем контейнер для отладки
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
       {/* Индикатор состояния */}
-      <div className="bg-blue-100 border border-blue-300 rounded-lg p-2 text-xs">
-        <div>Уведомления: {settings.enabled ? 'Включены' : 'Отключены'}</div>
-        <div>Активных: {notifications.length}</div>
+      <div className="bg-blue-100 border border-blue-300 rounded-lg p-3 text-xs">
+        <div className="font-semibold mb-1">Состояние уведомлений:</div>
+        <div>• Уведомления: {settings.enabled ? '✅ Включены' : '❌ Отключены'}</div>
+        <div>• Активных: {notifications.length}</div>
+        <div>• Звуки: {settings.sounds ? '✅ Включены' : '❌ Отключены'}</div>
+        <div>• Desktop: {settings.desktop ? '✅ Включены' : '❌ Отключены'}</div>
       </div>
 
       {/* Уведомления */}
-      {notifications.map((notification) => (
-        <NotificationItem key={notification.id} notification={notification} />
-      ))}
+      {notifications.length > 0 && (
+        <div className="space-y-2">
+          {notifications.map((notification) => (
+            <NotificationItem key={notification.id} notification={notification} />
+          ))}
+        </div>
+      )}
 
       {/* Кнопки управления */}
       {notifications.length > 0 && (
@@ -264,6 +271,22 @@ export function NotificationContainer() {
           </div>
         </div>
       )}
+
+      {/* Кнопка для принудительного тестирования */}
+      <Button
+        onClick={() => {
+          console.log('Force test notification');
+          addNotification({
+            type: 'info',
+            title: 'Принудительный тест',
+            message: 'Это принудительное тестовое уведомление',
+            sound: true
+          });
+        }}
+        className="w-full bg-purple-500 hover:bg-purple-600 text-white text-xs"
+      >
+        🧪 Принудительный тест
+      </Button>
     </div>
   );
 }
