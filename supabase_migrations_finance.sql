@@ -1,28 +1,7 @@
 -- Миграция для финансовых операций
--- Создание таблицы financial_operations
-CREATE TABLE IF NOT EXISTS public.financial_operations (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense', 'transfer')),
-    amount DECIMAL(15,2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'RUB',
-    category VARCHAR(100) NOT NULL,
-    subcategory VARCHAR(100),
-    description TEXT,
-    date DATE NOT NULL DEFAULT CURRENT_DATE,
-    account_id UUID REFERENCES public.accounts(id),
-    project_id UUID REFERENCES public.projects(id),
-    client_id UUID REFERENCES public.clients(id),
-    supplier_id UUID REFERENCES public.suppliers(id),
-    invoice_id UUID,
-    tags TEXT[],
-    metadata JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by UUID REFERENCES auth.users(id),
-    updated_by UUID REFERENCES auth.users(id)
-);
+-- ВАЖНО: Создаем таблицы в правильном порядке!
 
--- Создание таблицы accounts (счета)
+-- Сначала создаем таблицу accounts (счета)
 CREATE TABLE IF NOT EXISTS public.accounts (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
@@ -115,6 +94,29 @@ CREATE TABLE IF NOT EXISTS public.financial_reports (
     created_by UUID REFERENCES auth.users(id)
 );
 
+-- Теперь создаем таблицу financial_operations (после создания всех зависимых таблиц)
+CREATE TABLE IF NOT EXISTS public.financial_operations (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense', 'transfer')),
+    amount DECIMAL(15,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'RUB',
+    category VARCHAR(100) NOT NULL,
+    subcategory VARCHAR(100),
+    description TEXT,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    account_id UUID REFERENCES public.accounts(id),
+    project_id UUID REFERENCES public.projects(id),
+    client_id UUID REFERENCES public.clients(id),
+    supplier_id UUID REFERENCES public.suppliers(id),
+    invoice_id UUID REFERENCES public.invoices(id),
+    tags TEXT[],
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by UUID REFERENCES auth.users(id),
+    updated_by UUID REFERENCES auth.users(id)
+);
+
 -- Индексы для оптимизации
 CREATE INDEX IF NOT EXISTS idx_financial_operations_date ON public.financial_operations(date);
 CREATE INDEX IF NOT EXISTS idx_financial_operations_type ON public.financial_operations(type);
@@ -133,6 +135,19 @@ ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.financial_reports ENABLE ROW LEVEL SECURITY;
 
+-- Политики для accounts (создаем первыми)
+CREATE POLICY "Users can view their accounts" ON public.accounts
+    FOR SELECT USING (auth.uid() = created_by);
+
+CREATE POLICY "Users can insert their accounts" ON public.accounts
+    FOR INSERT WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "Users can update their accounts" ON public.accounts
+    FOR UPDATE USING (auth.uid() = created_by);
+
+CREATE POLICY "Users can delete their accounts" ON public.accounts
+    FOR DELETE USING (auth.uid() = created_by);
+
 -- Политики для financial_operations
 CREATE POLICY "Users can view their financial operations" ON public.financial_operations
     FOR SELECT USING (auth.uid() = created_by);
@@ -144,19 +159,6 @@ CREATE POLICY "Users can update their financial operations" ON public.financial_
     FOR UPDATE USING (auth.uid() = created_by);
 
 CREATE POLICY "Users can delete their financial operations" ON public.financial_operations
-    FOR DELETE USING (auth.uid() = created_by);
-
--- Политики для accounts
-CREATE POLICY "Users can view their accounts" ON public.accounts
-    FOR SELECT USING (auth.uid() = created_by);
-
-CREATE POLICY "Users can insert their accounts" ON public.accounts
-    FOR INSERT WITH CHECK (auth.uid() = created_by);
-
-CREATE POLICY "Users can update their accounts" ON public.accounts
-    FOR UPDATE USING (auth.uid() = created_by);
-
-CREATE POLICY "Users can delete their accounts" ON public.accounts
     FOR DELETE USING (auth.uid() = created_by);
 
 -- Политики для invoices
