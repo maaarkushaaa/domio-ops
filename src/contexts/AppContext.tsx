@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useProductProgress } from '@/hooks/use-product-progress';
 
 // Types
 export interface User {
@@ -466,7 +467,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addProduct = async (product: Omit<Product, 'id' | 'created_at'>) => {
     try {
-      // Сохраняем в Supabase
+      // Сохраняем в Supabase (прогресс будет рассчитан автоматически)
       const { data, error } = await (supabase as any)
         .from('products')
         .insert({
@@ -474,7 +475,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           sku: product.sku,
           description: product.description,
           status: product.status,
-          progress: product.progress,
+          progress: 0, // Начальный прогресс, будет обновлен автоматически
           assignee_id: product.assignee_id,
           deadline: product.deadline,
           unit_price: product.unit_price,
@@ -491,6 +492,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Обновляем локальный стейт с реальным UUID из БД
       setState(prev => ({ ...prev, products: [...prev.products, data] }));
+      
+      // Автоматически рассчитываем прогресс для нового изделия
+      setTimeout(async () => {
+        try {
+          const { updateProductProgress } = useProductProgress();
+          await updateProductProgress(data.id);
+        } catch (error) {
+          console.error('Error updating progress for new product:', error);
+        }
+      }, 1000); // Небольшая задержка для завершения создания
+      
       console.log('Product created successfully:', data);
     } catch (error) {
       console.error('Error creating product:', error);

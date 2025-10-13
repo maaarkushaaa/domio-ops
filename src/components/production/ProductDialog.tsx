@@ -27,7 +27,6 @@ export function ProductDialog({ trigger }: ProductDialogProps) {
       name: name.trim(),
       description: description.trim() || undefined,
       status,
-      progress: 0,
     });
 
     setName('');

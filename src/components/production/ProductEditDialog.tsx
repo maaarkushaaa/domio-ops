@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ProductProgressAnalysis } from './ProductProgressAnalysis';
+import { useProductProgress } from '@/hooks/use-product-progress';
 
 interface Product {
   id: string;
@@ -78,6 +79,7 @@ export function ProductEditDialog({
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [progressAnalysisOpen, setProgressAnalysisOpen] = useState(false);
+  const { updateProductProgress } = useProductProgress();
 
   // Заполняем форму данными изделия
   useEffect(() => {
@@ -105,7 +107,6 @@ export function ProductEditDialog({
         sku: formData.sku.trim() || null,
         description: formData.description.trim() || null,
         status: formData.status,
-        progress: Math.max(0, Math.min(100, formData.progress)),
         deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
         unit_price: formData.unit_price ? parseFloat(formData.unit_price) : null,
         quantity_in_stock: formData.quantity_in_stock ? parseFloat(formData.quantity_in_stock) : null,
@@ -121,6 +122,9 @@ export function ProductEditDialog({
         alert('Ошибка при обновлении изделия: ' + error.message);
         return;
       }
+
+      // Автоматически обновляем прогресс после изменения данных
+      await updateProductProgress(product.id);
 
       alert('Изделие успешно обновлено!');
       onOpenChange(false);
@@ -245,15 +249,10 @@ export function ProductEditDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="progress">Прогресс (%)</Label>
-                  <Input
-                    id="progress"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.progress}
-                    onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
-                  />
+                  <Label>Прогресс (%)</Label>
+                  <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+                    Прогресс рассчитывается автоматически на основе статуса, проверок качества и готовности материалов
+                  </div>
                 </div>
               </div>
 
