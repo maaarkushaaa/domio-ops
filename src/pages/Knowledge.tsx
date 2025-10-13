@@ -10,12 +10,14 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github.css';
 
-// Компонент для блоков кода
-const CodeBlock = ({ language, children }: { language: string; children: string }) => (
-  <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4">
-    <code className={`language-${language}`}>{children}</code>
-  </pre>
-);
+// Функция для создания блоков кода
+const createCodeBlock = (language: string, content: string) => {
+  return (
+    <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+      <code className={`language-${language}`}>{content}</code>
+    </pre>
+  );
+};
 import { 
   BookOpen, 
   FileText, 
@@ -77,16 +79,14 @@ export default function Knowledge() {
 
 Добавьте в файл '.env.local':
 
-<CodeBlock language="bash">
-# Базис МойСклад API
+{createCodeBlock('bash', `# Базис МойСклад API
 BASIS_MOYSKLAD_API_URL=https://api.moysklad.ru/api/remap/1.2
 BASIS_MOYSKLAD_API_TOKEN=your_api_token_here
 BASIS_MOYSKLAD_WAREHOUSE_ID=your_warehouse_id
 
 # Настройки синхронизации
 SYNC_INTERVAL_MINUTES=30
-AUTO_SYNC_ENABLED=true
-</CodeBlock>
+AUTO_SYNC_ENABLED=true`)}
 
 ### Шаг 3: Настройка webhook
 
@@ -147,11 +147,9 @@ AUTO_SYNC_ENABLED=true
 
 ### Формат CSV для импорта BOM
 
-<CodeBlock language="csv">
-Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Цена
+{createCodeBlock('csv', `Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Цена
 Шкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,2500
-Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,150
-</CodeBlock>
+Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,150`)}
 
 ## 🚨 Обработка ошибок
 
@@ -173,8 +171,7 @@ AUTO_SYNC_ENABLED=true
 
 Просмотр логов в базе данных:
 
-<CodeBlock language="sql">
-SELECT 
+{createCodeBlock('sql', `SELECT 
   created_at,
   operation_type,
   status,
@@ -183,8 +180,7 @@ SELECT
 FROM sync_logs 
 WHERE source = 'basis_moysklad'
 ORDER BY created_at DESC 
-LIMIT 20;
-</CodeBlock>
+LIMIT 20;`)}
 
 ## 🔔 Уведомления о синхронизации
 
@@ -192,9 +188,7 @@ LIMIT 20;
 
 Настройте уведомления о результатах синхронизации:
 
-<CodeBlock language="bash">
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-</CodeBlock>
+{createCodeBlock('bash', `SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL`)}
 
 Примеры уведомлений:
 - ✅ Синхронизация Базис: обновлено 150 материалов
@@ -223,31 +217,27 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 Настройте фильтры для синхронизации только нужных товаров:
 
-<CodeBlock language="json">
-{
+{createCodeBlock('json', `{
   "filters": {
     "groups": ["ЛДСП", "Фурнитура", "Кромка"],
     "price_min": 100,
     "price_max": 10000,
     "stock_min": 1
   }
-}
-</CodeBlock>
+}`)}
 
 ### Кастомные поля
 
 Добавьте дополнительные поля для синхронизации:
 
-<CodeBlock language="json">
-{
+{createCodeBlock('json', `{
   "custom_fields": {
     "supplier": "Поставщик",
     "color": "Цвет",
     "texture": "Текстура",
     "thickness": "Толщина"
   }
-}
-</CodeBlock>
+}`)}
 
 ## 📞 Поддержка
 
@@ -300,13 +290,11 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 ### Формат файла materials.csv
 
-<CodeBlock language="csv">
-Название,Артикул,Категория,Остаток,Мин.остаток,Поставщик,Единица,Цена,Цвет,Текстура,Толщина
+{createCodeBlock('csv', `Название,Артикул,Категория,Остаток,Мин.остаток,Поставщик,Единица,Цена,Цвет,Текстура,Толщина
 EGGER H1137 ST9,H1137-ST9,ЛДСП,50,10,EGGER,м²,2500,Белый,Дуб,16
 EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,16
 Кромка ABS 2мм,ABS-2MM,Кромка,200,50,EGGER,м,45,Белый,Глянец,2
-Петля Blum,BLUM-H-100,Фурнитура,500,50,Blum,шт,150,Хром,Глянец,0
-</CodeBlock>
+Петля Blum,BLUM-H-100,Фурнитура,500,50,Blum,шт,150,Хром,Глянец,0`)}
 
 ### Обязательные поля
 
@@ -329,12 +317,10 @@ EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,1
 
 ### Формат файла bom.csv
 
-<CodeBlock language="csv">
-Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Коэффициент,Примечание
+{createCodeBlock('csv', `Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Коэффициент,Примечание
 Шкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,1.1,С запасом на обрезку
 Шкаф кухонный,SK-001,Кромка ABS 2мм,ABS-2MM,8,м,1.05,С запасом на стыки
-Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,1,Стандартная комплектация
-</CodeBlock>
+Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,1,Стандартная комплектация`)}
 
 ### Поля спецификации
 
@@ -357,25 +343,20 @@ EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,1
    'C:\\csv-imports\\'
 
 2. **Настройте структуру папок:**
-<CodeBlock language="text">
-csv-imports/
+{createCodeBlock('text', `csv-imports/
 ├── materials/          # Материалы
 ├── bom/               # Спецификации
 ├── processed/         # Обработанные файлы
-└── errors/           # Файлы с ошибками
-</CodeBlock>
+└── errors/           # Файлы с ошибками`)}
 
 3. **Запустите мониторинг:**
-<CodeBlock language="bash">
-npm run csv-watcher
-</CodeBlock>
+{createCodeBlock('bash', `npm run csv-watcher`)}
 
 ### Планировщик задач
 
 Настройте регулярный импорт по расписанию:
 
-<CodeBlock language="json">
-{
+{createCodeBlock('json', `{
   "tasks": [
     {
       "name": "daily-materials-sync",
@@ -400,15 +381,13 @@ npm run csv-watcher
       }
     }
   ]
-}
-</CodeBlock>
+}`)}
 
 ## 🌐 API интеграция
 
 ### Endpoint для импорта
 
-<CodeBlock language="bash">
-POST /api/csv-import
+{createCodeBlock('bash', `POST /api/csv-import
 Content-Type: multipart/form-data
 Authorization: Bearer your-api-key
 
@@ -420,13 +399,11 @@ Authorization: Bearer your-api-key
     "update_existing": true,
     "validate_data": true
   }
-}
-</CodeBlock>
+}`)}
 
 ### Webhook для внешних систем
 
-<CodeBlock language="bash">
-POST /api/webhook/csv-import
+{createCodeBlock('bash', `POST /api/webhook/csv-import
 Content-Type: application/json
 X-Webhook-Signature: sha256=...
 
@@ -445,8 +422,7 @@ X-Webhook-Signature: sha256=...
     "source": "basis_moysklad",
     "timestamp": "2024-12-19T10:00:00Z"
   }
-}
-</CodeBlock>
+}`)}
 
 ## 🛠️ Обработка ошибок
 
@@ -480,11 +456,9 @@ X-Webhook-Signature: sha256=...
    - Проверьте уникальность артикулов
 
 3. **Проверьте логи:**
-<CodeBlock language="sql">
-SELECT * FROM import_logs 
+{createCodeBlock('sql', `SELECT * FROM import_logs 
 WHERE created_at >= NOW() - INTERVAL '1 hour'
-ORDER BY created_at DESC;
-</CodeBlock>
+ORDER BY created_at DESC;`)}
 
 ## 📊 Мониторинг импорта
 

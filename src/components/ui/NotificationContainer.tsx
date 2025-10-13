@@ -228,65 +228,42 @@ export function NotificationContainer() {
     notifications: notifications 
   });
 
-  if (!settings.enabled) {
-    return (
-      <div className="fixed top-4 right-4 z-50 bg-red-100 border border-red-300 rounded-lg p-3">
-        <p className="text-red-800 text-sm">Уведомления отключены в настройках</p>
-      </div>
-    );
-  }
-
-  if (notifications.length === 0) {
-    return (
-      <div className="fixed top-4 right-4 z-50 bg-blue-100 border border-blue-300 rounded-lg p-3">
-        <p className="text-blue-800 text-sm">Нет активных уведомлений</p>
-      </div>
-    );
-  }
-
-  const positionClasses = {
-    'top-right': 'top-4 right-4',
-    'top-left': 'top-4 left-4',
-    'bottom-right': 'bottom-4 right-4',
-    'bottom-left': 'bottom-4 left-4',
-    'top-center': 'top-4 left-1/2 transform -translate-x-1/2',
-    'bottom-center': 'bottom-4 left-1/2 transform -translate-x-1/2',
-  };
-
+  // Всегда показываем контейнер для отладки
   return (
-    <div className={cn(
-      'fixed z-50 space-y-2 pointer-events-none',
-      positionClasses[settings.position]
-    )}>
-      {/* Заголовок с кнопками управления */}
+    <div className="fixed top-4 right-4 z-50 space-y-2">
+      {/* Индикатор состояния */}
+      <div className="bg-blue-100 border border-blue-300 rounded-lg p-2 text-xs">
+        <div>Уведомления: {settings.enabled ? 'Включены' : 'Отключены'}</div>
+        <div>Активных: {notifications.length}</div>
+      </div>
+
+      {/* Уведомления */}
+      {notifications.map((notification) => (
+        <NotificationItem key={notification.id} notification={notification} />
+      ))}
+
+      {/* Кнопки управления */}
       {notifications.length > 0 && (
-        <div className="flex items-center justify-between bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg pointer-events-auto">
+        <div className="flex items-center justify-between bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">
               {notifications.length}
             </Badge>
             <span className="text-sm font-medium">Уведомления</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <NotificationSettings />
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
               onClick={clearAllNotifications}
+              className="h-6 px-2 text-xs"
             >
-              <X className="h-3 w-3" />
+              Очистить все
             </Button>
-            <NotificationSettings />
           </div>
         </div>
       )}
-
-      {/* Список уведомлений */}
-      <div className="space-y-2 pointer-events-auto">
-        {notifications.map((notification) => (
-          <NotificationItem key={notification.id} notification={notification} />
-        ))}
-      </div>
     </div>
   );
 }
