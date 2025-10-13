@@ -19,13 +19,7 @@ export function NotificationIntegration() {
     notifyDeadlineApproaching
   } = useActionNotifications();
 
-  // Отслеживаем изменения продуктов для оповещений
-  useEffect(() => {
-    // Здесь можно добавить логику отслеживания изменений
-    // Например, через Realtime подписки Supabase
-  }, [products]);
-
-  // Функции для вызова из других компонентов
+  // Экспортируем функции для использования в других компонентах
   React.useEffect(() => {
     // Экспортируем функции в window для глобального доступа
     (window as any).notifyProductCreated = notifyProductCreated;
@@ -53,22 +47,42 @@ export function NotificationIntegration() {
     notifyDeadlineApproaching
   ]);
 
+  // Отслеживаем изменения продуктов для оповещений
+  useEffect(() => {
+    // Здесь можно добавить логику отслеживания изменений
+    // Например, через Realtime подписки Supabase
+  }, [products]);
+
   return null; // Этот компонент не рендерит ничего
 }
 
 // Хук для использования оповещений в компонентах
 export function useAppNotifications() {
+  const { 
+    notifyProductCreated, 
+    notifyProductUpdated, 
+    notifyProductDeleted,
+    notifyMaterialAdded,
+    notifyMaterialUpdated,
+    notifyInspectionStarted,
+    notifyInspectionCompleted,
+    notifyCSVImport,
+    notifyProgressUpdated,
+    notifyLowStock,
+    notifyDeadlineApproaching
+  } = useActionNotifications();
+
   return {
-    notifyProductCreated: (window as any).notifyProductCreated,
-    notifyProductUpdated: (window as any).notifyProductUpdated,
-    notifyProductDeleted: (window as any).notifyProductDeleted,
-    notifyMaterialAdded: (window as any).notifyMaterialAdded,
-    notifyMaterialUpdated: (window as any).notifyMaterialUpdated,
-    notifyInspectionStarted: (window as any).notifyInspectionStarted,
-    notifyInspectionCompleted: (window as any).notifyInspectionCompleted,
-    notifyCSVImport: (window as any).notifyCSVImport,
-    notifyProgressUpdated: (window as any).notifyProgressUpdated,
-    notifyLowStock: (window as any).notifyLowStock,
-    notifyDeadlineApproaching: (window as any).notifyDeadlineApproaching,
+    notifyProductCreated,
+    notifyProductUpdated,
+    notifyProductDeleted,
+    notifyMaterialAdded,
+    notifyMaterialUpdated,
+    notifyInspectionStarted,
+    notifyInspectionCompleted,
+    notifyCSVImport,
+    notifyProgressUpdated,
+    notifyLowStock,
+    notifyDeadlineApproaching
   };
 }
