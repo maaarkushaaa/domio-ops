@@ -70,6 +70,9 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
 
   const { createAccount, updateAccount, deleteAccount, accounts } = useFinance();
   const { notifySuccess, notifyError } = useAppNotifications();
+  
+  // Проверяем, что функции уведомлений доступны
+  console.log('🔧 ACCOUNTS V8.0 - Notification functions:', { notifySuccess, notifyError });
 
   const isEdit = !!account;
 
@@ -107,8 +110,12 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
         await updateAccount(account.id, accountData);
         console.log('🔧 ACCOUNTS V6.0 - Account updated successfully, showing notification');
         try {
-          notifySuccess('Счет обновлен', `Счет "${name}" успешно обновлен`);
-          console.log('🔧 ACCOUNTS V6.0 - Notification shown successfully');
+          if (typeof notifySuccess === 'function') {
+            notifySuccess('Счет обновлен', `Счет "${name}" успешно обновлен`);
+            console.log('🔧 ACCOUNTS V8.0 - Notification shown successfully');
+          } else {
+            console.warn('🔧 ACCOUNTS V8.0 - notifySuccess is not a function:', typeof notifySuccess);
+          }
         } catch (notifyError) {
           console.error('🔧 ACCOUNTS V6.0 - Error showing notification:', notifyError);
         }
@@ -117,8 +124,12 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
         await createAccount(accountData);
         console.log('🔧 ACCOUNTS V6.0 - Account created successfully, showing notification');
         try {
-          notifySuccess('Счет создан', `Счет "${name}" успешно добавлен`);
-          console.log('🔧 ACCOUNTS V6.0 - Notification shown successfully');
+          if (typeof notifySuccess === 'function') {
+            notifySuccess('Счет создан', `Счет "${name}" успешно добавлен`);
+            console.log('🔧 ACCOUNTS V8.0 - Notification shown successfully');
+          } else {
+            console.warn('🔧 ACCOUNTS V8.0 - notifySuccess is not a function:', typeof notifySuccess);
+          }
         } catch (notifyError) {
           console.error('🔧 ACCOUNTS V6.0 - Error showing notification:', notifyError);
         }
@@ -151,8 +162,12 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
     } catch (error) {
       console.error('🔧 ACCOUNTS V6.0 - Error saving account:', error);
       try {
-        notifyError('Ошибка сохранения', 'Не удалось сохранить счет');
-        console.log('🔧 ACCOUNTS V6.0 - Error notification shown successfully');
+        if (typeof notifyError === 'function') {
+          notifyError('Ошибка сохранения', 'Не удалось сохранить счет');
+          console.log('🔧 ACCOUNTS V8.0 - Error notification shown successfully');
+        } else {
+          console.warn('🔧 ACCOUNTS V8.0 - notifyError is not a function:', typeof notifyError);
+        }
       } catch (notifyError) {
         console.error('🔧 ACCOUNTS V6.0 - Error showing error notification:', notifyError);
       }
