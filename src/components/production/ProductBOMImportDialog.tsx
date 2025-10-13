@@ -55,7 +55,35 @@ export function ProductBOMImportDialog() {
     setIsPreviewing(true);
 
     try {
-      const text = await uploadedFile.text();
+      // Читаем файл как ArrayBuffer для правильной обработки кодировки
+      const arrayBuffer = await uploadedFile.arrayBuffer();
+      
+      // Пробуем разные кодировки
+      let text = '';
+      try {
+        // Сначала пробуем UTF-8
+        text = new TextDecoder('utf-8').decode(arrayBuffer);
+      } catch {
+        try {
+          // Если не получилось, пробуем Windows-1251
+          text = new TextDecoder('windows-1251').decode(arrayBuffer);
+        } catch {
+          // В крайнем случае используем latin1
+          text = new TextDecoder('latin1').decode(arrayBuffer);
+        }
+      }
+
+      // Убираем BOM если есть
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1);
+      }
+
+      // Определяем разделитель (запятая, точка с запятой или табуляция)
+      const firstLine = text.split('\n')[0];
+      let delimiter = ',';
+      if (firstLine.includes(';')) delimiter = ';';
+      else if (firstLine.includes('\t')) delimiter = '\t';
+
       const lines = text.split('\n').filter(line => line.trim());
       
       if (lines.length < 2) {
@@ -63,14 +91,35 @@ export function ProductBOMImportDialog() {
         return;
       }
 
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      // Парсим CSV с учетом кавычек
+      const parseCSVLine = (line: string) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === delimiter && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/"/g, ''));
       const data: ProductBOM[] = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
+        const values = parseCSVLine(lines[i]).map(v => v.trim().replace(/"/g, ''));
         
         if (values.length !== headers.length) {
-          console.warn(`Строка ${i + 1}: несоответствие количества колонок`);
+          console.warn(`Строка ${i + 1}: несоответствие количества колонок (${values.length} vs ${headers.length})`);
           continue;
         }
 
@@ -97,7 +146,7 @@ export function ProductBOMImportDialog() {
       setPreviewData(data);
     } catch (error) {
       console.error('Ошибка при чтении файла:', error);
-      alert('Ошибка при чтении CSV файла');
+      alert('Ошибка при чтении CSV файла. Проверьте кодировку файла (должна быть UTF-8).');
     } finally {
       setIsPreviewing(false);
     }
@@ -238,7 +287,12 @@ export function ProductBOMImportDialog() {
       'Шкаф-купе Бергамо,SHK-001,Blum Tandem Plus 563H,563H,6,шт'
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Добавляем BOM для правильной кодировки UTF-8
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { 
+      type: 'text/csv;charset=utf-8;' 
+    });
+    
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
