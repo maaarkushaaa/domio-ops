@@ -186,7 +186,7 @@ export function MaterialsListDialog({
             </div>
 
             {/* Список материалов */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="h-96">
               <div className="space-y-2">
                 {filteredMaterials.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">

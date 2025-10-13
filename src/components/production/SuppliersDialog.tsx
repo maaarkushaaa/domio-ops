@@ -165,7 +165,7 @@ export function SuppliersDialog({
             )}
 
             {/* Список поставщиков или материалов */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="h-96">
               <div className="space-y-2">
                 {selectedSupplier ? (
                   // Список материалов поставщика
