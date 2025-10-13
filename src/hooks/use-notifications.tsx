@@ -27,6 +27,8 @@ export interface NotificationSettings {
   duration: number;
   position: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center';
   maxNotifications: number;
+  testMode: boolean;
+  soundType: 'default' | 'beep' | 'chime' | 'notification';
 }
 
 // Контекст для системы оповещений
@@ -52,6 +54,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     duration: 5000,
     position: 'top-right',
     maxNotifications: 5,
+    testMode: false,
+    soundType: 'default',
   });
 
   // Загружаем настройки из localStorage
@@ -73,15 +77,35 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
-    // Создаем разные звуки для разных типов
-    const frequencies = {
-      success: [523.25, 659.25, 783.99], // C5, E5, G5
-      error: [220, 196, 174.61], // A3, G3, F3
-      warning: [440, 493.88, 440], // A4, B4, A4
-      info: [523.25, 587.33], // C5, D5
+    // Разные звуки в зависимости от настроек
+    const soundConfigs = {
+      default: {
+        success: [523.25, 659.25, 783.99], // C5, E5, G5
+        error: [220, 196, 174.61], // A3, G3, F3
+        warning: [440, 493.88, 440], // A4, B4, A4
+        info: [523.25, 587.33], // C5, D5
+      },
+      beep: {
+        success: [800, 1000, 1200],
+        error: [200, 150, 100],
+        warning: [600, 800, 600],
+        info: [500, 700],
+      },
+      chime: {
+        success: [261.63, 329.63, 392.00, 523.25], // C4, E4, G4, C5
+        error: [130.81, 146.83, 130.81], // C3, D3, C3
+        warning: [293.66, 349.23, 293.66], // D4, F4, D4
+        info: [392.00, 440.00], // G4, A4
+      },
+      notification: {
+        success: [523.25, 659.25], // C5, E5
+        error: [220, 196], // A3, G3
+        warning: [440, 493.88], // A4, B4
+        info: [523.25], // C5
+      }
     };
 
-    const frequenciesToPlay = frequencies[type];
+    const frequenciesToPlay = soundConfigs[settings.soundType][type];
     
     frequenciesToPlay.forEach((freq, index) => {
       setTimeout(() => {
@@ -92,7 +116,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         gainNode.connect(audioContext.destination);
         
         oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-        oscillator.type = 'sine';
+        oscillator.type = settings.soundType === 'chime' ? 'triangle' : 'sine';
         
         gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
@@ -101,7 +125,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         oscillator.stop(audioContext.currentTime + 0.2);
       }, index * 100);
     });
-  }, [settings.sounds]);
+  }, [settings.sounds, settings.soundType]);
 
   // Добавление уведомления
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp'>) => {

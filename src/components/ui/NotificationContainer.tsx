@@ -132,6 +132,43 @@ function NotificationSettings() {
             />
           </div>
 
+          {/* Режим тестирования */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Режим тестирования</Label>
+              <p className="text-xs text-muted-foreground">
+                Показывать кнопку принудительного теста
+              </p>
+            </div>
+            <Switch
+              checked={settings.testMode}
+              onCheckedChange={(checked) => updateSettings({ testMode: checked })}
+              disabled={!settings.enabled}
+            />
+          </div>
+
+          {/* Выбор звука */}
+          {settings.sounds && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Тип звука</Label>
+              <Select
+                value={settings.soundType}
+                onValueChange={(value: any) => updateSettings({ soundType: value })}
+                disabled={!settings.enabled || !settings.sounds}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">По умолчанию</SelectItem>
+                  <SelectItem value="beep">Звуковой сигнал</SelectItem>
+                  <SelectItem value="chime">Мелодичный звон</SelectItem>
+                  <SelectItem value="notification">Уведомление</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Desktop уведомления */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
@@ -219,27 +256,45 @@ function NotificationSettings() {
 
 // Основной компонент контейнера уведомлений
 export function NotificationContainer() {
-  const { notifications, clearAllNotifications, settings, addNotification } = useNotifications();
+  const { notifications, clearAllNotifications, settings, addNotification, updateSettings } = useNotifications();
 
-  // Временно показываем контейнер для отладки
-  console.log('NotificationContainer render:', { 
-    enabled: settings.enabled, 
-    notificationsCount: notifications.length,
-    notifications: notifications 
-  });
+  // Позиционирование в зависимости от настроек
+  const positionClasses = {
+    'top-right': 'top-4 right-4',
+    'top-left': 'top-4 left-4',
+    'bottom-right': 'bottom-4 right-4',
+    'bottom-left': 'bottom-4 left-4',
+    'top-center': 'top-4 left-1/2 transform -translate-x-1/2',
+    'bottom-center': 'bottom-4 left-1/2 transform -translate-x-1/2',
+  };
 
-  // Всегда показываем контейнер для отладки
+  // Функция для рандомного уведомления
+  const randomNotification = () => {
+    const types = ['success', 'error', 'warning', 'info'] as const;
+    const randomType = types[Math.floor(Math.random() * types.length)];
+    
+    const messages = {
+      success: { title: 'Успех!', message: 'Операция выполнена успешно' },
+      error: { title: 'Ошибка!', message: 'Произошла ошибка при выполнении операции' },
+      warning: { title: 'Внимание!', message: 'Обратите внимание на это предупреждение' },
+      info: { title: 'Информация', message: 'Это информационное сообщение' }
+    };
+
+    const { title, message } = messages[randomType];
+    
+    addNotification({
+      type: randomType,
+      title,
+      message,
+      sound: settings.sounds
+    });
+  };
+
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
-      {/* Индикатор состояния */}
-      <div className="bg-blue-100 border border-blue-300 rounded-lg p-3 text-xs">
-        <div className="font-semibold mb-1">Состояние уведомлений:</div>
-        <div>• Уведомления: {settings.enabled ? '✅ Включены' : '❌ Отключены'}</div>
-        <div>• Активных: {notifications.length}</div>
-        <div>• Звуки: {settings.sounds ? '✅ Включены' : '❌ Отключены'}</div>
-        <div>• Desktop: {settings.desktop ? '✅ Включены' : '❌ Отключены'}</div>
-      </div>
-
+    <div className={cn(
+      'fixed z-50 space-y-2 max-w-sm',
+      positionClasses[settings.position]
+    )}>
       {/* Уведомления */}
       {notifications.length > 0 && (
         <div className="space-y-2">
@@ -272,21 +327,15 @@ export function NotificationContainer() {
         </div>
       )}
 
-      {/* Кнопка для принудительного тестирования */}
-      <Button
-        onClick={() => {
-          console.log('Force test notification');
-          addNotification({
-            type: 'info',
-            title: 'Принудительный тест',
-            message: 'Это принудительное тестовое уведомление',
-            sound: true
-          });
-        }}
-        className="w-full bg-purple-500 hover:bg-purple-600 text-white text-xs"
-      >
-        🧪 Принудительный тест
-      </Button>
+      {/* Кнопка для принудительного тестирования (только если включен тест) */}
+      {settings.testMode && (
+        <Button
+          onClick={randomNotification}
+          className="w-full bg-purple-500 hover:bg-purple-600 text-white text-xs"
+        >
+          🧪 Принудительный тест
+        </Button>
+      )}
     </div>
   );
 }

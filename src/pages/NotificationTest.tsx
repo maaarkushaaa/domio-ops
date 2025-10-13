@@ -246,48 +246,6 @@ export function NotificationTestPage() {
         </Badge>
       </div>
 
-      {/* Базовые тесты */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Базовые тесты
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <Button 
-              onClick={() => testNotification('success')}
-              className="bg-green-500 hover:bg-green-600 text-white"
-            >
-              Тест успеха
-            </Button>
-            <Button 
-              onClick={() => testNotification('error')}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              Тест ошибки
-            </Button>
-            <Button 
-              onClick={() => testNotification('warning')}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
-            >
-              Тест предупреждения
-            </Button>
-            <Button 
-              onClick={() => testNotification('info')}
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-            >
-              Тест информации
-            </Button>
-          </div>
-          <div className="text-sm text-gray-600">
-            <p>Активных уведомлений: {notifications.length}</p>
-            <p>Уведомления: {settings.enabled ? 'Включены' : 'Отключены'}</p>
-          </div>
-          <NotificationTester />
-        </CardContent>
-      </Card>
 
       {/* Сценарии оповещений */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
