@@ -1,0 +1,28 @@
+{
+  "name": "csv-automation-scripts",
+  "version": "1.0.0",
+  "description": "Скрипты для автоматического импорта CSV файлов",
+  "main": "index.js",
+  "scripts": {
+    "csv-watcher": "tsx scripts/csv-auto-importer.ts",
+    "csv-scheduler": "tsx scripts/csv-scheduler.ts",
+    "install-deps": "npm install chokidar node-cron tsx @types/node"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0"
+  },
+  "keywords": [
+    "csv",
+    "import",
+    "automation",
+    "webhook",
+    "scheduler"
+  ],
+  "author": "Domio Ops",
+  "license": "MIT"
+}
