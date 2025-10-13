@@ -6,6 +6,10 @@ import { useApp } from '@/contexts/AppContext';
 export function NotificationIntegration() {
   const { products } = useApp();
   const { 
+    notifySuccess,
+    notifyError,
+    notifyWarning,
+    notifyInfo,
     notifyProductCreated, 
     notifyProductUpdated, 
     notifyProductDeleted,
