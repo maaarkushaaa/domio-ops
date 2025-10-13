@@ -71,16 +71,16 @@ export default function Knowledge() {
 
 Добавьте в файл '.env.local':
 
-\`\`\`bash
-# Базис МойСклад API
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-bash"># Базис МойСклад API
 BASIS_MOYSKLAD_API_URL=https://api.moysklad.ru/api/remap/1.2
 BASIS_MOYSKLAD_API_TOKEN=your_api_token_here
 BASIS_MOYSKLAD_WAREHOUSE_ID=your_warehouse_id
 
 # Настройки синхронизации
 SYNC_INTERVAL_MINUTES=30
-AUTO_SYNC_ENABLED=true
-\`\`\`
+AUTO_SYNC_ENABLED=true</code>
+</pre>
 
 ### Шаг 3: Настройка webhook
 
@@ -141,11 +141,11 @@ AUTO_SYNC_ENABLED=true
 
 ### Формат CSV для импорта BOM
 
-\`\`\`csv
-Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Цена
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-csv">Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Цена
 Шкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,2500
-Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,150
-\`\`\`
+Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,150</code>
+</pre>
 
 ## 🚨 Обработка ошибок
 
@@ -167,8 +167,8 @@ AUTO_SYNC_ENABLED=true
 
 Просмотр логов в базе данных:
 
-\`\`\`sql
-SELECT 
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-sql">SELECT 
   created_at,
   operation_type,
   status,
@@ -177,8 +177,8 @@ SELECT
 FROM sync_logs 
 WHERE source = 'basis_moysklad'
 ORDER BY created_at DESC 
-LIMIT 20;
-\`\`\`
+LIMIT 20;</code>
+</pre>
 
 ## 🔔 Уведомления о синхронизации
 
@@ -186,9 +186,9 @@ LIMIT 20;
 
 Настройте уведомления о результатах синхронизации:
 
-\`\`\`bash
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-\`\`\`
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-bash">SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL</code>
+</pre>
 
 Примеры уведомлений:
 - ✅ Синхронизация Базис: обновлено 150 материалов
@@ -217,31 +217,31 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 Настройте фильтры для синхронизации только нужных товаров:
 
-\`\`\`json
-{
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-json">{
   "filters": {
     "groups": ["ЛДСП", "Фурнитура", "Кромка"],
     "price_min": 100,
     "price_max": 10000,
     "stock_min": 1
   }
-}
-\`\`\`
+}</code>
+</pre>
 
 ### Кастомные поля
 
 Добавьте дополнительные поля для синхронизации:
 
-\`\`\`json
-{
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-json">{
   "custom_fields": {
     "supplier": "Поставщик",
     "color": "Цвет",
     "texture": "Текстура",
     "thickness": "Толщина"
   }
-}
-\`\`\`
+}</code>
+</pre>
 
 ## 📞 Поддержка
 
@@ -294,13 +294,13 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 ### Формат файла materials.csv
 
-\`\`\`csv
-Название,Артикул,Категория,Остаток,Мин.остаток,Поставщик,Единица,Цена,Цвет,Текстура,Толщина
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-csv">Название,Артикул,Категория,Остаток,Мин.остаток,Поставщик,Единица,Цена,Цвет,Текстура,Толщина
 EGGER H1137 ST9,H1137-ST9,ЛДСП,50,10,EGGER,м²,2500,Белый,Дуб,16
 EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,16
 Кромка ABS 2мм,ABS-2MM,Кромка,200,50,EGGER,м,45,Белый,Глянец,2
-Петля Blum,BLUM-H-100,Фурнитура,500,50,Blum,шт,150,Хром,Глянец,0
-\`\`\`
+Петля Blum,BLUM-H-100,Фурнитура,500,50,Blum,шт,150,Хром,Глянец,0</code>
+</pre>
 
 ### Обязательные поля
 
@@ -323,12 +323,12 @@ EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,1
 
 ### Формат файла bom.csv
 
-```csv
-Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Коэффициент,Примечание
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-csv">Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Коэффициент,Примечание
 Шкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,1.1,С запасом на обрезку
 Шкаф кухонный,SK-001,Кромка ABS 2мм,ABS-2MM,8,м,1.05,С запасом на стыки
-Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,1,Стандартная комплектация
-```
+Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,1,Стандартная комплектация</code>
+</pre>
 
 ### Поля спецификации
 
@@ -351,25 +351,25 @@ EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,1
    'C:\\csv-imports\\'
 
 2. **Настройте структуру папок:**
-```text
-csv-imports/
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-text">csv-imports/
 ├── materials/          # Материалы
 ├── bom/               # Спецификации
 ├── processed/         # Обработанные файлы
-└── errors/           # Файлы с ошибками
-```
+└── errors/           # Файлы с ошибками</code>
+</pre>
 
 3. **Запустите мониторинг:**
-```bash
-npm run csv-watcher
-```
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-bash">npm run csv-watcher</code>
+</pre>
 
 ### Планировщик задач
 
 Настройте регулярный импорт по расписанию:
 
-```json
-{
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-json">{
   "tasks": [
     {
       "name": "daily-materials-sync",
@@ -394,15 +394,15 @@ npm run csv-watcher
       }
     }
   ]
-}
-```
+}</code>
+</pre>
 
 ## 🌐 API интеграция
 
 ### Endpoint для импорта
 
-```bash
-POST /api/csv-import
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-bash">POST /api/csv-import
 Content-Type: multipart/form-data
 Authorization: Bearer your-api-key
 
@@ -414,13 +414,13 @@ Authorization: Bearer your-api-key
     "update_existing": true,
     "validate_data": true
   }
-}
-```
+}</code>
+</pre>
 
 ### Webhook для внешних систем
 
-```bash
-POST /api/webhook/csv-import
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-bash">POST /api/webhook/csv-import
 Content-Type: application/json
 X-Webhook-Signature: sha256=...
 
@@ -439,8 +439,8 @@ X-Webhook-Signature: sha256=...
     "source": "basis_moysklad",
     "timestamp": "2024-12-19T10:00:00Z"
   }
-}
-```
+}</code>
+</pre>
 
 ## 🛠️ Обработка ошибок
 
@@ -474,11 +474,11 @@ X-Webhook-Signature: sha256=...
    - Проверьте уникальность артикулов
 
 3. **Проверьте логи:**
-```sql
-SELECT * FROM import_logs 
+<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
+<code className="language-sql">SELECT * FROM import_logs 
 WHERE created_at >= NOW() - INTERVAL '1 hour'
-ORDER BY created_at DESC;
-```
+ORDER BY created_at DESC;</code>
+</pre>
 
 ## 📊 Мониторинг импорта
 
