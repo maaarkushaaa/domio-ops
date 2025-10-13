@@ -1,3 +1,4 @@
+// VERSION: 2.0 - ULTRA DEEP FIX - FORCE CACHE REFRESH
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
@@ -850,8 +851,9 @@ export const useFinance = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Загрузка данных при монтировании
+  // Загрузка данных при монтировании - VERSION 2.0 FIX
   useEffect(() => {
+    console.log('🚀 FINANCE HOOK V2.0 - Loading data for user:', user?.id);
     loadData();
   }, [user]); // Зависим только от user, а не от loadData
 

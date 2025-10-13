@@ -1,3 +1,4 @@
+// VERSION: 2.0 - ULTRA DEEP FIX - FORCE CACHE REFRESH
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,20 @@ import { ru } from "date-fns/locale";
 import { useAppNotifications } from "@/components/NotificationIntegration";
 import { toast } from "@/hooks/use-toast";
 
+// Безопасная функция форматирования чисел - VERSION 2.0 FIX
+const safeFormatNumber = (value: any, fallback = '0'): string => {
+  try {
+    const num = Number(value);
+    if (isNaN(num)) return fallback;
+    return num.toLocaleString('ru-RU');
+  } catch {
+    return fallback;
+  }
+};
+
 export default function Finance() {
+  console.log('🚀 FINANCE PAGE V2.0 - Component rendered');
+  
   const { 
     operations, 
     accounts, 
@@ -268,10 +282,10 @@ export default function Finance() {
               <DollarSign className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{(stats?.totalBalance || 0).toLocaleString('ru-RU')} ₽</div>
+              <div className="text-2xl font-bold">{safeFormatNumber(stats?.totalBalance)} ₽</div>
               <p className="text-xs text-green-600 flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
-                {(stats?.monthlyProfit || 0) > 0 ? '+' : ''}{(stats?.monthlyProfit || 0).toLocaleString('ru-RU')} ₽ за месяц
+                {(stats?.monthlyProfit || 0) > 0 ? '+' : ''}{safeFormatNumber(stats?.monthlyProfit)} ₽ за месяц
               </p>
             </CardContent>
           </Card>
@@ -282,7 +296,7 @@ export default function Finance() {
               <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{(stats?.monthlyIncome || 0).toLocaleString('ru-RU')} ₽</div>
+              <div className="text-2xl font-bold">{safeFormatNumber(stats?.monthlyIncome)} ₽</div>
               <p className="text-xs text-muted-foreground">
                 {(stats?.monthlyIncome || 0) > 0 ? `+${(((stats?.monthlyIncome || 0) - ((stats?.monthlyIncome || 0) * 0.8)) / ((stats?.monthlyIncome || 0) * 0.8) * 100).toFixed(1)}%` : '0%'} к прошлому
               </p>
@@ -295,7 +309,7 @@ export default function Finance() {
               <TrendingDown className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{(stats?.monthlyExpense || 0).toLocaleString('ru-RU')} ₽</div>
+              <div className="text-2xl font-bold">{safeFormatNumber(stats?.monthlyExpense)} ₽</div>
               <p className="text-xs text-muted-foreground">
                 {(stats?.monthlyExpense || 0) > 0 ? `-${(((stats?.monthlyExpense || 0) - ((stats?.monthlyExpense || 0) * 1.05)) / ((stats?.monthlyExpense || 0) * 1.05) * 100).toFixed(1)}%` : '0%'} к прошлому
               </p>
@@ -334,7 +348,7 @@ export default function Finance() {
                   </Badge>
                 </div>
                 <div className="text-2xl font-bold">
-                  {(account.balance || 0).toLocaleString('ru-RU')} {account.currency}
+                  {safeFormatNumber(account.balance)} {account.currency}
                 </div>
                 {account.bank_name && (
                   <p className="text-sm text-muted-foreground">{account.bank_name}</p>
@@ -494,7 +508,7 @@ export default function Finance() {
                           op.type === 'expense' ? 'text-red-600' : 
                           'text-blue-600'
                         }`}>
-                          {op.type === 'income' ? '+' : op.type === 'expense' ? '-' : '↔'}{(op.amount || 0).toLocaleString('ru-RU')} {op.currency}
+                          {op.type === 'income' ? '+' : op.type === 'expense' ? '-' : '↔'}{safeFormatNumber(op.amount)} {op.currency}
                         </div>
                         
                         <div className="flex gap-1">
@@ -576,7 +590,7 @@ export default function Finance() {
                       <span className="text-sm">{category.category}</span>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{(category.amount || 0).toLocaleString('ru-RU')} ₽</p>
+                      <p className="text-sm font-medium">{safeFormatNumber(category.amount)} ₽</p>
                       <p className="text-xs text-muted-foreground">{category.percentage.toFixed(1)}%</p>
                     </div>
                   </div>
@@ -600,7 +614,7 @@ export default function Finance() {
                         {format(new Date(payment.date), 'dd.MM.yyyy', { locale: ru })}
                       </p>
                     </div>
-                    <p className="text-sm font-medium">{(payment.amount || 0).toLocaleString('ru-RU')} ₽</p>
+                    <p className="text-sm font-medium">{safeFormatNumber(payment.amount)} ₽</p>
                   </div>
                 ))}
               </CardContent>
