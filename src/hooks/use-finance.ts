@@ -632,6 +632,27 @@ export const useFinance = () => {
     }
   };
 
+  const createFinancialReport = async (report: Omit<FinancialReport, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('financial_reports')
+        .insert({
+          ...report,
+          created_by: user?.id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setFinancialReports(prev => [...prev, data]);
+      return data;
+    } catch (error) {
+      console.error('Error creating financial report:', error);
+      throw error;
+    }
+  };
+
   // Экспорт данных
   const exportData = async (format: 'csv' | 'excel' | 'pdf', type: 'operations' | 'invoices' | 'budgets' | 'all') => {
     try {
