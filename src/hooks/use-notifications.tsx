@@ -105,7 +105,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Добавление уведомления
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp'>) => {
-    if (!settings.enabled) return;
+    console.log('addNotification called with:', notification);
+    console.log('Current settings:', settings);
+    
+    if (!settings.enabled) {
+      console.log('Notifications disabled, skipping');
+      return;
+    }
 
     const newNotification: Notification = {
       ...notification,
@@ -113,9 +119,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       timestamp: new Date(),
     };
 
+    console.log('Creating new notification:', newNotification);
+
     setNotifications(prev => {
       const updated = [newNotification, ...prev];
-      return updated.slice(0, settings.maxNotifications);
+      const result = updated.slice(0, settings.maxNotifications);
+      console.log('Updated notifications:', result);
+      return result;
     });
 
     // Воспроизводим звук

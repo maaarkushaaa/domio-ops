@@ -221,16 +221,28 @@ function NotificationSettings() {
 export function NotificationContainer() {
   const { notifications, clearAllNotifications, settings } = useNotifications();
 
-  // Временно убираем условие для отладки
-  // if (!settings.enabled || notifications.length === 0) {
-  //   return null;
-  // }
-
+  // Временно показываем контейнер для отладки
   console.log('NotificationContainer render:', { 
     enabled: settings.enabled, 
     notificationsCount: notifications.length,
     notifications: notifications 
   });
+
+  if (!settings.enabled) {
+    return (
+      <div className="fixed top-4 right-4 z-50 bg-red-100 border border-red-300 rounded-lg p-3">
+        <p className="text-red-800 text-sm">Уведомления отключены в настройках</p>
+      </div>
+    );
+  }
+
+  if (notifications.length === 0) {
+    return (
+      <div className="fixed top-4 right-4 z-50 bg-blue-100 border border-blue-300 rounded-lg p-3">
+        <p className="text-blue-800 text-sm">Нет активных уведомлений</p>
+      </div>
+    );
+  }
 
   const positionClasses = {
     'top-right': 'top-4 right-4',
