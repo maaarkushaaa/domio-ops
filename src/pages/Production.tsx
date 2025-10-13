@@ -26,7 +26,7 @@ export default function Production() {
   const { products, isLoading } = useProducts();
   const { checklists, inspections, createInspection } = useQualityControl();
   const { updateAllProductsProgress, isUpdating } = useProductProgress();
-  const [detailsType, setDetailsType] = useState<'inProgress' | 'completed' | 'needsMaterials' | 'warehouse' | null>(null);
+  const [detailsType, setDetailsType] = useState<'inProgress' | 'completed' | 'needsMaterials' | null>(null);
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
   const [selectedProductForInspection, setSelectedProductForInspection] = useState<string | null>(null);
   const [selectedChecklistForNew, setSelectedChecklistForNew] = useState<string | null>(null);
@@ -86,13 +86,7 @@ export default function Production() {
       });
     }).length;
     
-    // Подсчёт готовых изделий на складе (статус completed с quantity_in_stock > 0)
-    const warehouse = products.filter(p => 
-      p.status === 'completed' && 
-      (p.quantity_in_stock || 0) > 0
-    ).length;
-    
-    return { inProgress: inProgress + qualityCheck, completed, needsMaterials, warehouse };
+    return { inProgress: inProgress + qualityCheck, completed, needsMaterials };
   }, [products, productMaterialsData]);
 
   const handleStartInspection = async () => {
@@ -158,7 +152,7 @@ export default function Production() {
       </div>
 
       {/* Статистика (реальные данные из БД) */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card 
           className="cursor-pointer hover:shadow-md transition-all hover-lift"
           onClick={() => setDetailsType('inProgress')}
@@ -198,20 +192,6 @@ export default function Production() {
           <CardContent>
             <div className="text-2xl font-bold text-destructive">{stats.needsMaterials}</div>
             <p className="text-xs text-muted-foreground">{stats.needsMaterials > 0 ? 'ожидают закупки' : 'все обеспечены'}</p>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer hover:shadow-md transition-all hover-lift"
-          onClick={() => setDetailsType('warehouse')}
-        >
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">На складе</CardTitle>
-            <Package className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.warehouse}</div>
-            <p className="text-xs text-muted-foreground">позиций</p>
           </CardContent>
         </Card>
       </div>

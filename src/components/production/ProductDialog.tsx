@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProducts, ProductStatus } from '@/hooks/use-products';
+import { useAppNotifications } from '@/components/NotificationIntegration';
 
 interface ProductDialogProps {
   trigger?: React.ReactNode;
@@ -18,16 +19,21 @@ export function ProductDialog({ trigger }: ProductDialogProps) {
   const [status, setStatus] = useState<ProductStatus>('planning');
 
   const { createProduct } = useProducts();
+  const { notifyProductCreated } = useAppNotifications();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
+    const productName = name.trim();
     await createProduct({
-      name: name.trim(),
+      name: productName,
       description: description.trim() || undefined,
       status,
     });
+
+    // Показываем оповещение об успешном создании
+    notifyProductCreated(productName);
 
     setName('');
     setDescription('');

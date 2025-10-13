@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Upload, FileText, CheckCircle, AlertTriangle, XCircle, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAppNotifications } from '@/components/NotificationIntegration';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,7 @@ export function MaterialStockImportDialog() {
   const [isImporting, setIsImporting] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { notifyCSVImport } = useAppNotifications();
 
   // Обработка загрузки файла
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,6 +233,9 @@ export function MaterialStockImportDialog() {
       }
 
       setImportResult(result);
+      
+      // Показываем оповещение о результате импорта
+      notifyCSVImport('materials', result.success, result.errors);
       
       // Перезагружаем страницу для обновления данных
       setTimeout(() => {

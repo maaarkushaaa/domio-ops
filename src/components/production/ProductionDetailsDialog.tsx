@@ -34,7 +34,7 @@ interface Material {
 }
 
 interface ProductionDetailsDialogProps {
-  type: 'inProgress' | 'completed' | 'needsMaterials' | 'warehouse';
+  type: 'inProgress' | 'completed' | 'needsMaterials';
   open: boolean;
   onOpenChange: (open: boolean) => void;
   products?: Product[];
@@ -46,7 +46,6 @@ const titles = {
   inProgress: 'Изделия в работе',
   completed: 'Завершенные изделия',
   needsMaterials: 'Изделия, ожидающие материалов',
-  warehouse: 'Остатки на складе',
 };
 
 const getStatusLabel = (status: string) => {
@@ -95,9 +94,6 @@ export function ProductionDetailsDialog({
             return available < required;
           });
         });
-      
-      case 'warehouse':
-        return materials.filter(m => (m.stock_quantity || 0) > 0);
       
       default:
         return [];
@@ -186,31 +182,6 @@ export function ProductionDetailsDialog({
                         )}
                       </div>
                       <Badge variant="destructive">Ожидает закупки</Badge>
-                    </div>
-                  );
-                })}
-
-                {type === 'warehouse' && data.map((material: Material) => {
-                  const stock = material.stock_quantity || 0;
-                  const minStock = material.min_stock || 0;
-                  const isLowStock = stock <= minStock;
-
-                  return (
-                    <div key={material.id} className="p-4 border rounded-lg flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{material.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Количество: {stock} {material.unit}
-                        </p>
-                        {minStock > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Минимум: {minStock} {material.unit}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant={isLowStock ? 'destructive' : 'default'}>
-                        {isLowStock ? 'Низкий остаток' : 'В наличии'}
-                      </Badge>
                     </div>
                   );
                 })}
