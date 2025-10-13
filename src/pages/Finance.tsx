@@ -69,12 +69,12 @@ export default function Finance() {
     }
 
     // Категория
-    if (selectedCategory) {
+    if (selectedCategory && selectedCategory !== 'all') {
       filtered = filtered.filter(op => op.category === selectedCategory);
     }
 
     // Счет
-    if (selectedAccount) {
+    if (selectedAccount && selectedAccount !== 'all') {
       filtered = filtered.filter(op => op.account_id === selectedAccount);
     }
 
@@ -146,6 +146,54 @@ export default function Finance() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Загрузка финансовых данных...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Проверяем, выполнена ли миграция
+  const isMigrationNeeded = accounts.length === 0 && operations.length === 0;
+  
+  if (isMigrationNeeded) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Финансы</h1>
+            <p className="text-muted-foreground">Управленческий учет и планирование</p>
+          </div>
+        </div>
+
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-800">
+              <AlertCircle className="h-5 w-5" />
+              Требуется выполнение миграции
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-yellow-700">
+            <p className="mb-4">
+              Для работы финансовой системы необходимо выполнить миграцию базы данных.
+            </p>
+            <div className="space-y-2">
+              <p className="font-medium">Инструкция:</p>
+              <ol className="list-decimal list-inside space-y-1 text-sm">
+                <li>Откройте Supabase Dashboard</li>
+                <li>Перейдите в раздел SQL Editor</li>
+                <li>Выполните файл <code className="bg-yellow-100 px-1 rounded">supabase_migrations_finance.sql</code></li>
+                <li>Обновите страницу</li>
+              </ol>
+            </div>
+            <div className="mt-4 p-3 bg-yellow-100 rounded-lg">
+              <p className="text-sm font-medium">После выполнения миграции вы получите:</p>
+              <ul className="list-disc list-inside text-sm mt-1 space-y-1">
+                <li>Полноценную систему финансового учета</li>
+                <li>Демо данные для тестирования</li>
+                <li>Возможность создания операций и счетов</li>
+                <li>Экспорт данных и аналитику</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -323,7 +371,7 @@ export default function Finance() {
                       <SelectValue placeholder="Все категории" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Все категории</SelectItem>
+                      <SelectItem value="all">Все категории</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category} value={category}>
                           {category}
@@ -340,7 +388,7 @@ export default function Finance() {
                       <SelectValue placeholder="Все счета" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Все счета</SelectItem>
+                      <SelectItem value="all">Все счета</SelectItem>
                       {accounts.filter(acc => acc.is_active).map((account) => (
                         <SelectItem key={account.id} value={account.id}>
                           {account.name}

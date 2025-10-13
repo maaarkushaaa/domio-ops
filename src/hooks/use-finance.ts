@@ -127,8 +127,8 @@ export const useFinance = () => {
     try {
       setIsLoading(true);
       
-      // Загружаем все данные параллельно
-      const [operationsRes, accountsRes, invoicesRes, budgetsRes, subscriptionsRes] = await Promise.all([
+      // Загружаем все данные параллельно с обработкой ошибок
+      const [operationsRes, accountsRes, invoicesRes, budgetsRes, subscriptionsRes] = await Promise.allSettled([
         supabase.from('financial_operations').select('*').order('date', { ascending: false }),
         supabase.from('accounts').select('*').order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').order('created_at', { ascending: false }),
@@ -136,20 +136,52 @@ export const useFinance = () => {
         supabase.from('subscriptions').select('*').order('next_payment_date', { ascending: true })
       ]);
 
-      if (operationsRes.error) throw operationsRes.error;
-      if (accountsRes.error) throw accountsRes.error;
-      if (invoicesRes.error) throw invoicesRes.error;
-      if (budgetsRes.error) throw budgetsRes.error;
-      if (subscriptionsRes.error) throw subscriptionsRes.error;
+      // Обрабатываем результаты с fallback для отсутствующих таблиц
+      const operations = operationsRes.status === 'fulfilled' && !operationsRes.value.error 
+        ? operationsRes.value.data || [] 
+        : [];
+      
+      const accounts = accountsRes.status === 'fulfilled' && !accountsRes.value.error 
+        ? accountsRes.value.data || [] 
+        : [];
+      
+      const invoices = invoicesRes.status === 'fulfilled' && !invoicesRes.value.error 
+        ? invoicesRes.value.data || [] 
+        : [];
+      
+      const budgets = budgetsRes.status === 'fulfilled' && !budgetsRes.value.error 
+        ? budgetsRes.value.data || [] 
+        : [];
+      
+      const subscriptions = subscriptionsRes.status === 'fulfilled' && !subscriptionsRes.value.error 
+        ? subscriptionsRes.value.data || [] 
+        : [];
 
-      setOperations(operationsRes.data || []);
-      setAccounts(accountsRes.data || []);
-      setInvoices(invoicesRes.data || []);
-      setBudgets(budgetsRes.data || []);
-      setSubscriptions(subscriptionsRes.data || []);
+      setOperations(operations);
+      setAccounts(accounts);
+      setInvoices(invoices);
+      setBudgets(budgets);
+      setSubscriptions(subscriptions);
 
       // Вычисляем статистику
-      calculateStats(operationsRes.data || [], accountsRes.data || [], subscriptionsRes.data || []);
+      calculateStats(operations, accounts, subscriptions);
+
+      // Логируем ошибки для отладки
+      if (operationsRes.status === 'rejected' || (operationsRes.status === 'fulfilled' && operationsRes.value.error)) {
+        console.warn('Financial operations table not found - migration may not be executed');
+      }
+      if (accountsRes.status === 'rejected' || (accountsRes.status === 'fulfilled' && accountsRes.value.error)) {
+        console.warn('Accounts table not found - migration may not be executed');
+      }
+      if (invoicesRes.status === 'rejected' || (invoicesRes.status === 'fulfilled' && invoicesRes.value.error)) {
+        console.warn('Invoices table not found - migration may not be executed');
+      }
+      if (budgetsRes.status === 'rejected' || (budgetsRes.status === 'fulfilled' && budgetsRes.value.error)) {
+        console.warn('Budgets table not found - migration may not be executed');
+      }
+      if (subscriptionsRes.status === 'rejected' || (subscriptionsRes.status === 'fulfilled' && subscriptionsRes.value.error)) {
+        console.warn('Subscriptions table not found - migration may not be executed');
+      }
     } catch (error) {
       console.error('Error loading finance data:', error);
     } finally {
