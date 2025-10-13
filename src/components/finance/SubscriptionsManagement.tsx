@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,7 +96,7 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
         notes: notes.trim() || undefined
       };
 
-      if (isEdit) {
+      if (isEdit && subscription) {
         await updateSubscription(subscription.id, subscriptionData);
         notifySuccess('Подписка обновлена', `Подписка "${name}" успешно обновлена`);
       } else {
@@ -141,6 +141,9 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
           <DialogTitle>
             {isEdit ? 'Редактировать подписку' : 'Создать подписку'}
           </DialogTitle>
+          <DialogDescription>
+            {isEdit ? 'Измените данные подписки' : 'Создайте новую подписку для учета регулярных платежей'}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">

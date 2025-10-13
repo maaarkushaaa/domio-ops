@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,8 @@ import {
   Calendar,
   DollarSign
 } from 'lucide-react';
-import { useFinance, Budget } from '@/hooks/use-finance';
+import { useFinance } from '@/hooks/use-finance';
+import type { Budget } from '@/hooks/use-finance';
 import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -94,7 +95,7 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
         notes: notes.trim() || undefined
       };
 
-      if (isEdit) {
+      if (isEdit && budget) {
         await updateBudget(budget.id, budgetData);
         notifySuccess('Бюджет обновлен', `Бюджет "${name}" успешно обновлен`);
       } else {
@@ -139,6 +140,9 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
           <DialogTitle>
             {isEdit ? 'Редактировать бюджет' : 'Создать бюджет'}
           </DialogTitle>
+          <DialogDescription>
+            {isEdit ? 'Измените данные бюджета' : 'Создайте новый бюджет для планирования расходов'}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,7 +100,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
         notes: notes.trim() || undefined
       };
 
-      if (isEdit) {
+      if (isEdit && invoice) {
         await updateInvoice(invoice.id, invoiceData);
         notifySuccess('Инвойс обновлен', `Инвойс "${number}" успешно обновлен`);
       } else {
@@ -145,6 +145,9 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
           <DialogTitle>
             {isEdit ? 'Редактировать инвойс' : 'Создать инвойс'}
           </DialogTitle>
+          <DialogDescription>
+            {isEdit ? 'Измените данные инвойса' : 'Создайте новый инвойс для учета доходов'}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -500,6 +503,9 @@ export function InvoicesManagement() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Просмотр инвойса {viewInvoice.number}</DialogTitle>
+              <DialogDescription>
+                Детальная информация об инвойсе
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

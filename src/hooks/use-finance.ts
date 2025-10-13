@@ -855,29 +855,29 @@ export const useFinance = () => {
     loadData();
   }, [user]); // Зависим только от user, а не от loadData
 
-  // Realtime подписки
-  useEffect(() => {
-    if (!user) return;
+  // Realtime подписки (временно отключены для устранения множественных перезагрузок)
+  // useEffect(() => {
+  //   if (!user) return;
 
-    const operationsChannel = supabase
-      .channel('financial_operations_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_operations' }, () => {
-        loadData();
-      })
-      .subscribe();
+  //   const operationsChannel = supabase
+  //     .channel('financial_operations_changes')
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_operations' }, () => {
+  //       loadData();
+  //     })
+  //     .subscribe();
 
-    const accountsChannel = supabase
-      .channel('accounts_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'accounts' }, () => {
-        loadData();
-      })
-      .subscribe();
+  //   const accountsChannel = supabase
+  //     .channel('accounts_changes')
+  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'accounts' }, () => {
+  //       loadData();
+  //     })
+  //     .subscribe();
 
-    return () => {
-      supabase.removeChannel(operationsChannel);
-      supabase.removeChannel(accountsChannel);
-    };
-  }, [user, loadData]);
+  //   return () => {
+  //     supabase.removeChannel(operationsChannel);
+  //     supabase.removeChannel(accountsChannel);
+  //   };
+  // }, [user, loadData]);
 
   return {
     // Данные

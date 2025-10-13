@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,7 +89,7 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
         description: description.trim() || undefined
       };
 
-      if (isEdit) {
+      if (isEdit && account) {
         await updateAccount(account.id, accountData);
         notifySuccess('Счет обновлен', `Счет "${name}" успешно обновлен`);
       } else {
@@ -134,6 +134,9 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
           <DialogTitle>
             {isEdit ? 'Редактировать счет' : 'Создать счет'}
           </DialogTitle>
+          <DialogDescription>
+            {isEdit ? 'Измените данные счета' : 'Создайте новый счет для учета финансов'}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
