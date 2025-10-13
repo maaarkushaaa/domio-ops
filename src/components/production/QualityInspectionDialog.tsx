@@ -11,7 +11,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle, XCircle, Save } from 'lucide-react';
 import { useQualityControl, QualityInspectionResult } from '@/hooks/use-quality-control';
 
@@ -87,7 +86,7 @@ export function QualityInspectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Проверка качества: {inspection.product?.name || 'Изделие'}
@@ -103,7 +102,7 @@ export function QualityInspectionDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+        <div className="space-y-4 flex-1 overflow-y-auto">
           {/* Прогресс */}
           <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
             <div className="flex items-center justify-between mb-2">
@@ -118,43 +117,41 @@ export function QualityInspectionDialog({
           </div>
 
           {/* Чек-лист */}
-          <div className="space-y-2 flex-1 flex flex-col">
+          <div className="space-y-2">
             <Label>Чек-лист: {inspection.checklist?.name}</Label>
-            <ScrollArea className="flex-1 border rounded-lg p-2">
-              <div className="space-y-2">
-                {results.map((result) => (
-                  <div
-                    key={result.id}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/50"
-                  >
-                    <Checkbox
-                      checked={result.checked}
-                      onCheckedChange={() => handleToggle(result.id, result.checked)}
-                      disabled={inspection.status !== 'in_progress'}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{getCategoryIcon(result.check?.category || 'other')}</span>
-                        <span className="text-sm">{result.check?.name}</span>
-                      </div>
-                      {result.check?.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{result.check.description}</p>
-                      )}
+            <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-2">
+              {results.map((result) => (
+                <div
+                  key={result.id}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/50"
+                >
+                  <Checkbox
+                    checked={result.checked}
+                    onCheckedChange={() => handleToggle(result.id, result.checked)}
+                    disabled={inspection.status !== 'in_progress'}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{getCategoryIcon(result.check?.category || 'other')}</span>
+                      <span className="text-sm">{result.check?.name}</span>
                     </div>
-                    {result.check?.is_required && (
-                      <Badge variant="outline" className="text-xs">
-                        Обязательно
-                      </Badge>
+                    {result.check?.description && (
+                      <p className="text-xs text-muted-foreground mt-1">{result.check.description}</p>
                     )}
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+                  {result.check?.is_required && (
+                    <Badge variant="outline" className="text-xs">
+                      Обязательно
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Комментарии */}
           {inspection.status === 'in_progress' && (
-            <div className="space-y-2 flex-shrink-0">
+            <div className="space-y-2">
               <Label>Комментарии инспектора</Label>
               <Textarea
                 placeholder="Дополнительные замечания, рекомендации..."
@@ -176,7 +173,7 @@ export function QualityInspectionDialog({
 
           {/* Действия */}
           {inspection.status === 'in_progress' && (
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex gap-2">
               <Button
                 onClick={() => handleComplete('passed')}
                 disabled={!hasAnyChecked || loading}
