@@ -120,6 +120,7 @@ export const useFinance = () => {
   const [financialReports, setFinancialReports] = useState<FinancialReport[]>([]);
   const [stats, setStats] = useState<FinancialStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Загрузка данных
   const loadData = useCallback(async () => {
@@ -127,6 +128,7 @@ export const useFinance = () => {
 
     try {
       setIsLoading(true);
+      setError(null);
       
       // Тестовый запрос для проверки таблиц
       console.log('Testing table existence...');
@@ -227,6 +229,7 @@ export const useFinance = () => {
       }
     } catch (error) {
       console.error('Error loading finance data:', error);
+      setError(error instanceof Error ? error.message : 'Неизвестная ошибка при загрузке данных');
     } finally {
       setIsLoading(false);
     }
