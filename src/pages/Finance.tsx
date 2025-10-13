@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { useFinance } from "@/hooks/use-finance";
 import { OperationDialog } from "@/components/finance/OperationDialog";
+import { AccountsManagement } from "@/components/finance/AccountsManagement";
+import { InvoicesManagement } from "@/components/finance/InvoicesManagement";
 import { useState, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -344,10 +346,12 @@ export default function Finance() {
       <Tabs defaultValue="operations" className="space-y-4">
         <TabsList>
           <TabsTrigger value="operations">Операции</TabsTrigger>
-          <TabsTrigger value="invoices">Инвойсы</TabsTrigger>
+          <TabsTrigger value="accounts">Счета</TabsTrigger>
+          <TabsTrigger value="invoices">Счета-фактуры</TabsTrigger>
           <TabsTrigger value="subscriptions">Подписки</TabsTrigger>
           <TabsTrigger value="budget">Бюджет</TabsTrigger>
           <TabsTrigger value="analytics">Аналитика</TabsTrigger>
+          <TabsTrigger value="reports">Отчеты</TabsTrigger>
         </TabsList>
 
         <TabsContent value="operations" className="space-y-4">
@@ -531,68 +535,12 @@ export default function Finance() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="accounts" className="space-y-4">
+          <AccountsManagement />
+        </TabsContent>
+
         <TabsContent value="invoices" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Инвойсы</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {invoices.map((invoice) => {
-                  const getStatusLabel = (status: string) => {
-                    switch (status) {
-                      case 'paid': return 'Оплачен';
-                      case 'sent': return 'Отправлен';
-                      case 'overdue': return 'Просрочен';
-                      case 'draft': return 'Черновик';
-                      case 'cancelled': return 'Отменен';
-                      case 'refunded': return 'Возвращен';
-                      default: return status;
-                    }
-                  };
-
-                  const getStatusColor = (status: string) => {
-                    switch (status) {
-                      case 'paid': return 'bg-green-100 text-green-800';
-                      case 'sent': return 'bg-blue-100 text-blue-800';
-                      case 'overdue': return 'bg-red-100 text-red-800';
-                      case 'draft': return 'bg-gray-100 text-gray-800';
-                      case 'cancelled': return 'bg-gray-100 text-gray-800';
-                      case 'refunded': return 'bg-yellow-100 text-yellow-800';
-                      default: return 'bg-gray-100 text-gray-800';
-                    }
-                  };
-
-                  return (
-                    <div
-                      key={invoice.id}
-                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{invoice.number}</p>
-                          <Badge className={getStatusColor(invoice.status)}>
-                            {getStatusLabel(invoice.status)}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{invoice.description || 'Без описания'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Создан: {format(new Date(invoice.issue_date), 'dd.MM.yyyy', { locale: ru })} • 
-                          Оплатить до: {format(new Date(invoice.due_date), 'dd.MM.yyyy', { locale: ru })}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{invoice.total_amount.toLocaleString('ru-RU')} {invoice.currency}</p>
-                        <Button variant="outline" size="sm" className="mt-2">
-                          Просмотр
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          <InvoicesManagement />
         </TabsContent>
 
         <TabsContent value="subscriptions" className="space-y-4">
@@ -740,6 +688,42 @@ export default function Finance() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Финансовые отчеты</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <FileText className="h-6 w-6" />
+                  Отчет о доходах и расходах
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <BarChart3 className="h-6 w-6" />
+                  Балансовый отчет
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <TrendingUp className="h-6 w-6" />
+                  Отчет о движении денежных средств
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <PieChart className="h-6 w-6" />
+                  Анализ по категориям
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <Calendar className="h-6 w-6" />
+                  Бюджетный отчет
+                </Button>
+                <Button variant="outline" className="h-20 flex flex-col gap-2">
+                  <Download className="h-6 w-6" />
+                  Экспорт данных
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
