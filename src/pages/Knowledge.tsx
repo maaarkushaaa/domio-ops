@@ -71,16 +71,14 @@ export default function Knowledge() {
 
 Добавьте в файл '.env.local':
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-bash"># Базис МойСклад API
+# Базис МойСклад API
 BASIS_MOYSKLAD_API_URL=https://api.moysklad.ru/api/remap/1.2
 BASIS_MOYSKLAD_API_TOKEN=your_api_token_here
 BASIS_MOYSKLAD_WAREHOUSE_ID=your_warehouse_id
 
 # Настройки синхронизации
 SYNC_INTERVAL_MINUTES=30
-AUTO_SYNC_ENABLED=true</code>
-</pre>
+AUTO_SYNC_ENABLED=true
 
 ### Шаг 3: Настройка webhook
 
@@ -141,11 +139,9 @@ AUTO_SYNC_ENABLED=true</code>
 
 ### Формат CSV для импорта BOM
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-csv">Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Цена
+Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Цена
 Шкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,2500
-Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,150</code>
-</pre>
+Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,150
 
 ## 🚨 Обработка ошибок
 
@@ -167,8 +163,7 @@ AUTO_SYNC_ENABLED=true</code>
 
 Просмотр логов в базе данных:
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-sql">SELECT 
+SELECT 
   created_at,
   operation_type,
   status,
@@ -177,8 +172,7 @@ AUTO_SYNC_ENABLED=true</code>
 FROM sync_logs 
 WHERE source = 'basis_moysklad'
 ORDER BY created_at DESC 
-LIMIT 20;</code>
-</pre>
+LIMIT 20;
 
 ## 🔔 Уведомления о синхронизации
 
@@ -186,9 +180,7 @@ LIMIT 20;</code>
 
 Настройте уведомления о результатах синхронизации:
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-bash">SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL</code>
-</pre>
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 Примеры уведомлений:
 - ✅ Синхронизация Базис: обновлено 150 материалов
@@ -217,31 +209,27 @@ LIMIT 20;</code>
 
 Настройте фильтры для синхронизации только нужных товаров:
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-json">{
+{
   "filters": {
     "groups": ["ЛДСП", "Фурнитура", "Кромка"],
     "price_min": 100,
     "price_max": 10000,
     "stock_min": 1
   }
-}</code>
-</pre>
+}
 
 ### Кастомные поля
 
 Добавьте дополнительные поля для синхронизации:
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-json">{
+{
   "custom_fields": {
     "supplier": "Поставщик",
     "color": "Цвет",
     "texture": "Текстура",
     "thickness": "Толщина"
   }
-}</code>
-</pre>
+}
 
 ## 📞 Поддержка
 
@@ -294,13 +282,11 @@ LIMIT 20;</code>
 
 ### Формат файла materials.csv
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-csv">Название,Артикул,Категория,Остаток,Мин.остаток,Поставщик,Единица,Цена,Цвет,Текстура,Толщина
+Название,Артикул,Категория,Остаток,Мин.остаток,Поставщик,Единица,Цена,Цвет,Текстура,Толщина
 EGGER H1137 ST9,H1137-ST9,ЛДСП,50,10,EGGER,м²,2500,Белый,Дуб,16
 EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,16
 Кромка ABS 2мм,ABS-2MM,Кромка,200,50,EGGER,м,45,Белый,Глянец,2
-Петля Blum,BLUM-H-100,Фурнитура,500,50,Blum,шт,150,Хром,Глянец,0</code>
-</pre>
+Петля Blum,BLUM-H-100,Фурнитура,500,50,Blum,шт,150,Хром,Глянец,0
 
 ### Обязательные поля
 
@@ -323,12 +309,10 @@ EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,1
 
 ### Формат файла bom.csv
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-csv">Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Коэффициент,Примечание
+Изделие,Артикул_изделия,Материал,Артикул_материала,Количество,Единица,Коэффициент,Примечание
 Шкаф кухонный,SK-001,EGGER H1137 ST9,H1137-ST9,2.5,м²,1.1,С запасом на обрезку
 Шкаф кухонный,SK-001,Кромка ABS 2мм,ABS-2MM,8,м,1.05,С запасом на стыки
-Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,1,Стандартная комплектация</code>
-</pre>
+Шкаф кухонный,SK-001,Петля Blum,BLUM-H-100,6,шт,1,Стандартная комплектация
 
 ### Поля спецификации
 
@@ -351,25 +335,22 @@ EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,1
    'C:\\csv-imports\\'
 
 2. **Настройте структуру папок:**
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-text">csv-imports/
+
+csv-imports/
 ├── materials/          # Материалы
 ├── bom/               # Спецификации
 ├── processed/         # Обработанные файлы
-└── errors/           # Файлы с ошибками</code>
-</pre>
+└── errors/           # Файлы с ошибками
 
 3. **Запустите мониторинг:**
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-bash">npm run csv-watcher</code>
-</pre>
+
+npm run csv-watcher
 
 ### Планировщик задач
 
 Настройте регулярный импорт по расписанию:
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-json">{
+{
   "tasks": [
     {
       "name": "daily-materials-sync",
@@ -394,15 +375,13 @@ EGGER H1147 ST9,H1147-ST9,ЛДСП,30,10,EGGER,м²,2700,Белый,Ясень,1
       }
     }
   ]
-}</code>
-</pre>
+}
 
 ## 🌐 API интеграция
 
 ### Endpoint для импорта
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-bash">POST /api/csv-import
+POST /api/csv-import
 Content-Type: multipart/form-data
 Authorization: Bearer your-api-key
 
@@ -414,13 +393,11 @@ Authorization: Bearer your-api-key
     "update_existing": true,
     "validate_data": true
   }
-}</code>
-</pre>
+}
 
 ### Webhook для внешних систем
 
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-bash">POST /api/webhook/csv-import
+POST /api/webhook/csv-import
 Content-Type: application/json
 X-Webhook-Signature: sha256=...
 
@@ -439,8 +416,7 @@ X-Webhook-Signature: sha256=...
     "source": "basis_moysklad",
     "timestamp": "2024-12-19T10:00:00Z"
   }
-}</code>
-</pre>
+}
 
 ## 🛠️ Обработка ошибок
 
@@ -474,11 +450,10 @@ X-Webhook-Signature: sha256=...
    - Проверьте уникальность артикулов
 
 3. **Проверьте логи:**
-<pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto mb-4 border">
-<code className="language-sql">SELECT * FROM import_logs 
+
+SELECT * FROM import_logs 
 WHERE created_at >= NOW() - INTERVAL '1 hour'
-ORDER BY created_at DESC;</code>
-</pre>
+ORDER BY created_at DESC;
 
 ## 📊 Мониторинг импорта
 
