@@ -29,6 +29,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatCurrency } from '@/utils/safeFormat';
 import { useMemo, useRef } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { z } from 'zod';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Brush } from 'recharts';
@@ -602,7 +603,9 @@ export function InvoicesManagement() {
             <CardTitle className="text-sm font-medium">Всего инвойсов</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? '—' : invoices.length}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Skeleton className="h-7 w-12" /> : invoices.length}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -610,7 +613,9 @@ export function InvoicesManagement() {
             <CardTitle className="text-sm font-medium">Ожидают оплаты</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{isLoading ? '—' : invoices.filter(inv => inv.status === 'sent').length}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {isLoading ? <Skeleton className="h-7 w-12" /> : invoices.filter(inv => inv.status === 'sent').length}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -618,7 +623,9 @@ export function InvoicesManagement() {
             <CardTitle className="text-sm font-medium">Просрочены</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{isLoading ? '—' : invoices.filter(inv => inv.status === 'overdue').length}</div>
+            <div className="text-2xl font-bold text-red-600">
+              {isLoading ? <Skeleton className="h-7 w-12" /> : invoices.filter(inv => inv.status === 'overdue').length}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -626,7 +633,9 @@ export function InvoicesManagement() {
             <CardTitle className="text-sm font-medium">Оплачены</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{isLoading ? '—' : invoices.filter(inv => inv.status === 'paid').length}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {isLoading ? <Skeleton className="h-7 w-12" /> : invoices.filter(inv => inv.status === 'paid').length}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -650,49 +659,76 @@ export function InvoicesManagement() {
               </TableRow>
             </TableHeader>
           </Table>
-          <div ref={parentRef} className="h-[520px] overflow-auto rounded-md border mt-2">
-            <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
-              {rowVirtualizer.getVirtualItems().map(vRow => {
-                const invoice = invoices[vRow.index];
-                const statusInfo = getStatusInfo(invoice.status);
-                const isOverdue = invoice.status === 'overdue' || (invoice.status === 'sent' && new Date(invoice.due_date) < new Date());
-                return (
-                  <div
-                    key={invoice.id}
-                    className={`grid grid-cols-7 items-center px-4 py-3 border-b ${isOverdue ? 'bg-red-50' : ''}`}
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }}
-                  >
-                    <div className="font-medium truncate">{invoice.number}</div>
-                    <div>
-                      <Badge variant="outline">
-                        {INVOICE_TYPES.find(t => t.value === invoice.type)?.label}
-                      </Badge>
-                    </div>
-                    <div>
-                      <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
-                    </div>
-                    <div className="font-medium">{safeFormatCurrency(invoice.total_amount)}</div>
-                    <div>{invoice.issue_date ? format(new Date(invoice.issue_date), 'dd.MM.yyyy', { locale: ru }) : '-'}</div>
-                    <div>{invoice.due_date ? format(new Date(invoice.due_date), 'dd.MM.yyyy', { locale: ru }) : '-'}</div>
-                    <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(invoice)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteInvoice(invoice.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+          {isLoading ? (
+            <div className="rounded-md border mt-2 divide-y">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="grid grid-cols-7 items-center px-4 py-3">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                  <div className="flex gap-1 justify-end">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
-          </div>
+          ) : invoices.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Инвойсы не найдены</p>
+              <p className="text-sm">Создайте первый инвойс для начала работы</p>
+            </div>
+          ) : (
+            <div ref={parentRef} className="h-[520px] overflow-auto rounded-md border mt-2">
+              <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+                {rowVirtualizer.getVirtualItems().map(vRow => {
+                  const invoice = invoices[vRow.index];
+                  const statusInfo = getStatusInfo(invoice.status);
+                  const isOverdue = invoice.status === 'overdue' || (invoice.status === 'sent' && new Date(invoice.due_date) < new Date());
+                  return (
+                    <div
+                      key={invoice.id}
+                      className={`grid grid-cols-7 items-center px-4 py-3 border-b ${isOverdue ? 'bg-red-50' : ''}`}
+                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }}
+                    >
+                      <div className="font-medium truncate">{invoice.number}</div>
+                      <div>
+                        <Badge variant="outline">
+                          {INVOICE_TYPES.find(t => t.value === invoice.type)?.label}
+                        </Badge>
+                      </div>
+                      <div>
+                        <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
+                      </div>
+                      <div className="font-medium">{safeFormatCurrency(invoice.total_amount)}</div>
+                      <div>{invoice.issue_date ? format(new Date(invoice.issue_date), 'dd.MM.yyyy', { locale: ru }) : '-'}</div>
+                      <div>{invoice.due_date ? format(new Date(invoice.due_date), 'dd.MM.yyyy', { locale: ru }) : '-'}</div>
+                      <div className="flex gap-1 justify-end">
+                        <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(invoice)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteInvoice(invoice.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {/* Пагинация */}
           <div className="flex items-center justify-between pt-4">
             <div className="text-sm text-muted-foreground">

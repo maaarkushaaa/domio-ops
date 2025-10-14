@@ -21,7 +21,8 @@ import {
   Clock,
   X,
   Play,
-  Pause
+  Pause,
+  FileText
 } from 'lucide-react';
 import { useFinance, Subscription } from '@/hooks/use-finance';
 import { useSubscriptionsQuery } from '@/hooks/finance-queries';
@@ -30,6 +31,7 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatCurrency } from '@/utils/safeFormat';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface SubscriptionDialogProps {
   subscription?: Subscription;
@@ -337,7 +339,7 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
 }
 
 export function SubscriptionsManagement() {
-  const { subscriptions, deleteSubscription, updateSubscription } = useSubscriptionsQuery();
+  const { subscriptions, deleteSubscription, updateSubscription, isLoading } = useSubscriptionsQuery();
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
   const getStatusInfo = (status: string) => {
@@ -407,7 +409,7 @@ export function SubscriptionsManagement() {
             <CardTitle className="text-sm font-medium">Всего подписок</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{subscriptions.length}</div>
+            <div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-7 w-12" /> : subscriptions.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -415,9 +417,7 @@ export function SubscriptionsManagement() {
             <CardTitle className="text-sm font-medium">Активные</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {subscriptions.filter(sub => sub.is_active).length}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{isLoading ? <Skeleton className="h-7 w-12" /> : subscriptions.filter(sub => sub.is_active).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -425,9 +425,7 @@ export function SubscriptionsManagement() {
             <CardTitle className="text-sm font-medium">Приостановлены</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {subscriptions.filter(sub => !sub.is_active).length}
-            </div>
+            <div className="text-2xl font-bold text-yellow-600">{isLoading ? <Skeleton className="h-7 w-12" /> : subscriptions.filter(sub => !sub.is_active).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -435,9 +433,7 @@ export function SubscriptionsManagement() {
             <CardTitle className="text-sm font-medium">Ближайшие платежи</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {subscriptions.filter(sub => isUpcomingPayment(sub.next_payment_date)).length}
-            </div>
+            <div className="text-2xl font-bold text-blue-600">{isLoading ? <Skeleton className="h-7 w-12" /> : subscriptions.filter(sub => isUpcomingPayment(sub.next_payment_date)).length}</div>
           </CardContent>
         </Card>
       </div>
@@ -460,59 +456,86 @@ export function SubscriptionsManagement() {
                 <TableHead>Действия</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {subscriptions.map((subscription) => {
-                const statusInfo = getStatusInfo(subscription.is_active ? 'active' : 'paused');
-                const StatusIcon = statusInfo.icon;
-                const isUpcoming = isUpcomingPayment(subscription.next_payment_date);
-                
-                return (
-                  <TableRow key={subscription.id} className={isUpcoming ? 'bg-blue-50' : ''}>
-                    <TableCell className="font-medium">{subscription.name}</TableCell>
-                    <TableCell>
-                      <Badge className={statusInfo.color}>
-                        <StatusIcon className="h-3 w-3 mr-1" />
-                        {statusInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {safeFormatCurrency(subscription.amount, subscription.currency)}
-                    </TableCell>
-                    <TableCell>{getBillingCycleLabel(subscription.period)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {format(new Date(subscription.next_payment_date), 'dd.MM.yyyy', { locale: ru })}
-                        {isUpcoming && <AlertCircle className="h-4 w-4 text-orange-500" />}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {subscription.auto_renewal ? (
-                        <Badge variant="default" className="text-xs">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Включено
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          <X className="h-3 w-3 mr-1" />
-                          Отключено
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedSubscription(subscription)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteSubscription(subscription.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
           </Table>
+          {isLoading ? (
+            <div className="rounded-md border mt-2 divide-y">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="grid grid-cols-7 items-center px-4 py-3">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-5 w-24" />
+                  <div className="flex gap-1 justify-end">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : subscriptions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Подписки не найдены</p>
+              <p className="text-sm">Создайте первую подписку для начала работы</p>
+            </div>
+          ) : (
+            <Table>
+              <TableBody>
+                {subscriptions.map((subscription) => {
+                  const statusInfo = getStatusInfo(subscription.is_active ? 'active' : 'paused');
+                  const StatusIcon = statusInfo.icon;
+                  const isUpcoming = isUpcomingPayment(subscription.next_payment_date);
+                  
+                  return (
+                    <TableRow key={subscription.id} className={isUpcoming ? 'bg-blue-50' : ''}>
+                      <TableCell className="font-medium">{subscription.name}</TableCell>
+                      <TableCell>
+                        <Badge className={statusInfo.color}>
+                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {statusInfo.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {safeFormatCurrency(subscription.amount, subscription.currency)}
+                      </TableCell>
+                      <TableCell>{getBillingCycleLabel(subscription.period)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {format(new Date(subscription.next_payment_date), 'dd.MM.yyyy', { locale: ru })}
+                          {isUpcoming && <AlertCircle className="h-4 w-4 text-orange-500" />}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {subscription.auto_renewal ? (
+                          <Badge variant="default" className="text-xs">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Включено
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            <X className="h-3 w-3 mr-1" />
+                            Отключено
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedSubscription(subscription)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteSubscription(subscription.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
