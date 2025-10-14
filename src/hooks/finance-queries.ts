@@ -20,9 +20,7 @@ export function useInvoicesQuery() {
     queryFn: async (): Promise<Invoice[]> => {
       const { data, error } = await supabase
         .from('invoices')
-        .select(
-          'id, number, type, status, amount, currency, tax_amount, total_amount, issue_date, due_date, paid_date, description, notes, created_at, updated_at, created_by'
-        )
+        .select('id, number, type, status, amount, currency, tax_amount, total_amount, issue_date, due_date, paid_date, created_at, updated_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -102,10 +100,7 @@ export function useInvoicesQueryPaged(initialPage = 1, initialPageSize = 20) {
       const to = from + pageSize - 1;
       const { data, error, count } = await supabase
         .from('invoices')
-        .select(
-          'id, number, type, status, amount, currency, tax_amount, total_amount, issue_date, due_date, paid_date, description, notes, created_at, updated_at, created_by',
-          { count: 'exact' }
-        )
+        .select('id, number, type, status, amount, currency, tax_amount, total_amount, issue_date, due_date, paid_date, created_at, updated_at', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
       if (error) throw error;

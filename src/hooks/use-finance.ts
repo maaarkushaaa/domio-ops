@@ -89,13 +89,15 @@ export interface Subscription {
   description?: string;
   amount: number;
   currency: string;
-  period: 'monthly' | 'quarterly' | 'yearly';
+  period: 'monthly' | 'quarterly' | 'yearly' | 'weekly' | 'daily';
   next_payment_date: string;
   is_active: boolean;
   auto_renewal: boolean;
   category?: string;
   provider?: string;
   account_id?: string;
+  notes?: string;
+  start_date?: string;
   created_at: string;
   updated_at: string;
   created_by: string;
@@ -345,7 +347,7 @@ export const useFinance = () => {
 
   const upcomingPayments = useMemo(() => 
     subscriptions
-      .filter(sub => sub.status === 'active')
+      .filter(sub => sub.is_active)
       .map(sub => ({
         name: sub.name,
         amount: sub.amount,
