@@ -14,7 +14,6 @@ import { TaskHotkeys } from "./components/common/TaskHotkeys";
 import { AIAssistantAdvanced } from "./components/ai/AIAssistantAdvanced";
 import { NotificationContainer } from "./components/ui/NotificationContainer";
 import { NotificationIntegration } from "./components/NotificationIntegration";
-import { NotificationTestPage } from "./pages/NotificationTest";
 import { FinanceRealtimeProvider } from "./providers/FinanceRealtimeProvider";
 import { NotificationSettingsPage } from "./pages/NotificationSettings";
 import Dashboard from "./pages/Dashboard";
@@ -41,8 +40,13 @@ import { NotificationTestPage } from "./pages/NotificationTest";
 import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { FeatureFlagsProvider } from "./contexts/FeatureFlags";
+import { initSentry } from "@/integrations/monitoring/sentry";
 
 const queryClient = new QueryClient();
+initSentry({
+  dsn: (import.meta as any)?.env?.VITE_SENTRY_DSN,
+  environment: (import.meta as any)?.env?.MODE,
+});
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoadingAuth } = useApp();
