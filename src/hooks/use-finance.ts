@@ -1,5 +1,6 @@
 // VERSION: 2.0 - ULTRA DEEP FIX - FORCE CACHE REFRESH
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -124,8 +125,16 @@ export const useFinance = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Загрузка данных
+  const lastLoadAtRef = useRef<number>(0);
+
   const loadData = useCallback(async () => {
     if (!user) return;
+    const now = Date.now();
+    // Throttle frequent load requests (e.g., from realtime bursts)
+    if (now - (lastLoadAtRef.current || 0) < 800) {
+      return;
+    }
+    lastLoadAtRef.current = now;
 
     try {
       setIsLoading(true);
@@ -885,29 +894,53 @@ export const useFinance = () => {
     }
   }, [user?.id]); // Зависим только от user.id, загружаем ОДИН РАЗ
 
-  // Realtime подписки (временно отключены для устранения множественных перезагрузок)
-  // useEffect(() => {
-  //   if (!user) return;
+  // Realtime подписки: точечные инвалидации через общий loadData с троттлингом
+  useEffect(() => {
+    if (!user) return;
 
-  //   const operationsChannel = supabase
-  //     .channel('financial_operations_changes')
-  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_operations' }, () => {
-  //       loadData();
-  //     })
-  //     .subscribe();
+    const operationsChannel = supabase
+      .channel('financial_operations_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_operations' }, () => {
+        loadData();
+      })
+      .subscribe();
 
-  //   const accountsChannel = supabase
-  //     .channel('accounts_changes')
-  //     .on('postgres_changes', { event: '*', schema: 'public', table: 'accounts' }, () => {
-  //       loadData();
-  //     })
-  //     .subscribe();
+    const accountsChannel = supabase
+      .channel('accounts_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'accounts' }, () => {
+        loadData();
+      })
+      .subscribe();
 
-  //   return () => {
-  //     supabase.removeChannel(operationsChannel);
-  //     supabase.removeChannel(accountsChannel);
-  //   };
-  // }, [user, loadData]);
+    const invoicesChannel = supabase
+      .channel('invoices_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    const budgetsChannel = supabase
+      .channel('budgets_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'budgets' }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    const subscriptionsChannel = supabase
+      .channel('subscriptions_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(operationsChannel);
+      supabase.removeChannel(accountsChannel);
+      supabase.removeChannel(invoicesChannel);
+      supabase.removeChannel(budgetsChannel);
+      supabase.removeChannel(subscriptionsChannel);
+    };
+  }, [user, loadData]);
 
   return {
     // Данные
