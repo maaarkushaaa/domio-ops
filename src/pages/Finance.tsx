@@ -41,6 +41,8 @@ import { ru } from "date-fns/locale";
 import { useAppNotifications } from "@/components/NotificationIntegration";
 import { toast } from "@/hooks/use-toast";
 import { FinancialInsights } from "@/components/analytics/FinancialInsights";
+import { FinanceWhatIf } from "@/components/analytics/FinanceWhatIf";
+import { FinanceForecast } from "@/components/analytics/FinanceForecast";
 
 // Безопасная функция форматирования чисел - VERSION 2.0 FIX
 const safeFormatNumber = (value: any, fallback = '0'): string => {
@@ -740,6 +742,11 @@ export default function Finance() {
                 ))}
               </CardContent>
             </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <FinanceForecast />
+            <FinanceWhatIf />
           </div>
 
           <FinancialInsights />
