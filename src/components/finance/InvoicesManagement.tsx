@@ -29,6 +29,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatCurrency } from '@/utils/safeFormat';
 import { useMemo, useRef } from 'react';
+import { z } from 'zod';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Brush } from 'recharts';
 
@@ -163,28 +164,53 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!number.trim() || !amount) {
-      toast({
-        title: 'Ошибка',
-        description: 'Заполните обязательные поля',
-        variant: 'destructive'
-      });
+    const schema = z.object({
+      number: z.string().min(1, 'Номер обязателен'),
+      type: z.enum(['invoice','receipt','estimate']),
+      status: z.enum(['draft','sent','paid','overdue','cancelled','refunded']),
+      amount: z.preprocess((v) => Number(v), z.number().finite().nonnegative()),
+      tax_amount: z.preprocess((v) => Number(v), z.number().finite().min(0).optional()),
+      issue_date: z.string().optional(),
+      due_date: z.string().optional(),
+      description: z.string().optional().or(z.literal('')),
+      notes: z.string().optional().or(z.literal('')),
+    }).refine(
+      (val) => !val.due_date || !val.issue_date || new Date(val.due_date) >= new Date(val.issue_date),
+      { message: 'Срок оплаты не может быть раньше даты выставления', path: ['due_date'] }
+    );
+
+    const parsed = schema.safeParse({
+      number: number.trim(),
+      type,
+      status,
+      amount,
+      tax_amount: taxAmount,
+      issue_date: issueDate || undefined,
+      due_date: dueDate || undefined,
+      description: description.trim(),
+      notes: notes.trim(),
+    });
+
+    if (!parsed.success) {
+      const firstErr = parsed.error.issues[0];
+      toast({ title: 'Ошибка', description: firstErr?.message || 'Проверьте поля формы', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     try {
+      const p = parsed.data;
       const invoiceData = {
-        number: number.trim(),
-        type,
-        status,
-        amount: parseFloat(amount),
-        tax_amount: parseFloat(taxAmount) || 0,
+        number: p.number,
+        type: p.type,
+        status: p.status,
+        amount: p.amount,
+        tax_amount: Number(p.tax_amount || 0),
         total_amount: calculateTotal(),
-        issue_date: issueDate || undefined,
-        due_date: dueDate || undefined,
-        description: description.trim() || undefined,
-        notes: notes.trim() || undefined
+        issue_date: p.issue_date || undefined,
+        due_date: p.due_date || undefined,
+        description: p.description || undefined,
+        notes: p.notes || undefined,
       };
 
       if (isEdit && invoice) {
