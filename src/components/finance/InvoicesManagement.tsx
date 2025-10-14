@@ -134,6 +134,19 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
     return Object.entries(map).map(([status, total]) => ({ status, total }));
   }, [invoices]);
 
+  const paidTrend = useMemo(() => {
+    const map = new Map<string, number>();
+    invoices.forEach(inv => {
+      if (inv.status !== 'paid' || !inv.paid_date) return;
+      const d = new Date(inv.paid_date);
+      const ym = d.toISOString().slice(0, 7);
+      map.set(ym, (map.get(ym) || 0) + (inv.total_amount || 0));
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, total]) => ({ month, total }));
+  }, [invoices]);
+
   const issueTrend = useMemo(() => {
     const map = new Map<string, number>();
     invoices.forEach(inv => {
@@ -244,16 +257,22 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
             <CardTitle className="text-sm font-medium">Сумма по статусам</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statusData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="status" />
-                <YAxis />
-                <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
-                <Legend />
-                <Bar dataKey="total" name="Итого" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="w-full h-full bg-muted animate-pulse rounded" />
+            ) : statusData.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных для графика</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="status" />
+                  <YAxis />
+                  <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
+                  <Legend />
+                  <Bar dataKey="total" name="Итого" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -262,16 +281,49 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
             <CardTitle className="text-sm font-medium">Тренд сумм по месяцам</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={issueTrend}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
-                <Legend />
-                <Line type="monotone" dataKey="total" name="Итого" stroke="#82ca9d" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="w-full h-full bg-muted animate-pulse rounded" />
+            ) : issueTrend.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных для графика</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={issueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
+                  <Legend />
+                  <Line type="monotone" dataKey="total" name="Итого" stroke="#82ca9d" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Доп. графики */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Тренд оплат (paid) по месяцам</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {isLoading ? (
+              <div className="w-full h-full bg-muted animate-pulse rounded" />
+            ) : paidTrend.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных по оплатам</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={paidTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
+                  <Legend />
+                  <Line type="monotone" dataKey="total" name="Оплаты" stroke="#0088FE" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -407,7 +459,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
 }
 
 export function InvoicesManagement() {
-  const { invoices, updateInvoice, deleteInvoice } = useInvoicesQuery();
+  const { invoices, updateInvoice, deleteInvoice, isLoading } = useInvoicesQuery();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
 
@@ -496,7 +548,7 @@ export function InvoicesManagement() {
             <CardTitle className="text-sm font-medium">Всего инвойсов</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{invoices.length}</div>
+            <div className="text-2xl font-bold">{isLoading ? '—' : invoices.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -504,9 +556,7 @@ export function InvoicesManagement() {
             <CardTitle className="text-sm font-medium">Ожидают оплаты</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {invoices.filter(inv => inv.status === 'sent').length}
-            </div>
+            <div className="text-2xl font-bold text-blue-600">{isLoading ? '—' : invoices.filter(inv => inv.status === 'sent').length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -514,9 +564,7 @@ export function InvoicesManagement() {
             <CardTitle className="text-sm font-medium">Просрочены</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {invoices.filter(inv => inv.status === 'overdue').length}
-            </div>
+            <div className="text-2xl font-bold text-red-600">{isLoading ? '—' : invoices.filter(inv => inv.status === 'overdue').length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -524,9 +572,7 @@ export function InvoicesManagement() {
             <CardTitle className="text-sm font-medium">Оплачены</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {invoices.filter(inv => inv.status === 'paid').length}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{isLoading ? '—' : invoices.filter(inv => inv.status === 'paid').length}</div>
           </CardContent>
         </Card>
       </div>
