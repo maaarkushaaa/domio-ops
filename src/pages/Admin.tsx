@@ -15,7 +15,8 @@ import {
   Activity,
   Shield,
   Database,
-  Settings
+  Settings,
+  Trash2
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { UserCreateDialog } from '@/components/admin/UserCreateDialog';
@@ -27,6 +28,7 @@ export default function Admin() {
   const { tasks, projects, clients, products, financialOperations, suppliers } = useApp();
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string; role: string; created_at: string }>>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Redirect if not admin
   if (!user || user.role !== 'admin') {
@@ -71,6 +73,43 @@ export default function Admin() {
 
     loadUsers();
   }, []);
+
+  // Функция удаления пользователя
+  const deleteUser = async (userId: string) => {
+    if (!confirm('Вы уверены, что хотите удалить этого пользователя? Это действие нельзя отменить.')) {
+      return;
+    }
+
+    setDeletingUserId(userId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Не авторизован');
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Ошибка при удалении пользователя');
+      }
+
+      // Обновляем список пользователей
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      alert('Пользователь успешно удален');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Ошибка при удалении пользователя: ' + (error as Error).message);
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
 
   const totalUsers = useMemo(() => users.length || 0, [users]);
 
@@ -250,21 +289,22 @@ export default function Admin() {
                     <TableHead>Email</TableHead>
                     <TableHead>Роль</TableHead>
                     <TableHead>Дата создания</TableHead>
+                    <TableHead>Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingUsers && (
                     <TableRow>
-                      <TableCell colSpan={5}>Загрузка пользователей...</TableCell>
+                      <TableCell colSpan={6}>Загрузка пользователей...</TableCell>
                     </TableRow>
                   )}
                   {!loadingUsers && users.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5}>Пользователи не найдены</TableCell>
+                      <TableCell colSpan={6}>Пользователи не найдены</TableCell>
                     </TableRow>
                   )}
                   {!loadingUsers && users.map((u) => (
-                    <TableRow key={u.id} className="hover-lift cursor-pointer transition-colors" onClick={() => window.location.href = '/settings'}>
+                    <TableRow key={u.id} className="hover-lift transition-colors">
                       <TableCell className="font-mono text-xs">{u.id}</TableCell>
                       <TableCell className="font-medium">{u.name}</TableCell>
                       <TableCell>{u.email}</TableCell>
@@ -276,6 +316,20 @@ export default function Admin() {
                       </TableCell>
                       <TableCell>
                         {u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteUser(u.id);
+                          }}
+                          disabled={deletingUserId === u.id || u.id === user?.id}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

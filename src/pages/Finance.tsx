@@ -33,7 +33,8 @@ import { AccountsManagement } from "@/components/finance/AccountsManagement";
 import { InvoicesManagement } from "@/components/finance/InvoicesManagement";
 import { SubscriptionsManagement } from "@/components/finance/SubscriptionsManagement";
 import { BudgetManagement } from "@/components/finance/BudgetManagement";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAppNotifications } from "@/components/NotificationIntegration";
@@ -75,6 +76,7 @@ export default function Finance() {
   const [selectedOperation, setSelectedOperation] = useState<any>(null);
   const [opPage, setOpPage] = useState(1);
   const [opPageSize, setOpPageSize] = useState(20);
+  const parentRef = useRef<HTMLDivElement | null>(null);
 
   // Фильтрация операций
   const filteredOperations = useMemo(() => {
@@ -139,6 +141,13 @@ export default function Finance() {
     const start = (opPage - 1) * opPageSize;
     return filteredOperations.slice(start, start + opPageSize);
   }, [filteredOperations, opPage, opPageSize]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: paginatedOperations.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 72,
+    overscan: 8,
+  });
 
   // Уникальные категории для фильтра
   const categories = useMemo(() => {
@@ -462,98 +471,75 @@ export default function Finance() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {paginatedOperations.map((op) => {
-                  const account = accounts.find(acc => acc.id === op.account_id);
-                  return (
-                    <div
-                      key={op.id}
-                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="text-center min-w-[60px]">
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(op.date), 'dd.MM', { locale: ru })}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(op.date), 'HH:mm', { locale: ru })}
-                          </p>
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium">{op.description || op.category}</p>
-                            <Badge variant="outline" className="text-xs">
-                              {op.category}
-                            </Badge>
-                            {op.subcategory && (
-                              <Badge variant="secondary" className="text-xs">
-                                {op.subcategory}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            {account && <span>{account.name}</span>}
-                            {op.tags && op.tags.length > 0 && (
-                              <div className="flex gap-1">
-                                {op.tags.slice(0, 3).map((tag) => (
-                                  <Badge key={tag} variant="outline" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                                {op.tags.length > 3 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{op.tags.length - 3}
-                                  </Badge>
+                <div ref={parentRef} className="h-[560px] overflow-auto rounded-md border">
+                  <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+                    {rowVirtualizer.getVirtualItems().map((vRow) => {
+                      const op = paginatedOperations[vRow.index];
+                      const account = accounts.find(acc => acc.id === op.account_id);
+                      return (
+                        <div
+                          key={op.id}
+                          className="flex items-center justify-between p-4 border-b border-border hover:bg-muted/50 transition-colors"
+                          style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="text-center min-w-[60px]">
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(op.date), 'dd.MM', { locale: ru })}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(op.date), 'HH:mm', { locale: ru })}
+                              </p>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-medium">{op.description || op.category}</p>
+                                <Badge variant="outline" className="text-xs">{op.category}</Badge>
+                                {op.subcategory && (<Badge variant="secondary" className="text-xs">{op.subcategory}</Badge>)}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {account && <span>{account.name}</span>}
+                                {op.tags && op.tags.length > 0 && (
+                                  <div className="flex gap-1">
+                                    {op.tags.slice(0, 3).map((tag) => (
+                                      <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                                    ))}
+                                    {op.tags.length > 3 && (
+                                      <Badge variant="outline" className="text-xs">+{op.tags.length - 3}</Badge>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`text-lg font-bold ${op.type === 'income' ? 'text-green-600' : op.type === 'expense' ? 'text-red-600' : 'text-blue-600'}`}>
+                              {op.type === 'income' ? '+' : op.type === 'expense' ? '-' : '↔'}{safeFormatNumber(op.amount)} {op.currency}
+                            </div>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => setSelectedOperation(op)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => setSelectedOperation(op)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDeleteOperation(op.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className={`text-lg font-bold ${
-                          op.type === 'income' ? 'text-green-600' : 
-                          op.type === 'expense' ? 'text-red-600' : 
-                          'text-blue-600'
-                        }`}>
-                          {op.type === 'income' ? '+' : op.type === 'expense' ? '-' : '↔'}{safeFormatNumber(op.amount)} {op.currency}
-                        </div>
-                        
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedOperation(op)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedOperation(op)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteOperation(op.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
                 {filteredOperations.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Операции не найдены</p>
                     <p className="text-sm">Попробуйте изменить фильтры или добавить новую операцию</p>
-                  </div>
+{{ ... }}
                 )}
               </div>
 

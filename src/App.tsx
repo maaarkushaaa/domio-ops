@@ -39,6 +39,8 @@ import VideoCalls from "./pages/VideoCalls";
 import Automation from "./pages/Automation";
 import { NotificationTestPage } from "./pages/NotificationTest";
 import NotFound from "./pages/NotFound";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { FeatureFlagsProvider } from "./contexts/FeatureFlags";
 
 const queryClient = new QueryClient();
 
@@ -65,8 +67,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <FinanceRealtimeProvider />
-      <ThemeProvider defaultTheme="light">
+      <FeatureFlagsProvider>
+        <FinanceRealtimeProvider />
+        <ThemeProvider defaultTheme="light">
         <AppProvider>
           <NotificationProvider>
             <TooltipProvider>
@@ -120,7 +123,9 @@ const App = () => {
                 <Route path="/finance" element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <Finance />
+                      <ErrorBoundary>
+                        <Finance />
+                      </ErrorBoundary>
                     </AppLayout>
                   </ProtectedRoute>
                 } />
@@ -235,7 +240,8 @@ const App = () => {
           </TooltipProvider>
           </NotificationProvider>
         </AppProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </FeatureFlagsProvider>
     </QueryClientProvider>
   );
 };
