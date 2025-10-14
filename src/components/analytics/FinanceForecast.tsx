@@ -59,15 +59,15 @@ export function FinanceForecast() {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Прогноз денежных потоков (эксп. сглаживание)</span>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-4 max-w-full">
+            <div className="flex items-center gap-2 shrink-0">
               <Label className="text-xs">alpha</Label>
-              <Slider value={[alpha]} min={0.05} max={0.95} step={0.05} onValueChange={(v) => setAlpha(Number(v[0]))} className="w-40" />
+              <Slider value={[alpha]} min={0.05} max={0.95} step={0.05} onValueChange={(v) => setAlpha(Number(v[0]))} className="w-44" />
               <Input className="w-16 h-8" type="number" step={0.05} min={0.05} max={0.95} value={alpha} onChange={(e) => setAlpha(Math.max(0.05, Math.min(0.95, Number(e.target.value) || 0.5)))} />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Label className="text-xs">горизонт</Label>
-              <Slider value={[horizon]} min={1} max={18} step={1} onValueChange={(v) => setHorizon(v[0])} className="w-40" />
+              <Slider value={[horizon]} min={1} max={18} step={1} onValueChange={(v) => setHorizon(v[0])} className="w-44" />
               <Input className="w-16 h-8" type="number" min={1} max={18} value={horizon} onChange={(e) => setHorizon(Math.max(1, Math.min(18, Number(e.target.value) || 6)))} />
             </div>
           </div>

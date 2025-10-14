@@ -50,21 +50,27 @@ export function FinanceWhatIf() {
       </CardHeader>
       <CardContent>
         <div className="grid gap-6 md:grid-cols-3">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Изменение выручки (%)</Label>
-              <Slider value={[revenueDelta]} min={-50} max={200} step={1} onValueChange={(v) => setRevenueDelta(v[0])} />
-              <Input type="number" value={revenueDelta} onChange={(e) => setRevenueDelta(Number(e.target.value) || 0)} />
+              <Label className="text-xs">Изменение выручки (%)</Label>
+              <div className="flex items-center gap-3">
+                <Slider className="w-44" value={[revenueDelta]} min={-50} max={200} step={1} onValueChange={(v) => setRevenueDelta(v[0])} />
+                <Input className="w-20 h-8" type="number" value={revenueDelta} onChange={(e) => setRevenueDelta(Number(e.target.value) || 0)} />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>Изменение расходов (%)</Label>
-              <Slider value={[expenseDelta]} min={-80} max={100} step={1} onValueChange={(v) => setExpenseDelta(v[0])} />
-              <Input type="number" value={expenseDelta} onChange={(e) => setExpenseDelta(Number(e.target.value) || 0)} />
+              <Label className="text-xs">Изменение расходов (%)</Label>
+              <div className="flex items-center gap-3">
+                <Slider className="w-44" value={[expenseDelta]} min={-80} max={100} step={1} onValueChange={(v) => setExpenseDelta(v[0])} />
+                <Input className="w-20 h-8" type="number" value={expenseDelta} onChange={(e) => setExpenseDelta(Number(e.target.value) || 0)} />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>Горизонт (мес)</Label>
-              <Slider value={[months]} min={1} max={24} step={1} onValueChange={(v) => setMonths(v[0])} />
-              <Input type="number" value={months} onChange={(e) => setMonths(Math.min(24, Math.max(1, Number(e.target.value) || 1)))} />
+              <Label className="text-xs">Горизонт (мес)</Label>
+              <div className="flex items-center gap-3">
+                <Slider className="w-44" value={[months]} min={1} max={24} step={1} onValueChange={(v) => setMonths(v[0])} />
+                <Input className="w-20 h-8" type="number" value={months} onChange={(e) => setMonths(Math.min(24, Math.max(1, Number(e.target.value) || 1)))} />
+              </div>
             </div>
           </div>
           <div className="space-y-2">
