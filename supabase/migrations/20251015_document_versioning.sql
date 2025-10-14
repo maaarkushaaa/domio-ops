@@ -7,14 +7,13 @@ create table if not exists public.documents (
   name text not null,
   description text,
   project_id uuid references public.projects(id) on delete cascade,
-  task_id uuid references public.tasks(id) on delete cascade,
   created_by uuid not null references auth.users(id) on delete set null,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   current_version_id uuid,
   status text not null default 'draft' check (status in ('draft', 'review', 'approved', 'archived')),
   tags text[],
-  check ((project_id is not null) or (task_id is not null))
+  category text default 'general' check (category in ('general', 'contract', 'specification', 'drawing', 'report', 'other'))
 );
 
 -- Версии документов
@@ -55,9 +54,9 @@ create table if not exists public.document_comments (
 
 -- Индексы
 create index if not exists documents_project_idx on public.documents (project_id);
-create index if not exists documents_task_idx on public.documents (task_id);
 create index if not exists documents_created_by_idx on public.documents (created_by);
 create index if not exists documents_status_idx on public.documents (status);
+create index if not exists documents_category_idx on public.documents (category);
 
 create index if not exists document_versions_document_idx on public.document_versions (document_id, version_number desc);
 create index if not exists document_versions_created_at_idx on public.document_versions (created_at desc);

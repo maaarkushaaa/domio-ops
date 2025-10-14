@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Calendar, TrendingUp, DollarSign, Package, Users } from "lucide-react";
+import { FileText, Download, Calendar, TrendingUp, DollarSign, Package, Users, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { DataExporter } from "@/components/export/DataExporter";
+import { ReportBuilder } from "@/components/reports/ReportBuilder";
 import { useTasks } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
 import { useFinance } from "@/hooks/use-finance";
@@ -101,11 +103,25 @@ export default function Reports() {
           <h1 className="text-3xl font-bold">Отчеты</h1>
           <p className="text-muted-foreground">Генерация и загрузка отчетов</p>
         </div>
-        <Button onClick={handleGenerateReport}>
-          <FileText className="mr-2 h-4 w-4" />
-          Создать отчет
-        </Button>
       </div>
+
+      <Tabs defaultValue="list" className="space-y-6">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="list">
+            <FileText className="h-4 w-4 mr-2" />
+            Готовые отчеты
+          </TabsTrigger>
+          <TabsTrigger value="builder">
+            <Plus className="h-4 w-4 mr-2" />
+            Конструктор
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="builder">
+          <ReportBuilder />
+        </TabsContent>
+
+        <TabsContent value="list" className="space-y-6">
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -271,6 +287,8 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
