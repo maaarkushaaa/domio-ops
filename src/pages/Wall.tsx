@@ -4,10 +4,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { WallComposer } from '@/components/wall/WallComposer';
 import { WallFeed } from '@/components/wall/WallFeed';
+import { useWallRealtime } from '@/hooks/use-wall';
 
 export default function Wall() {
   const [scope, setScope] = useState<'project' | 'task'>('project');
   const [scopeId, setScopeId] = useState<string>('');
+
+  useWallRealtime(scope, scopeId);
 
   return (
     <div className="space-y-6">

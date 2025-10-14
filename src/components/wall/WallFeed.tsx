@@ -1,17 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useWallFeed } from '@/hooks/use-wall';
 
 export function WallFeed({ scope, scopeId }: { scope: 'project' | 'task'; scopeId?: string }) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [posts, setPosts] = useState<any[]>([]);
-
-  useEffect(() => {
-    setIsLoading(true);
-    // TODO: fetch from supabase (wall_posts + comments + attachments) with filters
-    const t = setTimeout(() => { setPosts([]); setIsLoading(false); }, 400);
-    return () => clearTimeout(t);
-  }, [scope, scopeId]);
+  const { data: posts, isLoading } = useWallFeed(scope, scopeId);
 
   if (isLoading) {
     return (
@@ -39,12 +31,31 @@ export function WallFeed({ scope, scopeId }: { scope: 'project' | 'task'; scopeI
         <CardTitle>Лента</CardTitle>
       </CardHeader>
       <CardContent>
-        {posts.length === 0 ? (
+        {!posts || posts.length === 0 ? (
           <div className="text-sm text-muted-foreground">Постов пока нет. Создайте первый пост.</div>
         ) : (
           <div className="space-y-4">
             {posts.map((p) => (
-              <div key={p.id} className="border rounded p-3">Post</div>
+              <div key={p.id} className="border rounded p-3 space-y-2">
+                <div className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleString('ru-RU')}</div>
+                <div className="whitespace-pre-wrap text-sm">{p.content}</div>
+                {p.attachments?.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {p.attachments.map((a) => (
+                      <div key={a.id} className="rounded border overflow-hidden">
+                        {a.type === 'image' ? (
+                          <img src={a.url} alt="att" className="max-h-56" />
+                        ) : a.type === 'video' ? (
+                          <video src={a.url} controls className="max-h-56" />
+                        ) : (
+                          <a href={a.url} target="_blank" rel="noreferrer" className="text-xs p-2 inline-block">Вложение</a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground">Комментариев: {p.comments_count}</div>
+              </div>
             ))}
           </div>
         )}

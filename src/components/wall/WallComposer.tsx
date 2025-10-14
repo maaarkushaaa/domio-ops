@@ -4,37 +4,52 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Image as ImageIcon, Video, Mic, ListChecks as PollIcon, Brush } from 'lucide-react';
 import { WallGraffitiCanvas } from './WallGraffitiCanvas';
+import { createWallPost } from '@/hooks/use-wall';
 
 export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; scopeId?: string }) {
   const [text, setText] = useState('');
   const [isGraffitiOpen, setGraffitiOpen] = useState(false);
-  const [attachments, setAttachments] = useState<Array<{ type: 'image' | 'video' | 'audio' | 'file'; url: string }>>([]);
+  const [attachments, setAttachments] = useState<Array<{ type: 'image' | 'video' | 'audio' | 'file'; url: string; file?: File | Blob; name?: string }>>([]);
+  const [isSubmitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    // TODO: upload attachments to Storage and insert into wall_posts + wall_attachments
-    setText('');
-    setAttachments([]);
+    if (!text && attachments.length === 0) return;
+    try {
+      setSubmitting(true);
+      await createWallPost({
+        scope,
+        scopeId: scopeId || null,
+        content: text,
+        files: attachments.map(a => ({ file: a.file!, type: a.type, name: a.name }))
+      });
+      setText('');
+      setAttachments([]);
+    } catch (e) {
+      alert('Ошибка публикации поста');
+      // eslint-disable-next-line no-console
+      console.error(e);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handlePickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // TODO: upload to Storage and get URL
     const url = URL.createObjectURL(file);
-    setAttachments((a) => [...a, { type: 'image', url }]);
+    setAttachments((a) => [...a, { type: 'image', url, file, name: file.name }]);
   };
 
   const handlePickVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    setAttachments((a) => [...a, { type: 'video', url }]);
+    setAttachments((a) => [...a, { type: 'video', url, file, name: file.name }]);
   };
 
   const handleGraffitiSave = async (blob: Blob) => {
-    // TODO: upload blob to Storage and add to attachments
     const url = URL.createObjectURL(blob);
-    setAttachments((a) => [...a, { type: 'image', url }]);
+    setAttachments((a) => [...a, { type: 'image', url, file: blob, name: `graffiti-${Date.now()}.png` }]);
     setGraffitiOpen(false);
   };
 
@@ -70,7 +85,9 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
             <PollIcon className="h-4 w-4" /> Опрос
           </button>
         </div>
-        <Button onClick={handleSubmit} disabled={!text && attachments.length === 0}>Опубликовать</Button>
+        <Button onClick={handleSubmit} disabled={isSubmitting || (!text && attachments.length === 0)}>
+          {isSubmitting ? 'Публикация…' : 'Опубликовать'}
+        </Button>
       </div>
 
       <Dialog open={isGraffitiOpen} onOpenChange={setGraffitiOpen}>
