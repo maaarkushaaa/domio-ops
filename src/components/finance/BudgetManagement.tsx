@@ -165,17 +165,23 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
             <CardTitle className="text-sm font-medium">План/Факт по типу периода</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={totalsByPeriod}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="period" />
-                <YAxis />
-                <RechartsTooltip />
-                <Legend />
-                <Bar dataKey="planned" name="План" fill="#8884d8" />
-                <Bar dataKey="actual" name="Факт" fill="#82ca9d" />
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="w-full h-full bg-muted animate-pulse rounded" />
+            ) : totalsByPeriod.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных для графика</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={totalsByPeriod}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="period" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="planned" name="План" fill="#8884d8" />
+                  <Bar dataKey="actual" name="Факт" fill="#82ca9d" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -184,17 +190,23 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
             <CardTitle className="text-sm font-medium">Тренд план/факт по месяцам</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyTrend}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <RechartsTooltip />
-                <Legend />
-                <Line type="monotone" dataKey="planned" name="План" stroke="#8884d8" strokeWidth={2} />
-                <Line type="monotone" dataKey="actual" name="Факт" stroke="#82ca9d" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="w-full h-full bg-muted animate-pulse rounded" />
+            ) : monthlyTrend.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных для графика</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="planned" name="План" stroke="#8884d8" strokeWidth={2} />
+                  <Line type="monotone" dataKey="actual" name="Факт" stroke="#82ca9d" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -292,7 +304,7 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
 }
 
 export function BudgetManagement() {
-  const { budgets, deleteBudget, updateBudget } = useBudgetsQuery();
+  const { budgets, deleteBudget, updateBudget, isLoading } = useBudgetsQuery();
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
 
   const getStatusInfo = (b: Budget) => {
@@ -410,7 +422,7 @@ export function BudgetManagement() {
             <CardTitle className="text-sm font-medium">Всего бюджетов</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{budgets.length}</div>
+            <div className="text-2xl font-bold">{isLoading ? '—' : budgets.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -418,9 +430,7 @@ export function BudgetManagement() {
             <CardTitle className="text-sm font-medium">Активные</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {budgets.filter(budget => budget.is_active).length}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{isLoading ? '—' : budgets.filter(budget => budget.is_active).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -428,9 +438,7 @@ export function BudgetManagement() {
             <CardTitle className="text-sm font-medium">Превышены</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {budgets.filter(budget => (budget.actual_amount || 0) > (budget.planned_amount || 0)).length}
-            </div>
+            <div className="text-2xl font-bold text-red-600">{isLoading ? '—' : budgets.filter(budget => (budget.actual_amount || 0) > (budget.planned_amount || 0)).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -438,16 +446,26 @@ export function BudgetManagement() {
             <CardTitle className="text-sm font-medium">Общая сумма</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {safeFormatCurrency(budgets.reduce((sum, budget) => sum + (budget.planned_amount || 0), 0))}
-            </div>
+            <div className="text-2xl font-bold">{isLoading ? '—' : safeFormatCurrency(budgets.reduce((sum, budget) => sum + (budget.planned_amount || 0), 0))}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Карточки бюджетов */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {budgets.map((budget) => {
+        {isLoading && (
+          <>
+            <Card className="animate-pulse h-48" />
+            <Card className="animate-pulse h-48" />
+            <Card className="animate-pulse h-48" />
+          </>
+        )}
+        {!isLoading && budgets.length === 0 && (
+          <Card className="md:col-span-2 lg:col-span-3">
+            <CardContent className="py-10 text-center text-muted-foreground">Нет бюджетов. Создайте первый бюджет.</CardContent>
+          </Card>
+        )}
+        {!isLoading && budgets.map((budget) => {
           const statusInfo = getStatusInfo(budget);
           const typeInfo = getPeriodInfo(budget.period);
           const TypeIcon = typeInfo.icon;
