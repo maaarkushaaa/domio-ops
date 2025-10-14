@@ -34,6 +34,7 @@ import { InvoicesManagement } from "@/components/finance/InvoicesManagement";
 import { SubscriptionsManagement } from "@/components/finance/SubscriptionsManagement";
 import { BudgetManagement } from "@/components/finance/BudgetManagement";
 import { useState, useMemo, useRef } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -177,11 +178,118 @@ export default function Finance() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Загрузка финансовых данных...</p>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-7 w-40 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-36" />
+          </div>
         </div>
+
+        {/* Статистика */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {[0,1,2,3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-4 rounded-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-7 w-28 mb-2" />
+                <Skeleton className="h-3 w-40" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Счета */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-5 w-24" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {[0,1,2,3].map((i) => (
+                <div key={i} className="p-4 rounded-lg border border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                  <Skeleton className="h-7 w-32 mb-2" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Фильтры */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-5 w-20" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              {[0,1,2,3].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Операции */}
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <Skeleton className="h-5 w-52" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="h-[560px] overflow-hidden rounded-md border">
+                {[...Array(10)].map((_, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-4 border-b border-border">
+                    <div className="flex items-center gap-4">
+                      <div className="text-center min-w-[60px]">
+                        <Skeleton className="h-3 w-10 mb-1" />
+                        <Skeleton className="h-3 w-8" />
+                      </div>
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-48 mb-2" />
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-4 w-16" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-24" />
+                      <div className="flex gap-1">
+                        <Skeleton className="h-8 w-8 rounded" />
+                        <Skeleton className="h-8 w-8 rounded" />
+                        <Skeleton className="h-8 w-8 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
