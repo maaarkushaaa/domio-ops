@@ -7,8 +7,11 @@ export function initSentry(options?: {
   const { dsn, environment, tracesSampleRate = 0.1, replaysSessionSampleRate = 0.0 } = options || {};
   if (!dsn) return; // no-op unless DSN provided
 
-  // Dynamic import so build doesn't fail if @sentry/react is not installed
-  import('@sentry/react')
+  // Dynamic import with vite-ignore so build doesn't try to resolve when package is absent
+  const sentryModuleName = '@sentry/react';
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  import(/* @vite-ignore */ sentryModuleName)
     .then((Sentry) => {
       try {
         Sentry.init({
