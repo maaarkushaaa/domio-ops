@@ -120,6 +120,13 @@ export async function createComment(postId: string, content: string) {
   return data;
 }
 
+export async function deletePost(postId: string) {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('Not authenticated');
+  const { error } = await (supabase as any).from('wall_posts').delete().eq('id', postId).eq('author_id', user.id);
+  if (error) throw error;
+}
+
 export function useWallRealtime(scope: WallScope, scopeId?: string) {
   const qc = useQueryClient();
   useEffect(() => {

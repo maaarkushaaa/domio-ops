@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Heart, MessageCircle, X } from 'lucide-react';
-import { WallPost as WallPostType, toggleLike, listComments, createComment, WallComment } from '@/hooks/use-wall';
+import { WallPost as WallPostType, toggleLike, listComments, createComment, WallComment, deletePost } from '@/hooks/use-wall';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
 
 export function WallPost({ post }: { post: WallPostType }) {
   const qc = useQueryClient();
@@ -12,9 +13,20 @@ export function WallPost({ post }: { post: WallPostType }) {
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useState(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
+  });
 
   const handleLike = async () => {
     await toggleLike(post.id);
+    qc.invalidateQueries({ queryKey: ['wall_feed'] });
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Удалить пост?')) return;
+    await deletePost(post.id);
     qc.invalidateQueries({ queryKey: ['wall_feed'] });
   };
 
@@ -52,7 +64,9 @@ export function WallPost({ post }: { post: WallPostType }) {
             <div className="text-xs text-gray-500">{new Date(post.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
           </div>
         </div>
-        <button className="text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+        {currentUserId === post.author_id && (
+          <button onClick={handleDelete} className="text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+        )}
       </div>
 
       {/* Content */}

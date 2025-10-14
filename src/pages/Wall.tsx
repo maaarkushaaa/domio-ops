@@ -4,10 +4,14 @@ import { Button } from '@/components/ui/button';
 import { WallComposer } from '@/components/wall/WallComposer';
 import { WallFeed } from '@/components/wall/WallFeed';
 import { useWallRealtime } from '@/hooks/use-wall';
+import { useProjects } from '@/hooks/use-projects';
+import { useTasks } from '@/hooks/use-tasks';
 
 export default function Wall() {
   const [scope, setScope] = useState<'project' | 'task'>('project');
   const [scopeId, setScopeId] = useState<string>('');
+  const { projects } = useProjects();
+  const { tasks } = useTasks();
 
   useWallRealtime(scope, scopeId);
 
@@ -29,7 +33,11 @@ export default function Wall() {
           <Select value={scopeId} onValueChange={setScopeId}>
             <SelectTrigger className="w-48 text-xs"><SelectValue placeholder={scope === 'project' ? 'Выберите проект' : 'Выберите задачу'} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="demo">Demo</SelectItem>
+              {scope === 'project' ? (
+                projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)
+              ) : (
+                tasks.map((t) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)
+              )}
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={() => { setScopeId(''); }}>Сброс</Button>
