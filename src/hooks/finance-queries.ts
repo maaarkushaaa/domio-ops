@@ -18,7 +18,7 @@ export function useInvoicesQuery() {
   const invoicesQuery = useQuery({
     queryKey: qk.invoices,
     queryFn: async (): Promise<Invoice[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('invoices')
         .select('*')
         .order('created_at', { ascending: false });
@@ -31,7 +31,7 @@ export function useInvoicesQuery() {
   // Create
   const createMutation = useMutation({
     mutationFn: async (payload: Omit<Invoice, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('invoices')
         .insert({ ...payload })
         .select()
@@ -47,7 +47,7 @@ export function useInvoicesQuery() {
   // Update
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Invoice> }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('invoices')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -64,7 +64,7 @@ export function useInvoicesQuery() {
   // Delete
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('invoices')
         .delete()
         .eq('id', id);
@@ -98,7 +98,7 @@ export function useInvoicesQueryPaged(initialPage = 1, initialPageSize = 20) {
     queryFn: async () => {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
-      const { data, error, count } = await (supabase as any)
+      const { data, error, count } = await supabase
         .from('invoices')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
@@ -187,7 +187,7 @@ export function useSubscriptionsQuery() {
   const subscriptionsQuery = useQuery({
     queryKey: qk.subscriptions,
     queryFn: async (): Promise<Subscription[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
         .order('next_payment_date', { ascending: true });
@@ -199,7 +199,7 @@ export function useSubscriptionsQuery() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: Omit<Subscription, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('subscriptions')
         .insert({ ...payload })
         .select()
@@ -212,7 +212,7 @@ export function useSubscriptionsQuery() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Subscription> }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('subscriptions')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -226,7 +226,7 @@ export function useSubscriptionsQuery() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('subscriptions')
         .delete()
         .eq('id', id);
@@ -254,7 +254,7 @@ export function useAccountsQuery() {
   const accountsQuery = useQuery({
     queryKey: qk.accounts,
     queryFn: async (): Promise<Account[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('accounts')
         .select('*')
         .order('created_at', { ascending: false });
@@ -266,7 +266,7 @@ export function useAccountsQuery() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: Omit<Account, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('accounts')
         .insert({ ...payload })
         .select()
@@ -279,7 +279,7 @@ export function useAccountsQuery() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Account> }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('accounts')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -293,7 +293,7 @@ export function useAccountsQuery() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('accounts')
         .delete()
         .eq('id', id);
@@ -321,7 +321,7 @@ export function useBudgetsQuery() {
   const budgetsQuery = useQuery({
     queryKey: qk.budgets,
     queryFn: async (): Promise<Budget[]> => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('budgets')
         .select('*')
         .order('created_at', { ascending: false });
@@ -333,7 +333,7 @@ export function useBudgetsQuery() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: Omit<Budget, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('budgets')
         .insert({ ...payload })
         .select()
@@ -348,7 +348,7 @@ export function useBudgetsQuery() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Budget> }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('budgets')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -364,7 +364,7 @@ export function useBudgetsQuery() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('budgets')
         .delete()
         .eq('id', id);
