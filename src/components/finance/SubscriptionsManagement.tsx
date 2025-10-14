@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,6 +70,13 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!subscription;
+
+  // Авто-открытие диалога при переданной подписке (режим редактирования)
+  useEffect(() => {
+    if (subscription) {
+      setOpen(true);
+    }
+  }, [subscription]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,7 +307,7 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
 }
 
 export function SubscriptionsManagement() {
-  const { subscriptions, deleteSubscription } = useFinance();
+  const { subscriptions, deleteSubscription, updateSubscription, loadData } = useFinance();
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
   const getStatusInfo = (status: string) => {
@@ -309,8 +316,7 @@ export function SubscriptionsManagement() {
 
   const handleStatusChange = async (subscriptionId: string, newStatus: Subscription['status']) => {
     try {
-      // TODO: Добавить updateSubscription в useFinance
-      console.log('Update subscription status:', subscriptionId, newStatus);
+      await updateSubscription(subscriptionId, { status: newStatus } as any);
       toast({
         title: 'Статус обновлен',
         description: 'Статус подписки успешно изменен'
@@ -483,7 +489,11 @@ export function SubscriptionsManagement() {
       {selectedSubscription && (
         <SubscriptionDialog
           subscription={selectedSubscription}
-          onSuccess={() => setSelectedSubscription(null)}
+          onSuccess={() => {
+            setSelectedSubscription(null);
+            // Немедленно обновляем список подписок из этого экземпляра useFinance
+            try { loadData(); } catch (e) { console.warn('Subscriptions reload failed:', e); }
+          }}
         />
       )}
     </div>

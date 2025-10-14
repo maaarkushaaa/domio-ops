@@ -63,8 +63,9 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
   const [dueDate, setDueDate] = useState(invoice?.due_date || '');
   const [description, setDescription] = useState(invoice?.description || '');
   const [notes, setNotes] = useState(invoice?.notes || '');
+  const [userEditedTax, setUserEditedTax] = useState(false);
 
-  const { createInvoice, updateInvoice, deleteInvoice } = useFinance();
+  const { createInvoice, updateInvoice, deleteInvoice, invoices } = useFinance();
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!invoice;
@@ -75,6 +76,36 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
       setOpen(true);
     }
   }, [invoice]);
+
+  // Авто-генерация номера для нового инвойса при открытии диалога создания
+  useEffect(() => {
+    if (!isEdit && open && !number) {
+      try {
+        const year = new Date().getFullYear();
+        const prefix = `INV-${year}-`;
+        const seq = (invoices || [])
+          .map(inv => inv.number)
+          .filter(n => typeof n === 'string' && n.startsWith(prefix))
+          .map(n => parseInt(String(n).slice(prefix.length)))
+          .filter(n => !isNaN(n))
+          .reduce((max, n) => Math.max(max, n), 0) + 1;
+        const padded = String(seq).padStart(3, '0');
+        setNumber(`${prefix}${padded}`);
+      } catch {}
+    }
+  }, [isEdit, open, number, invoices]);
+
+  // Автоматический расчет НДС при изменении суммы, если пользователь вручную не менял налог
+  const DEFAULT_VAT_RATE = 0.2; // 20%
+  useEffect(() => {
+    if (!isEdit && !userEditedTax) {
+      const amt = parseFloat(amount || '0');
+      if (!isNaN(amt)) {
+        const vat = Math.max(0, Math.round((amt * DEFAULT_VAT_RATE) * 100) / 100);
+        setTaxAmount(vat.toString());
+      }
+    }
+  }, [amount, isEdit, userEditedTax]);
 
   const calculateTotal = () => {
     const amountNum = parseFloat(amount) || 0;
@@ -227,7 +258,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
                 type="number"
                 step="0.01"
                 value={taxAmount}
-                onChange={(e) => setTaxAmount(e.target.value)}
+                onChange={(e) => { setUserEditedTax(true); setTaxAmount(e.target.value); }}
                 placeholder="0.00"
               />
             </div>
