@@ -20,6 +20,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useFinance, Account } from '@/hooks/use-finance';
+import { useAccountsQuery } from '@/hooks/finance-queries';
 import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { safeFormatCurrency } from '@/utils/safeFormat';
@@ -348,7 +349,7 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
 }
 
 export function AccountsManagement() {
-  const { accounts, deleteAccount, loadData } = useFinance();
+  const { accounts, deleteAccount } = useAccountsQuery();
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
   const handleDeleteAccount = async (accountId: string) => {
@@ -467,8 +468,6 @@ export function AccountsManagement() {
           onSuccess={() => {
             console.log('🔧 ACCOUNTS V5.0 - Dialog success, closing dialog');
             setSelectedAccount(null);
-            // Немедленно обновляем список счетов из этого экземпляра useFinance
-            try { loadData(); } catch (e) { console.warn('Accounts reload failed:', e); }
           }}
         />
       )}

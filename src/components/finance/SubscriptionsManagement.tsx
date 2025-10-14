@@ -23,6 +23,7 @@ import {
   Pause
 } from 'lucide-react';
 import { useFinance, Subscription } from '@/hooks/use-finance';
+import { useSubscriptionsQuery } from '@/hooks/finance-queries';
 import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -59,14 +60,14 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
   const [description, setDescription] = useState(subscription?.description || '');
   const [amount, setAmount] = useState(subscription?.amount?.toString() || '');
   const [currency, setCurrency] = useState(subscription?.currency || 'RUB');
-  const [billingCycle, setBillingCycle] = useState(subscription?.billing_cycle || 'monthly');
-  const [status, setStatus] = useState(subscription?.status || 'active');
+  const [billingCycle, setBillingCycle] = useState(subscription?.period || 'monthly');
+  const [status, setStatus] = useState(subscription?.is_active ? 'active' : 'paused');
   const [startDate, setStartDate] = useState(subscription?.start_date || '');
   const [nextPaymentDate, setNextPaymentDate] = useState(subscription?.next_payment_date || '');
-  const [isAutoRenew, setIsAutoRenew] = useState(subscription?.auto_renew ?? true);
+  const [isAutoRenew, setIsAutoRenew] = useState(subscription?.auto_renewal ?? true);
   const [notes, setNotes] = useState(subscription?.notes || '');
 
-  const { createSubscription, updateSubscription } = useFinance();
+  const { createSubscription, updateSubscription } = useSubscriptionsQuery();
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!subscription;
@@ -306,7 +307,7 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
 }
 
 export function SubscriptionsManagement() {
-  const { subscriptions, deleteSubscription, updateSubscription, loadData } = useFinance();
+  const { subscriptions, deleteSubscription, updateSubscription } = useSubscriptionsQuery();
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
   const getStatusInfo = (status: string) => {
@@ -385,7 +386,7 @@ export function SubscriptionsManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {subscriptions.filter(sub => sub.status === 'active').length}
+              {subscriptions.filter(sub => sub.is_active).length}
             </div>
           </CardContent>
         </Card>
@@ -395,7 +396,7 @@ export function SubscriptionsManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {subscriptions.filter(sub => sub.status === 'paused').length}
+              {subscriptions.filter(sub => !sub.is_active).length}
             </div>
           </CardContent>
         </Card>
@@ -431,7 +432,7 @@ export function SubscriptionsManagement() {
             </TableHeader>
             <TableBody>
               {subscriptions.map((subscription) => {
-                const statusInfo = getStatusInfo(subscription.status);
+                const statusInfo = getStatusInfo(subscription.is_active ? 'active' : 'paused');
                 const StatusIcon = statusInfo.icon;
                 const isUpcoming = isUpcomingPayment(subscription.next_payment_date);
                 
@@ -447,7 +448,7 @@ export function SubscriptionsManagement() {
                     <TableCell className="font-medium">
                       {safeFormatCurrency(subscription.amount, subscription.currency)}
                     </TableCell>
-                    <TableCell>{getBillingCycleLabel(subscription.billing_cycle)}</TableCell>
+                    <TableCell>{getBillingCycleLabel(subscription.period)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {format(new Date(subscription.next_payment_date), 'dd.MM.yyyy', { locale: ru })}
@@ -455,7 +456,7 @@ export function SubscriptionsManagement() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {subscription.auto_renew ? (
+                      {subscription.auto_renewal ? (
                         <Badge variant="default" className="text-xs">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Включено
@@ -491,8 +492,6 @@ export function SubscriptionsManagement() {
           subscription={selectedSubscription}
           onSuccess={() => {
             setSelectedSubscription(null);
-            // Немедленно обновляем список подписок из этого экземпляра useFinance
-            try { loadData(); } catch (e) { console.warn('Subscriptions reload failed:', e); }
           }}
         />
       )}
