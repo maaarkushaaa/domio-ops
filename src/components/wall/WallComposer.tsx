@@ -4,12 +4,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Image as ImageIcon, Video, Mic, ListChecks as PollIcon, Brush } from 'lucide-react';
 import { WallGraffitiCanvas } from './WallGraffitiCanvas';
+import { VoiceRecorder } from './VoiceRecorder';
+import { PollCreator, PollData } from './PollCreator';
 import { createWallPost } from '@/hooks/use-wall';
 
 export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; scopeId?: string }) {
   const [text, setText] = useState('');
   const [isGraffitiOpen, setGraffitiOpen] = useState(false);
+  const [isVoiceOpen, setVoiceOpen] = useState(false);
+  const [isPollOpen, setPollOpen] = useState(false);
   const [attachments, setAttachments] = useState<Array<{ type: 'image' | 'video' | 'audio' | 'file'; url: string; file?: File | Blob; name?: string }>>([]);
+  const [poll, setPoll] = useState<PollData | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -20,10 +25,12 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
         scope,
         scopeId: scopeId || null,
         content: text,
-        files: attachments.map(a => ({ file: a.file!, type: a.type, name: a.name }))
+        files: attachments.map(a => ({ file: a.file!, type: a.type, name: a.name })),
+        poll: poll || undefined,
       });
       setText('');
       setAttachments([]);
+      setPoll(null);
     } catch (e) {
       alert('Ошибка публикации поста');
       // eslint-disable-next-line no-console
@@ -53,6 +60,17 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
     setGraffitiOpen(false);
   };
 
+  const handleVoiceSave = async (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    setAttachments((a) => [...a, { type: 'audio', url, file: blob, name: `voice-${Date.now()}.webm` }]);
+    setVoiceOpen(false);
+  };
+
+  const handlePollSave = (pollData: PollData) => {
+    setPoll(pollData);
+    setPollOpen(false);
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded shadow-sm p-4 space-y-3">
       <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Написать сообщение..." className="text-sm" />
@@ -63,6 +81,11 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
               {att.type.toUpperCase()}
             </div>
           ))}
+        </div>
+      )}
+      {poll && (
+        <div className="border rounded p-2 bg-blue-50 text-xs">
+          <strong>Опрос:</strong> {poll.question} ({poll.options.length} вариантов)
         </div>
       )}
       <div className="flex items-center justify-between">
@@ -78,10 +101,10 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
           <button type="button" className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600" onClick={() => setGraffitiOpen(true)}>
             <Brush className="h-4 w-4" /> Граффити
           </button>
-          <button type="button" className="inline-flex items-center gap-1 text-xs text-gray-400" disabled>
+          <button type="button" className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600" onClick={() => setVoiceOpen(true)}>
             <Mic className="h-4 w-4" /> Голос
           </button>
-          <button type="button" className="inline-flex items-center gap-1 text-xs text-gray-400" disabled>
+          <button type="button" className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600" onClick={() => setPollOpen(true)}>
             <PollIcon className="h-4 w-4" /> Опрос
           </button>
         </div>
@@ -96,6 +119,24 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
             <DialogTitle>Нарисовать граффити</DialogTitle>
           </DialogHeader>
           <WallGraffitiCanvas onSave={handleGraffitiSave} onCancel={() => setGraffitiOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isVoiceOpen} onOpenChange={setVoiceOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Записать голосовое сообщение</DialogTitle>
+          </DialogHeader>
+          <VoiceRecorder onSave={handleVoiceSave} onCancel={() => setVoiceOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPollOpen} onOpenChange={setPollOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Создать опрос</DialogTitle>
+          </DialogHeader>
+          <PollCreator onSave={handlePollSave} onCancel={() => setPollOpen(false)} />
         </DialogContent>
       </Dialog>
     </div>

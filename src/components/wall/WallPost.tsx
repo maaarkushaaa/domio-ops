@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import { WallPoll } from './WallPoll';
 
 export function WallPost({ post }: { post: WallPostType }) {
   const qc = useQueryClient();
@@ -81,6 +82,8 @@ export function WallPost({ post }: { post: WallPostType }) {
                 <img src={a.url} alt="att" className="w-full" />
               ) : a.type === 'video' ? (
                 <video src={a.url} controls className="w-full" />
+              ) : a.type === 'audio' ? (
+                <audio src={a.url} controls className="w-full" />
               ) : (
                 <a href={a.url} target="_blank" rel="noreferrer" className="text-xs p-2 inline-block text-blue-600">Вложение</a>
               )}
@@ -88,6 +91,9 @@ export function WallPost({ post }: { post: WallPostType }) {
           ))}
         </div>
       )}
+
+      {/* Poll */}
+      {post.poll && <WallPoll poll={post.poll} />}
 
       {/* Actions */}
       <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">

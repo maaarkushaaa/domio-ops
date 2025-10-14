@@ -16,6 +16,7 @@ import { NotificationContainer } from "./components/ui/NotificationContainer";
 import { NotificationIntegration } from "./components/NotificationIntegration";
 import { FinanceRealtimeProvider } from "./providers/FinanceRealtimeProvider";
 import { NotificationSettingsPage } from "./pages/NotificationSettings";
+import { useAppNotifications } from "./hooks/use-app-notifications";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Projects from "./pages/Projects";
@@ -69,6 +70,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AppNotifications = () => {
+  useAppNotifications();
+  return null;
+};
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -82,6 +88,7 @@ const App = () => {
               <Sonner />
               <NotificationContainer />
               <NotificationIntegration />
+              <AppNotifications />
               <BrowserRouter>
               <CommandPalette />
               <GlobalSearch />

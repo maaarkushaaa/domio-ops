@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 export type WallScope = 'project' | 'task';
 export type WallAttachment = { id: string; type: 'image'|'video'|'audio'|'file'; url: string; meta?: any; created_at: string };
 export type WallComment = { id: string; post_id: string; author_id: string; content: string; created_at: string; author?: { id: string; full_name: string; email: string } };
+export type WallPoll = { id: string; post_id: string; question: string; is_anonymous: boolean; is_multiple: boolean; options: Array<{ id: string; text: string; votes_count: number; user_voted: boolean }>; total_votes: number };
 export type WallPost = {
   id: string;
   author_id: string;
@@ -17,15 +18,16 @@ export type WallPost = {
   likes_count: number;
   user_liked: boolean;
   author?: { id: string; full_name: string; email: string };
+  poll?: WallPoll;
 };
 
-async function listPosts(scope: WallScope, scopeId?: string | null): Promise<WallPost[]> {
+async function listPosts(scope: WallScope, scopeId?: string | null, offset = 0, limit = 20): Promise<WallPost[]> {
   const user = (await supabase.auth.getUser()).data.user;
   let query = (supabase as any)
     .from('wall_posts')
     .select('id, author_id, project_id, task_id, content, created_at, wall_comments(count), wall_attachments(id,type,url,meta,created_at), wall_reactions(count)')
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(offset, offset + limit - 1);
   if (scope === 'project' && scopeId) query = query.eq('project_id', scopeId);
   if (scope === 'task' && scopeId) query = query.eq('task_id', scopeId);
   const { data, error } = await query;
@@ -36,29 +38,56 @@ async function listPosts(scope: WallScope, scopeId?: string | null): Promise<Wal
   const postIds = (data || []).map((p: any) => p.id);
   const { data: userLikes } = user ? await (supabase as any).from('wall_reactions').select('post_id').eq('user_id', user.id).in('post_id', postIds).eq('type', 'like') : { data: [] };
   const likedSet = new Set((userLikes || []).map((l: any) => l.post_id));
-  return (data || []).map((p: any) => ({
-    id: p.id,
-    author_id: p.author_id,
-    project_id: p.project_id,
-    task_id: p.task_id,
-    content: p.content,
-    created_at: p.created_at,
-    attachments: (p.wall_attachments || []).map((a: any) => ({ id: a.id, type: a.type, url: a.url, meta: a.meta, created_at: a.created_at })),
-    comments_count: p.wall_comments?.[0]?.count || 0,
-    likes_count: p.wall_reactions?.[0]?.count || 0,
-    user_liked: likedSet.has(p.id),
-    author: profilesMap.get(p.author_id),
-  }));
-}
-
-export function useWallFeed(scope: WallScope, scopeId?: string) {
-  return useQuery({
-    queryKey: ['wall_feed', scope, scopeId || null],
-    queryFn: () => listPosts(scope, scopeId || null),
+  const { data: polls } = await (supabase as any).from('wall_polls').select('id,post_id,question,is_anonymous,is_multiple').in('post_id', postIds);
+  const pollsMap = new Map((polls || []).map((poll: any) => [poll.post_id, poll]));
+  const pollIds = (polls || []).map((poll: any) => poll.id);
+  const { data: pollOptions } = pollIds.length > 0 ? await (supabase as any).from('wall_poll_options').select('id,poll_id,text,position').in('poll_id', pollIds).order('position') : { data: [] };
+  const { data: pollVotesCounts } = pollIds.length > 0 ? await (supabase as any).from('wall_poll_votes').select('option_id').in('poll_id', pollIds) : { data: [] };
+  const votesCountMap = new Map<string, number>();
+  (pollVotesCounts || []).forEach((v: any) => votesCountMap.set(v.option_id, (votesCountMap.get(v.option_id) || 0) + 1));
+  const { data: userVotes } = user && pollIds.length > 0 ? await (supabase as any).from('wall_poll_votes').select('option_id').eq('user_id', user.id).in('poll_id', pollIds) : { data: [] };
+  const userVotedSet = new Set((userVotes || []).map((v: any) => v.option_id));
+  const pollOptionsMap = new Map<string, any[]>();
+  (pollOptions || []).forEach((opt: any) => {
+    if (!pollOptionsMap.has(opt.poll_id)) pollOptionsMap.set(opt.poll_id, []);
+    pollOptionsMap.get(opt.poll_id)!.push({ id: opt.id, text: opt.text, votes_count: votesCountMap.get(opt.id) || 0, user_voted: userVotedSet.has(opt.id) });
+  });
+  return (data || []).map((p: any) => {
+    const poll: any = pollsMap.get(p.id);
+    const pollData = poll ? {
+      id: poll.id,
+      post_id: poll.post_id,
+      question: poll.question,
+      is_anonymous: poll.is_anonymous,
+      is_multiple: poll.is_multiple,
+      options: pollOptionsMap.get(poll.id) || [],
+      total_votes: (pollOptionsMap.get(poll.id) || []).reduce((sum: number, opt: any) => sum + opt.votes_count, 0),
+    } : undefined;
+    return {
+      id: p.id,
+      author_id: p.author_id,
+      project_id: p.project_id,
+      task_id: p.task_id,
+      content: p.content,
+      created_at: p.created_at,
+      attachments: (p.wall_attachments || []).map((a: any) => ({ id: a.id, type: a.type, url: a.url, meta: a.meta, created_at: a.created_at })),
+      comments_count: p.wall_comments?.[0]?.count || 0,
+      likes_count: p.wall_reactions?.[0]?.count || 0,
+      user_liked: likedSet.has(p.id),
+      author: profilesMap.get(p.author_id),
+      poll: pollData,
+    };
   });
 }
 
-export async function createWallPost(params: { scope: WallScope; scopeId?: string | null; content: string; files?: Array<{ file: File | Blob; type: 'image'|'video'|'audio'|'file'; name?: string }>; }) {
+export function useWallFeed(scope: WallScope, scopeId?: string, offset = 0, limit = 20) {
+  return useQuery({
+    queryKey: ['wall_feed', scope, scopeId || null, offset, limit],
+    queryFn: () => listPosts(scope, scopeId || null, offset, limit),
+  });
+}
+
+export async function createWallPost(params: { scope: WallScope; scopeId?: string | null; content: string; files?: Array<{ file: File | Blob; type: 'image'|'video'|'audio'|'file'; name?: string }>; poll?: { question: string; options: string[]; is_anonymous: boolean; is_multiple: boolean }; }) {
   const user = (await supabase.auth.getUser()).data.user;
   if (!user) throw new Error('Not authenticated');
   const insertPayload: any = {
@@ -89,6 +118,13 @@ export async function createWallPost(params: { scope: WallScope; scopeId?: strin
     }
   }
 
+  if (params.poll) {
+    const { data: pollData, error: pollErr } = await (supabase as any).from('wall_polls').insert({ post_id: post.id, question: params.poll.question, is_anonymous: params.poll.is_anonymous, is_multiple: params.poll.is_multiple }).select().single();
+    if (pollErr) throw pollErr;
+    for (let i = 0; i < params.poll.options.length; i++) {
+      await (supabase as any).from('wall_poll_options').insert({ poll_id: pollData.id, text: params.poll.options[i], position: i });
+    }
+  }
   return post;
 }
 
@@ -125,6 +161,15 @@ export async function deletePost(postId: string) {
   if (!user) throw new Error('Not authenticated');
   const { error } = await (supabase as any).from('wall_posts').delete().eq('id', postId).eq('author_id', user.id);
   if (error) throw error;
+}
+
+export async function votePoll(pollId: string, optionIds: string[]) {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error('Not authenticated');
+  await (supabase as any).from('wall_poll_votes').delete().eq('poll_id', pollId).eq('user_id', user.id);
+  for (const optionId of optionIds) {
+    await (supabase as any).from('wall_poll_votes').insert({ poll_id: pollId, option_id: optionId, user_id: user.id });
+  }
 }
 
 export function useWallRealtime(scope: WallScope, scopeId?: string) {
