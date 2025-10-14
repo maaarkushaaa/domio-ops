@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Invoice, Budget, Subscription, Account } from '@/hooks/use-finance';
 
@@ -85,6 +86,99 @@ export function useInvoicesQuery() {
       updateMutation.mutateAsync({ id, updates }),
     deleteInvoice: deleteMutation.mutateAsync,
   };
+}
+
+export function useInvoicesQueryPaged(initialPage = 1, initialPageSize = 20) {
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+
+  const listQuery = useQuery({
+    queryKey: [...qk.invoices, 'paged', page, pageSize],
+    queryFn: async () => {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      const { data, error, count } = await (supabase as any)
+        .from('invoices')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      return { rows: (data || []) as Invoice[], count: count as number | null };
+    },
+    keepPreviousData: true,
+    staleTime: 15_000,
+  });
+
+  const totalCount = listQuery.data?.count ?? 0;
+  const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(totalCount / pageSize)) : 1;
+
+  const createMutation = useMutation({
+    mutationFn: async (payload: Omit<Invoice, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
+      const { data, error } = await (supabase as any)
+        .from('invoices')
+        .insert({ ...payload })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Invoice;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.invoices });
+      queryClient.invalidateQueries({ queryKey: [...qk.invoices, 'paged'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Invoice> }) => {
+      const { data, error } = await (supabase as any)
+        .from('invoices')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Invoice;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.invoices });
+      queryClient.invalidateQueries({ queryKey: [...qk.invoices, 'paged'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('invoices')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.invoices });
+      queryClient.invalidateQueries({ queryKey: [...qk.invoices, 'paged'] });
+    },
+  });
+
+  return {
+    invoices: listQuery.data?.rows ?? [],
+    totalCount,
+    totalPages,
+    page,
+    pageSize,
+    isLoading: listQuery.isLoading,
+    isError: listQuery.isError,
+    setPage: (p: number) => setPage(Math.max(1, p)),
+    setPageSize: (s: number) => {
+      const size = Math.max(1, s);
+      setPageSize(size);
+      setPage(1);
+    },
+    createInvoice: createMutation.mutateAsync,
+    updateInvoice: async (id: string, updates: Partial<Invoice>) => updateMutation.mutateAsync({ id, updates }),
+    deleteInvoice: deleteMutation.mutateAsync,
+  } as const;
 }
 
 export function useSubscriptionsQuery() {
