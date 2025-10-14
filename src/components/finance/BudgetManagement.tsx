@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,27 +73,55 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !plannedAmount) {
-      toast({
-        title: 'Ошибка',
-        description: 'Заполните обязательные поля',
-        variant: 'destructive'
-      });
+    const schema = z.object({
+      name: z.string().min(1, 'Название обязательно'),
+      category: z.string().optional().or(z.literal('')),
+      period: z.enum(['monthly','quarterly','yearly']),
+      year: z.number().int().gte(2000).lte(2100),
+      month: z.number().int().min(1).max(12).optional(),
+      quarter: z.number().int().min(1).max(4).optional(),
+      planned_amount: z.preprocess((v) => Number(v), z.number().finite().nonnegative()),
+      actual_amount: z.preprocess((v) => Number(v), z.number().finite().min(0).optional()),
+      is_active: z.boolean(),
+    }).refine(
+      (val) => val.period !== 'monthly' || !!val.month,
+      { message: 'Для ежемесячного периода укажите месяц', path: ['month'] }
+    ).refine(
+      (val) => val.period !== 'quarterly' || !!val.quarter,
+      { message: 'Для квартального периода укажите квартал', path: ['quarter'] }
+    );
+
+    const parseResult = schema.safeParse({
+      name: name.trim(),
+      category: category.trim(),
+      period,
+      year,
+      month,
+      quarter,
+      planned_amount: plannedAmount,
+      actual_amount: actualAmount || '0',
+      is_active: isActive,
+    });
+
+    if (!parseResult.success) {
+      const firstErr = parseResult.error.issues[0];
+      toast({ title: 'Ошибка', description: firstErr?.message || 'Проверьте поля формы', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     try {
+      const p = parseResult.data;
       const budgetData: any = {
-        name: name.trim(),
-        category: category.trim() || undefined,
-        period,
-        year,
-        month: period === 'monthly' ? (month || new Date().getMonth() + 1) : undefined,
-        quarter: period === 'quarterly' ? (quarter || Math.ceil((new Date().getMonth() + 1) / 3)) : undefined,
-        planned_amount: parseFloat(plannedAmount),
-        actual_amount: parseFloat(actualAmount || '0'),
-        is_active: isActive
+        name: p.name,
+        category: p.category || undefined,
+        period: p.period,
+        year: p.year,
+        month: p.period === 'monthly' ? (p.month || new Date().getMonth() + 1) : undefined,
+        quarter: p.period === 'quarterly' ? (p.quarter || Math.ceil((new Date().getMonth() + 1) / 3)) : undefined,
+        planned_amount: p.planned_amount,
+        actual_amount: Number(p.actual_amount || 0),
+        is_active: p.is_active,
       };
 
       if (isEdit && budget) {
