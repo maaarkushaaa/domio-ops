@@ -22,7 +22,7 @@ import {
   Eye
 } from 'lucide-react';
 import { useFinance, Invoice } from '@/hooks/use-finance';
-import { useInvoicesQuery } from '@/hooks/finance-queries';
+import { useInvoicesQuery, useInvoicesQueryPaged } from '@/hooks/finance-queries';
 import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -467,7 +467,18 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
 }
 
 export function InvoicesManagement() {
-  const { invoices, updateInvoice, deleteInvoice, isLoading } = useInvoicesQuery();
+  const {
+    invoices,
+    updateInvoice,
+    deleteInvoice,
+    isLoading,
+    page,
+    totalPages,
+    pageSize,
+    setPage,
+    setPageSize,
+  } = useInvoicesQueryPaged(1, 20);
+
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
 
@@ -652,6 +663,24 @@ export function InvoicesManagement() {
               })}
             </TableBody>
           </Table>
+          {/* Пагинация */}
+          <div className="flex items-center justify-between pt-4">
+            <div className="text-sm text-muted-foreground">
+              Страница {page} из {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(parseInt(v))}>
+                <SelectTrigger className="w-28"><SelectValue placeholder="Размер" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" disabled={isLoading || page <= 1} onClick={() => setPage(page - 1)}>Назад</Button>
+              <Button variant="outline" disabled={isLoading || page >= totalPages} onClick={() => setPage(page + 1)}>Вперед</Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
