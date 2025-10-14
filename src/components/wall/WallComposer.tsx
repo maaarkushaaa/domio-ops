@@ -54,38 +54,38 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
   };
 
   return (
-    <div className="space-y-3">
-      <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Напишите что-нибудь..." />
+    <div className="bg-white border border-gray-200 rounded shadow-sm p-4 space-y-3">
+      <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Написать сообщение..." className="text-sm" />
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {attachments.map((att, i) => (
-            <div key={i} className="border rounded p-1 text-xs">
+            <div key={i} className="border rounded p-1 text-xs bg-gray-50">
               {att.type.toUpperCase()}
             </div>
           ))}
         </div>
       )}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <label className="cursor-pointer inline-flex items-center gap-1 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3">
+          <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600">
             <ImageIcon className="h-4 w-4" /> Фото
             <input type="file" accept="image/*" className="hidden" onChange={handlePickImage} />
           </label>
-          <label className="cursor-pointer inline-flex items-center gap-1 text-sm text-muted-foreground">
+          <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600">
             <Video className="h-4 w-4" /> Видео
             <input type="file" accept="video/*" className="hidden" onChange={handlePickVideo} />
           </label>
-          <button type="button" className="inline-flex items-center gap-1 text-sm text-muted-foreground" onClick={() => setGraffitiOpen(true)}>
+          <button type="button" className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600" onClick={() => setGraffitiOpen(true)}>
             <Brush className="h-4 w-4" /> Граффити
           </button>
-          <button type="button" className="inline-flex items-center gap-1 text-sm text-muted-foreground" disabled>
+          <button type="button" className="inline-flex items-center gap-1 text-xs text-gray-400" disabled>
             <Mic className="h-4 w-4" /> Голос
           </button>
-          <button type="button" className="inline-flex items-center gap-1 text-sm text-muted-foreground" disabled>
+          <button type="button" className="inline-flex items-center gap-1 text-xs text-gray-400" disabled>
             <PollIcon className="h-4 w-4" /> Опрос
           </button>
         </div>
-        <Button onClick={handleSubmit} disabled={isSubmitting || (!text && attachments.length === 0)}>
+        <Button onClick={handleSubmit} disabled={isSubmitting || (!text && attachments.length === 0)} size="sm">
           {isSubmitting ? 'Публикация…' : 'Опубликовать'}
         </Button>
       </div>

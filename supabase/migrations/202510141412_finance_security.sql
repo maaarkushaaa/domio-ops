@@ -78,22 +78,32 @@ begin
 end $$;
 
 -- Select policies
-create policy if not exists p_finops_select on public.financial_operations for select using (created_by = auth.uid());
-create policy if not exists p_accounts_select on public.accounts for select using (created_by = auth.uid());
-create policy if not exists p_invoices_select on public.invoices for select using (created_by = auth.uid());
-create policy if not exists p_budgets_select on public.budgets for select using (created_by = auth.uid());
-create policy if not exists p_subs_select on public.subscriptions for select using (created_by = auth.uid());
+drop policy if exists p_finops_select on public.financial_operations;
+create policy p_finops_select on public.financial_operations for select using (created_by = auth.uid());
+drop policy if exists p_accounts_select on public.accounts;
+create policy p_accounts_select on public.accounts for select using (created_by = auth.uid());
+drop policy if exists p_invoices_select on public.invoices;
+create policy p_invoices_select on public.invoices for select using (created_by = auth.uid());
+drop policy if exists p_budgets_select on public.budgets;
+create policy p_budgets_select on public.budgets for select using (created_by = auth.uid());
+drop policy if exists p_subs_select on public.subscriptions;
+create policy p_subs_select on public.subscriptions for select using (created_by = auth.uid());
 
 -- Insert/Update/Delete policies
-create policy if not exists p_finops_modify on public.financial_operations for all using (created_by = auth.uid()) with check (created_by = auth.uid());
-create policy if not exists p_accounts_modify on public.accounts for all using (created_by = auth.uid()) with check (created_by = auth.uid());
-create policy if not exists p_invoices_modify on public.invoices for all using (created_by = auth.uid()) with check (created_by = auth.uid());
-create policy if not exists p_budgets_modify on public.budgets for all using (created_by = auth.uid()) with check (created_by = auth.uid());
-create policy if not exists p_subs_modify on public.subscriptions for all using (created_by = auth.uid()) with check (created_by = auth.uid());
+drop policy if exists p_finops_modify on public.financial_operations;
+create policy p_finops_modify on public.financial_operations for all using (created_by = auth.uid()) with check (created_by = auth.uid());
+drop policy if exists p_accounts_modify on public.accounts;
+create policy p_accounts_modify on public.accounts for all using (created_by = auth.uid()) with check (created_by = auth.uid());
+drop policy if exists p_invoices_modify on public.invoices;
+create policy p_invoices_modify on public.invoices for all using (created_by = auth.uid()) with check (created_by = auth.uid());
+drop policy if exists p_budgets_modify on public.budgets;
+create policy p_budgets_modify on public.budgets for all using (created_by = auth.uid()) with check (created_by = auth.uid());
+drop policy if exists p_subs_modify on public.subscriptions;
+create policy p_subs_modify on public.subscriptions for all using (created_by = auth.uid()) with check (created_by = auth.uid());
 
 -- 5) Attach audit triggers
-select public.fn_attach_audit_triggers('public.financial_operations');
-select public.fn_attach_audit_triggers('public.accounts');
-select public.fn_attach_audit_triggers('public.invoices');
-select public.fn_attach_audit_triggers('public.budgets');
-select public.fn_attach_audit_triggers('public.subscriptions');
+select public.fn_attach_audit_triggers('public.financial_operations'::regclass);
+select public.fn_attach_audit_triggers('public.accounts'::regclass);
+select public.fn_attach_audit_triggers('public.invoices'::regclass);
+select public.fn_attach_audit_triggers('public.budgets'::regclass);
+select public.fn_attach_audit_triggers('public.subscriptions'::regclass);

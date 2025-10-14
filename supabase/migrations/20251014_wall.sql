@@ -81,23 +81,37 @@ alter table public.wall_reactions enable row level security;
 alter table public.notifications enable row level security;
 
 -- Policies: authenticated can read all (not public), create; update/delete only authors
+drop policy if exists wall_posts_select_all on public.wall_posts;
 create policy wall_posts_select_all on public.wall_posts for select using (auth.role() = 'authenticated');
+drop policy if exists wall_posts_insert_auth on public.wall_posts;
 create policy wall_posts_insert_auth on public.wall_posts for insert with check (auth.uid() = author_id);
+drop policy if exists wall_posts_update_owner on public.wall_posts;
 create policy wall_posts_update_owner on public.wall_posts for update using (auth.uid() = author_id);
+drop policy if exists wall_posts_delete_owner on public.wall_posts;
 create policy wall_posts_delete_owner on public.wall_posts for delete using (auth.uid() = author_id);
 
+drop policy if exists wall_comments_select_all on public.wall_comments;
 create policy wall_comments_select_all on public.wall_comments for select using (auth.role() = 'authenticated');
+drop policy if exists wall_comments_insert_auth on public.wall_comments;
 create policy wall_comments_insert_auth on public.wall_comments for insert with check (auth.uid() = author_id);
+drop policy if exists wall_comments_delete_owner on public.wall_comments;
 create policy wall_comments_delete_owner on public.wall_comments for delete using (auth.uid() = author_id);
 
+drop policy if exists wall_attachments_select_all on public.wall_attachments;
 create policy wall_attachments_select_all on public.wall_attachments for select using (auth.role() = 'authenticated');
+drop policy if exists wall_attachments_insert_auth on public.wall_attachments;
 create policy wall_attachments_insert_auth on public.wall_attachments for insert with check (auth.role() = 'authenticated');
+drop policy if exists wall_attachments_delete_auth on public.wall_attachments;
 create policy wall_attachments_delete_auth on public.wall_attachments for delete using (auth.role() = 'authenticated');
 
+drop policy if exists wall_reactions_select_all on public.wall_reactions;
 create policy wall_reactions_select_all on public.wall_reactions for select using (auth.role() = 'authenticated');
+drop policy if exists wall_reactions_upsert_auth on public.wall_reactions;
 create policy wall_reactions_upsert_auth on public.wall_reactions for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
+drop policy if exists notifications_select_all on public.notifications;
 create policy notifications_select_all on public.notifications for select using (auth.role() = 'authenticated');
+drop policy if exists notifications_insert_auth on public.notifications;
 create policy notifications_insert_auth on public.notifications for insert with check (auth.role() = 'authenticated');
 
 -- Triggers: write notifications on new post/comment
@@ -120,7 +134,9 @@ begin
   return new;
 end;$$ language plpgsql security definer;
 
+drop trigger if exists trg_wall_post_notify on public.wall_posts;
 create trigger trg_wall_post_notify after insert on public.wall_posts for each row execute function public.fn_wall_post_notify();
+drop trigger if exists trg_wall_comment_notify on public.wall_comments;
 create trigger trg_wall_comment_notify after insert on public.wall_comments for each row execute function public.fn_wall_comment_notify();
 
 -- Storage bucket (private)
@@ -129,15 +145,19 @@ select 'wall','wall', false
 where not exists (select 1 from storage.buckets where id = 'wall');
 
 -- Storage policies: allow authenticated to manage objects in 'wall' bucket; deny anon
-create policy if not exists storage_wall_select on storage.objects for select using (
+drop policy if exists storage_wall_select on storage.objects;
+create policy storage_wall_select on storage.objects for select using (
   bucket_id = 'wall' and auth.role() = 'authenticated'
 );
-create policy if not exists storage_wall_insert on storage.objects for insert with check (
+drop policy if exists storage_wall_insert on storage.objects;
+create policy storage_wall_insert on storage.objects for insert with check (
   bucket_id = 'wall' and auth.role() = 'authenticated'
 );
-create policy if not exists storage_wall_update on storage.objects for update using (
+drop policy if exists storage_wall_update on storage.objects;
+create policy storage_wall_update on storage.objects for update using (
   bucket_id = 'wall' and auth.role() = 'authenticated'
 );
-create policy if not exists storage_wall_delete on storage.objects for delete using (
+drop policy if exists storage_wall_delete on storage.objects;
+create policy storage_wall_delete on storage.objects for delete using (
   bucket_id = 'wall' and auth.role() = 'authenticated'
 );

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { WallComposer } from '@/components/wall/WallComposer';
@@ -13,39 +12,31 @@ export default function Wall() {
   useWallRealtime(scope, scopeId);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between bg-white border border-gray-200 rounded shadow-sm p-4">
         <div>
-          <h1 className="text-3xl font-bold">Стена</h1>
-          <p className="text-muted-foreground">Обсуждения с вложениями, граффити и комментариями</p>
+          <h1 className="text-2xl font-semibold">Стена</h1>
+          <p className="text-xs text-gray-500">Обсуждения с вложениями, граффити и комментариями</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={scope} onValueChange={(v) => setScope(v as 'project' | 'task')}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-32 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="project">Проект</SelectItem>
               <SelectItem value="task">Задача</SelectItem>
             </SelectContent>
           </Select>
           <Select value={scopeId} onValueChange={setScopeId}>
-            <SelectTrigger className="w-64"><SelectValue placeholder={scope === 'project' ? 'Выберите проект' : 'Выберите задачу'} /></SelectTrigger>
+            <SelectTrigger className="w-48 text-xs"><SelectValue placeholder={scope === 'project' ? 'Выберите проект' : 'Выберите задачу'} /></SelectTrigger>
             <SelectContent>
-              {/* Подключим реальные списки позже */}
               <SelectItem value="demo">Demo</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => { setScopeId(''); }}>Сброс</Button>
+          <Button variant="outline" size="sm" onClick={() => { setScopeId(''); }}>Сброс</Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Создать пост</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <WallComposer scope={scope} scopeId={scopeId} />
-        </CardContent>
-      </Card>
+      <WallComposer scope={scope} scopeId={scopeId} />
 
       <WallFeed scope={scope} scopeId={scopeId} />
     </div>
