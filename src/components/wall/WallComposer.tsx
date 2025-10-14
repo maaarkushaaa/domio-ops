@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Image as ImageIcon, Video, Mic, Poll as PollIcon, Brush } from 'lucide-react';
+import { Image as ImageIcon, Video, Mic, ListChecks as PollIcon, Brush } from 'lucide-react';
 import { WallGraffitiCanvas } from './WallGraffitiCanvas';
 
 export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; scopeId?: string }) {
