@@ -16,7 +16,8 @@ import {
   Target,
   AlertCircle,
   CheckCircle2,
-  Calendar
+  Calendar,
+  FileText
 } from 'lucide-react';
 import { useFinance } from '@/hooks/use-finance';
 import { useBudgetsQuery } from '@/hooks/finance-queries';
@@ -27,6 +28,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatNumber, safeFormatCurrency } from '@/utils/safeFormat';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Brush } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface BudgetDialogProps {
   budget?: Budget;
@@ -398,7 +400,7 @@ export function BudgetManagement() {
             <CardTitle className="text-sm font-medium">Всего бюджетов</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? '—' : budgets.length}</div>
+            <div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-7 w-12" /> : budgets.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -406,7 +408,7 @@ export function BudgetManagement() {
             <CardTitle className="text-sm font-medium">Активные</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{isLoading ? '—' : budgets.filter(budget => budget.is_active).length}</div>
+            <div className="text-2xl font-bold text-green-600">{isLoading ? <Skeleton className="h-7 w-12" /> : budgets.filter(budget => budget.is_active).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -414,7 +416,7 @@ export function BudgetManagement() {
             <CardTitle className="text-sm font-medium">Превышены</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{isLoading ? '—' : budgets.filter(budget => (budget.actual_amount || 0) > (budget.planned_amount || 0)).length}</div>
+            <div className="text-2xl font-bold text-red-600">{isLoading ? <Skeleton className="h-7 w-12" /> : budgets.filter(budget => (budget.actual_amount || 0) > (budget.planned_amount || 0)).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -422,7 +424,7 @@ export function BudgetManagement() {
             <CardTitle className="text-sm font-medium">Общая сумма</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? '—' : safeFormatCurrency(budgets.reduce((sum, budget) => sum + (budget.planned_amount || 0), 0))}</div>
+            <div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-7 w-24" /> : safeFormatCurrency(budgets.reduce((sum, budget) => sum + (budget.planned_amount || 0), 0))}</div>
           </CardContent>
         </Card>
       </div>
@@ -430,15 +432,63 @@ export function BudgetManagement() {
       {/* Карточки бюджетов */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading && (
-          <>
-            <Card className="animate-pulse h-48" />
-            <Card className="animate-pulse h-48" />
-            <Card className="animate-pulse h-48" />
-          </>
+          Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-5 rounded" />
+                    <Skeleton className="h-5 w-40" />
+                  </div>
+                  <div className="flex gap-1">
+                    <Skeleton className="h-8 w-8 rounded" />
+                    <Skeleton className="h-8 w-8 rounded" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 w-24" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-40" />
+                    </div>
+                    <Skeleton className="h-2 w-full" />
+                    <div className="flex justify-between text-xs">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-3 w-28" />
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
         )}
         {!isLoading && budgets.length === 0 && (
           <Card className="md:col-span-2 lg:col-span-3">
-            <CardContent className="py-10 text-center text-muted-foreground">Нет бюджетов. Создайте первый бюджет.</CardContent>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Бюджеты не найдены</p>
+              <p className="text-sm">Создайте первый бюджет для начала работы</p>
+            </CardContent>
           </Card>
         )}
         {!isLoading && budgets.map((budget) => {

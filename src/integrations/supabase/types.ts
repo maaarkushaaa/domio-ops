@@ -14,20 +14,256 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      accounts: {
+        Row: {
+          id: string
+          name: string
+          type: 'bank' | 'cash' | 'credit' | 'investment' | 'crypto'
+          currency: string
+          balance: number
+          is_default: boolean
+          is_active: boolean
+          bank_name: string | null
+          account_number: string | null
+          description: string | null
+          created_at: string
+          updated_at: string
+          created_by: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          type: 'bank' | 'cash' | 'credit' | 'investment' | 'crypto'
+          currency: string
+          balance?: number
+          is_default?: boolean
+          is_active?: boolean
+          bank_name?: string | null
+          account_number?: string | null
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+        }
+        Update: Partial<Database['public']['Tables']['accounts']['Insert']>
+      }
+      , invoices: {
+        Row: {
+          id: string
+          number: string
+          type: 'invoice' | 'receipt' | 'estimate'
+          status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'refunded'
+          amount: number
+          currency: string
+          tax_amount: number
+          total_amount: number
+          issue_date: string | null
+          due_date: string | null
+          paid_date: string | null
+          client_id: string | null
+          project_id: string | null
+          description: string | null
+          notes: string | null
+          items: Json | null
+          payment_method: string | null
+          payment_reference: string | null
+          created_at: string
+          updated_at: string
+          created_by: string
+        }
+        Insert: {
+          id?: string
+          number: string
+          type: 'invoice' | 'receipt' | 'estimate'
+          status?: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'refunded'
+          amount: number
+          currency: string
+          tax_amount?: number
+          total_amount: number
+          issue_date?: string | null
+          due_date?: string | null
+          paid_date?: string | null
+          client_id?: string | null
+          project_id?: string | null
+          description?: string | null
+          notes?: string | null
+          items?: Json | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+        }
+        Update: Partial<Database['public']['Tables']['invoices']['Insert']>
+      }
+      , budgets: {
+        Row: {
+          id: string
+          name: string
+          category: string | null
+          subcategory: string | null
+          period: 'monthly' | 'quarterly' | 'yearly'
+          year: number
+          month: number | null
+          quarter: number | null
+          planned_amount: number
+          actual_amount: number | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          created_by: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          category?: string | null
+          subcategory?: string | null
+          period: 'monthly' | 'quarterly' | 'yearly'
+          year: number
+          month?: number | null
+          quarter?: number | null
+          planned_amount: number
+          actual_amount?: number | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+        }
+        Update: Partial<Database['public']['Tables']['budgets']['Insert']>
+      }
+      , subscriptions: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          amount: number
+          currency: string
+          period: 'monthly' | 'quarterly' | 'yearly' | 'weekly' | 'daily'
+          next_payment_date: string
+          is_active: boolean
+          auto_renewal: boolean
+          category: string | null
+          provider: string | null
+          account_id: string | null
+          created_at: string
+          updated_at: string
+          created_by: string
+          notes: string | null
+          start_date: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          amount: number
+          currency: string
+          period: 'monthly' | 'quarterly' | 'yearly' | 'weekly' | 'daily'
+          next_payment_date?: string
+          is_active?: boolean
+          auto_renewal?: boolean
+          category?: string | null
+          provider?: string | null
+          account_id?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          notes?: string | null
+          start_date?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['subscriptions']['Insert']>
+      }
+      , financial_operations: {
+        Row: {
+          id: string
+          type: 'income' | 'expense' | 'transfer'
+          amount: number
+          currency: string
+          category: string
+          subcategory: string | null
+          description: string | null
+          date: string
+          account_id: string | null
+          project_id: string | null
+          client_id: string | null
+          supplier_id: string | null
+          invoice_id: string | null
+          tags: string[] | null
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+          created_by: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          type: 'income' | 'expense' | 'transfer'
+          amount: number
+          currency: string
+          category: string
+          subcategory?: string | null
+          description?: string | null
+          date: string
+          account_id?: string | null
+          project_id?: string | null
+          client_id?: string | null
+          supplier_id?: string | null
+          invoice_id?: string | null
+          tags?: string[] | null
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+          updated_by?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['financial_operations']['Insert']>
+      }
+      , financial_reports: {
+        Row: {
+          id: string
+          name: string
+          payload: Json | null
+          created_at: string
+          updated_at: string
+          created_by: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          payload?: Json | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string
+        }
+        Update: Partial<Database['public']['Tables']['financial_reports']['Insert']>
+      }
+      , audit_logs: {
+        Row: {
+          id: string
+          table_name: string
+          action: 'INSERT' | 'UPDATE' | 'DELETE'
+          record_id: string | null
+          old_data: Json | null
+          new_data: Json | null
+          actor: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          table_name: string
+          action: 'INSERT' | 'UPDATE' | 'DELETE'
+          record_id?: string | null
+          old_data?: Json | null
+          new_data?: Json | null
+          actor?: string | null
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['audit_logs']['Insert']>
+      }
     }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+    Views: {}
+    Functions: {}
+    Enums: {}
+    CompositeTypes: {}
   }
 }
 
