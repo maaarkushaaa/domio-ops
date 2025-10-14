@@ -20,7 +20,9 @@ export function useInvoicesQuery() {
     queryFn: async (): Promise<Invoice[]> => {
       const { data, error } = await supabase
         .from('invoices')
-        .select('*')
+        .select(
+          'id, number, type, status, amount, currency, tax_amount, total_amount, issue_date, due_date, paid_date, description, notes, created_at, updated_at, created_by'
+        )
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -100,7 +102,10 @@ export function useInvoicesQueryPaged(initialPage = 1, initialPageSize = 20) {
       const to = from + pageSize - 1;
       const { data, error, count } = await supabase
         .from('invoices')
-        .select('*', { count: 'exact' })
+        .select(
+          'id, number, type, status, amount, currency, tax_amount, total_amount, issue_date, due_date, paid_date, description, notes, created_at, updated_at, created_by',
+          { count: 'exact' }
+        )
         .order('created_at', { ascending: false })
         .range(from, to);
       if (error) throw error;
@@ -115,7 +120,7 @@ export function useInvoicesQueryPaged(initialPage = 1, initialPageSize = 20) {
 
   const createMutation = useMutation({
     mutationFn: async (payload: Omit<Invoice, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('invoices')
         .insert({ ...payload })
         .select()
@@ -131,7 +136,7 @@ export function useInvoicesQueryPaged(initialPage = 1, initialPageSize = 20) {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Invoice> }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('invoices')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -148,7 +153,7 @@ export function useInvoicesQueryPaged(initialPage = 1, initialPageSize = 20) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('invoices')
         .delete()
         .eq('id', id);
@@ -189,7 +194,7 @@ export function useSubscriptionsQuery() {
     queryFn: async (): Promise<Subscription[]> => {
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*')
+        .select('id, name, description, amount, currency, period, next_payment_date, is_active, auto_renewal, notes, created_at, updated_at, created_by')
         .order('next_payment_date', { ascending: true });
       if (error) throw error;
       return data || [];
@@ -256,7 +261,7 @@ export function useAccountsQuery() {
     queryFn: async (): Promise<Account[]> => {
       const { data, error } = await supabase
         .from('accounts')
-        .select('*')
+        .select('id, name, type, currency, balance, is_default, is_active, bank_name, account_number, description, created_at, updated_at, created_by')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -323,7 +328,7 @@ export function useBudgetsQuery() {
     queryFn: async (): Promise<Budget[]> => {
       const { data, error } = await supabase
         .from('budgets')
-        .select('*')
+        .select('id, name, category, subcategory, period, year, month, quarter, planned_amount, actual_amount, is_active, created_at, updated_at, created_by')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
