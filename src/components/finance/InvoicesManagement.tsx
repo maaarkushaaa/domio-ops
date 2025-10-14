@@ -22,6 +22,7 @@ import {
   Eye
 } from 'lucide-react';
 import { useFinance, Invoice } from '@/hooks/use-finance';
+import { useInvoicesQuery } from '@/hooks/finance-queries';
 import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -65,7 +66,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
   const [notes, setNotes] = useState(invoice?.notes || '');
   const [userEditedTax, setUserEditedTax] = useState(false);
 
-  const { createInvoice, updateInvoice, deleteInvoice, invoices } = useFinance();
+  const { createInvoice, updateInvoice, invoices } = useInvoicesQuery();
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!invoice;
@@ -343,7 +344,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
 }
 
 export function InvoicesManagement() {
-  const { invoices, updateInvoice, deleteInvoice, loadData } = useFinance();
+  const { invoices, updateInvoice, deleteInvoice } = useInvoicesQuery();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
 
@@ -543,8 +544,6 @@ export function InvoicesManagement() {
           invoice={selectedInvoice}
           onSuccess={() => {
             setSelectedInvoice(null);
-            // Немедленно обновляем список инвойсов из этого экземпляра useFinance
-            try { loadData(); } catch (e) { console.warn('Invoices reload failed:', e); }
           }}
         />
       )}
