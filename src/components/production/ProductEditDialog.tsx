@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ProductProgressAnalysis } from './ProductProgressAnalysis';
 import { useProductProgress } from '@/hooks/use-product-progress';
+import { useProducts } from '@/hooks/use-products';
 
 interface Product {
   id: string;
@@ -80,6 +81,7 @@ export function ProductEditDialog({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [progressAnalysisOpen, setProgressAnalysisOpen] = useState(false);
   const { updateProductProgress } = useProductProgress();
+  const { updateProduct } = useProducts();
 
   // Заполняем форму данными изделия
   useEffect(() => {
@@ -124,7 +126,19 @@ export function ProductEditDialog({
       }
 
       // Автоматически обновляем прогресс после изменения данных
-      await updateProductProgress(product.id);
+      const newProgress = await updateProductProgress(product.id);
+
+      // Обновляем локальный стейт, чтобы карточка не была устаревшей до перезагрузки
+      try {
+        updateProduct({
+          id: product.id,
+          ...updateData,
+          progress: newProgress ?? product.progress,
+          updated_at: new Date().toISOString(),
+        } as any);
+      } catch (stateError) {
+        console.warn('Local state update failed, relying on realtime/subscription:', stateError);
+      }
 
       alert('Изделие успешно обновлено!');
       onOpenChange(false);

@@ -416,12 +416,12 @@ export default function Production() {
         open={!!selectedProductForEdit}
         onOpenChange={(open) => !open && setSelectedProductForEdit(null)}
         onProductUpdated={() => {
-          // Перезагружаем данные
-          window.location.reload();
+          // Закрываем диалог; список обновится из локального контекста
+          setSelectedProductForEdit(null);
         }}
         onProductDeleted={() => {
-          // Перезагружаем данные
-          window.location.reload();
+          // Закрываем диалог; список обновится через realtime подписку
+          setSelectedProductForEdit(null);
         }}
       />
     </div>
