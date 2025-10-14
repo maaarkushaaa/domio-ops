@@ -188,24 +188,35 @@ export async function votePoll(pollId: string, optionIds: string[]) {
 export function useWallRealtime(scope: WallScope, scopeId?: string) {
   const qc = useQueryClient();
   useEffect(() => {
+    console.log('[WALL-REALTIME] Subscribing to wall changes');
     const channel = supabase
       .channel('wall_changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wall_posts' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wall_posts' }, () => {
+        console.log('[WALL-REALTIME] wall_posts changed, invalidating cache');
         qc.invalidateQueries({ queryKey: ['wall_feed'] });
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wall_comments' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wall_comments' }, () => {
+        console.log('[WALL-REALTIME] wall_comments changed, invalidating cache');
         qc.invalidateQueries({ queryKey: ['wall_feed'] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wall_reactions' }, () => {
+        console.log('[WALL-REALTIME] wall_reactions changed, invalidating cache');
         qc.invalidateQueries({ queryKey: ['wall_feed'] });
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-        const evt = (payload.new as any)?.event;
-        if (evt === 'wall_post_created' || evt === 'wall_comment_created') {
-          qc.invalidateQueries({ queryKey: ['wall_feed'] });
-        }
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wall_attachments' }, () => {
+        console.log('[WALL-REALTIME] wall_attachments changed, invalidating cache');
+        qc.invalidateQueries({ queryKey: ['wall_feed'] });
       })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wall_poll_votes' }, () => {
+        console.log('[WALL-REALTIME] wall_poll_votes changed, invalidating cache');
+        qc.invalidateQueries({ queryKey: ['wall_feed'] });
+      })
+      .subscribe((status) => {
+        console.log('[WALL-REALTIME] Subscription status:', status);
+      });
+    return () => { 
+      console.log('[WALL-REALTIME] Unsubscribing');
+      supabase.removeChannel(channel); 
+    };
   }, [qc, scope, scopeId]);
 }

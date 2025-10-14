@@ -80,8 +80,27 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {attachments.map((att, i) => (
-            <div key={i} className="border rounded p-1 text-xs bg-gray-50">
-              {att.type.toUpperCase()}
+            <div key={i} className="relative border rounded overflow-hidden bg-gray-50 group">
+              {att.type === 'image' ? (
+                <img src={att.url} alt="preview" className="h-20 w-20 object-cover" />
+              ) : att.type === 'video' ? (
+                <video src={att.url} className="h-20 w-20 object-cover" />
+              ) : att.type === 'audio' ? (
+                <div className="h-20 w-20 flex items-center justify-center bg-blue-100 text-blue-600 text-xs font-medium">
+                  🎤 Голос
+                </div>
+              ) : (
+                <div className="h-20 w-20 flex items-center justify-center bg-gray-100 text-gray-600 text-xs font-medium">
+                  📎 Файл
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))}
+                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>
