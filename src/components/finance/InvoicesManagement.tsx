@@ -74,6 +74,8 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
   useEffect(() => {
     if (invoice) {
       setOpen(true);
+      // Сбросить флаг ручного редактирования НДС при каждом открытии
+      setUserEditedTax(false);
     }
   }, [invoice]);
 
@@ -98,14 +100,21 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
   // Автоматический расчет НДС при изменении суммы, если пользователь вручную не менял налог
   const DEFAULT_VAT_RATE = 0.2; // 20%
   useEffect(() => {
-    if (!isEdit && !userEditedTax) {
+    if (!userEditedTax) {
       const amt = parseFloat(amount || '0');
       if (!isNaN(amt)) {
         const vat = Math.max(0, Math.round((amt * DEFAULT_VAT_RATE) * 100) / 100);
         setTaxAmount(vat.toString());
       }
     }
-  }, [amount, isEdit, userEditedTax]);
+  }, [amount, userEditedTax]);
+
+  // Сбросить флаг ручного НДС при открытии/закрытии диалога
+  useEffect(() => {
+    if (open) {
+      setUserEditedTax(false);
+    }
+  }, [open]);
 
   const calculateTotal = () => {
     const amountNum = parseFloat(amount) || 0;
@@ -133,8 +142,8 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
         amount: parseFloat(amount),
         tax_amount: parseFloat(taxAmount) || 0,
         total_amount: calculateTotal(),
-        issue_date: issueDate,
-        due_date: dueDate,
+        issue_date: issueDate || undefined,
+        due_date: dueDate || undefined,
         description: description.trim() || undefined,
         notes: notes.trim() || undefined
       };

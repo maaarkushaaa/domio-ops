@@ -91,17 +91,16 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
 
     setIsLoading(true);
     try {
-      const subscriptionData = {
+      const isActive = status === 'active';
+      const subscriptionData: any = {
         name: name.trim(),
         description: description.trim() || undefined,
         amount: parseFloat(amount),
         currency,
-        billing_cycle: billingCycle,
-        status,
-        start_date: startDate,
-        next_payment_date: nextPaymentDate,
-        auto_renew: isAutoRenew,
-        notes: notes.trim() || undefined
+        period: billingCycle,
+        is_active: isActive,
+        next_payment_date: nextPaymentDate || undefined,
+        auto_renewal: isAutoRenew,
       };
 
       if (isEdit && subscription) {
@@ -316,7 +315,8 @@ export function SubscriptionsManagement() {
 
   const handleStatusChange = async (subscriptionId: string, newStatus: Subscription['status']) => {
     try {
-      await updateSubscription(subscriptionId, { status: newStatus } as any);
+      const isActive = newStatus === 'active';
+      await updateSubscription(subscriptionId, { is_active: isActive } as any);
       toast({
         title: 'Статус обновлен',
         description: 'Статус подписки успешно изменен'
