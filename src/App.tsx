@@ -15,6 +15,7 @@ import { AIAssistantAdvanced } from "./components/ai/AIAssistantAdvanced";
 import { NotificationContainer } from "./components/ui/NotificationContainer";
 import { NotificationIntegration } from "./components/NotificationIntegration";
 import { NotificationTestPage } from "./pages/NotificationTest";
+import { FinanceRealtimeProvider } from "./providers/FinanceRealtimeProvider";
 import { NotificationSettingsPage } from "./pages/NotificationSettings";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
@@ -64,6 +65,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
+      <FinanceRealtimeProvider />
       <ThemeProvider defaultTheme="light">
         <AppProvider>
           <NotificationProvider>
