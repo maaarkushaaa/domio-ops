@@ -20,6 +20,7 @@ import {
   Video,
   Bell,
   PenSquare,
+  Warehouse,
 } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -43,9 +44,11 @@ const menuItems = [
   { title: "Календарь", url: "/calendar", icon: Calendar },
   { title: "Производство", url: "/production", icon: Factory },
   { title: "Материалы", url: "/materials", icon: Package },
+  { title: "Учёт запасов", url: "/inventory", icon: Warehouse },
   { title: "Финансы", url: "/finance", icon: DollarSign },
   { title: "Закупки", url: "/procurement", icon: ShoppingCart },
   { title: "Клиенты", url: "/clients", icon: Users },
+  { title: "CRM", url: "/crm", icon: Users },
   { title: "Аналитика", url: "/analytics", icon: BarChart },
   { title: "Отчеты", url: "/reports", icon: FileBarChart },
   { title: "Документы", url: "/documents", icon: FileText },

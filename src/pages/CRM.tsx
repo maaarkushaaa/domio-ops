@@ -1,0 +1,340 @@
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, TrendingUp, DollarSign, Target, Plus, Phone, Mail, Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface Deal {
+  id: string;
+  title: string;
+  amount: number;
+  probability: number;
+  status: string;
+  expected_close_date: string;
+  client: { name: string; company: string };
+  stage: { name: string; color: string; order_index: number };
+  owner: { full_name: string };
+}
+
+interface SalesStage {
+  id: string;
+  name: string;
+  order_index: number;
+  probability: number;
+  color: string;
+  deals?: Deal[];
+}
+
+export default function CRM() {
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [stages, setStages] = useState<SalesStage[]>([]);
+  const [draggedDeal, setDraggedDeal] = useState<Deal | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadStages();
+    loadDeals();
+
+    // Realtime подписка
+    const dealsChannel = supabase
+      .channel('deals_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => {
+        loadDeals();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(dealsChannel);
+    };
+  }, []);
+
+  const loadStages = async () => {
+    const { data, error } = await (supabase as any)
+      .from('sales_stages')
+      .select('*')
+      .eq('is_lost', false)
+      .order('order_index');
+    
+    if (error) {
+      console.error('Error loading stages:', error);
+      return;
+    }
+    setStages(data || []);
+  };
+
+  const loadDeals = async () => {
+    const { data, error } = await (supabase as any)
+      .from('deals')
+      .select(`
+        *,
+        client:clients(name, company),
+        stage:sales_stages(name, color, order_index),
+        owner:profiles!deals_owner_id_fkey(full_name)
+      `)
+      .eq('status', 'open')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error loading deals:', error);
+      return;
+    }
+    setDeals(data || []);
+  };
+
+  const handleDragStart = (deal: Deal) => {
+    setDraggedDeal(deal);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (stageId: string) => {
+    if (!draggedDeal) return;
+
+    const { error } = await (supabase as any)
+      .from('deals')
+      .update({ stage_id: stageId })
+      .eq('id', draggedDeal.id);
+
+    if (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось переместить сделку', variant: 'destructive' });
+      return;
+    }
+
+    setDraggedDeal(null);
+    loadDeals();
+    toast({ title: 'Сделка перемещена', description: 'Стадия успешно обновлена' });
+  };
+
+  const dealsByStage = stages.map(stage => ({
+    ...stage,
+    deals: deals.filter(deal => deal.stage?.order_index === stage.order_index)
+  }));
+
+  const totalDealsValue = deals.reduce((sum, deal) => sum + deal.amount, 0);
+  const weightedValue = deals.reduce((sum, deal) => sum + (deal.amount * deal.probability / 100), 0);
+  const avgDealSize = deals.length > 0 ? totalDealsValue / deals.length : 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Target className="h-8 w-8 text-primary" />
+            CRM - Воронка продаж
+          </h1>
+          <p className="text-muted-foreground mt-1">Управление сделками и клиентами</p>
+        </div>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Новая сделка
+        </Button>
+      </div>
+
+      {/* Метрики */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Всего в воронке
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalDealsValue.toLocaleString('ru-RU')} ₽</div>
+            <p className="text-xs text-muted-foreground mt-1">{deals.length} сделок</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-success" />
+              Взвешенная стоимость
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-success">{weightedValue.toLocaleString('ru-RU')} ₽</div>
+            <p className="text-xs text-muted-foreground mt-1">С учётом вероятности</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Средний чек</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{avgDealSize.toLocaleString('ru-RU')} ₽</div>
+            <p className="text-xs text-muted-foreground mt-1">На сделку</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Активные сделки
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{deals.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">В работе</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="funnel" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="funnel">Воронка продаж</TabsTrigger>
+          <TabsTrigger value="list">Список сделок</TabsTrigger>
+          <TabsTrigger value="analytics">Аналитика</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="funnel">
+          {/* Kanban-стиль воронка */}
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {dealsByStage.map((stage) => (
+              <div
+                key={stage.id}
+                className="flex-shrink-0 w-80"
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(stage.id)}
+              >
+                <Card>
+                  <CardHeader className="pb-3" style={{ borderTopColor: stage.color, borderTopWidth: '3px' }}>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-medium">{stage.name}</CardTitle>
+                      <Badge variant="secondary">{stage.deals?.length || 0}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {stage.deals?.reduce((sum, d) => sum + d.amount, 0).toLocaleString('ru-RU')} ₽
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
+                    {stage.deals?.map((deal) => (
+                      <Card
+                        key={deal.id}
+                        className="cursor-move hover:shadow-md transition-shadow"
+                        draggable
+                        onDragStart={() => handleDragStart(deal)}
+                      >
+                        <CardContent className="p-3 space-y-2">
+                          <div>
+                            <h4 className="font-medium text-sm">{deal.title}</h4>
+                            <p className="text-xs text-muted-foreground">{deal.client?.name}</p>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold">{deal.amount.toLocaleString('ru-RU')} ₽</span>
+                            <Badge variant="outline" className="text-xs">
+                              {deal.probability}%
+                            </Badge>
+                          </div>
+
+                          <Progress value={deal.probability} className="h-1" />
+
+                          {deal.expected_close_date && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(deal.expected_close_date).toLocaleDateString('ru-RU')}
+                            </div>
+                          )}
+
+                          <div className="flex gap-1 pt-2 border-t">
+                            <Button size="sm" variant="ghost" className="h-7 px-2">
+                              <Phone className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 px-2">
+                              <Mail className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    
+                    {(!stage.deals || stage.deals.length === 0) && (
+                      <div className="text-center text-muted-foreground text-sm py-8 border-2 border-dashed rounded-lg">
+                        Перетащите сделку сюда
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="list" className="space-y-2">
+          {deals.map((deal) => (
+            <Card key={deal.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h4 className="font-medium">{deal.title}</h4>
+                      <Badge style={{ backgroundColor: deal.stage?.color }}>{deal.stage?.name}</Badge>
+                      <Badge variant="outline">{deal.probability}%</Badge>
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      <span>{deal.client?.name}</span>
+                      <span>•</span>
+                      <span>{deal.owner?.full_name}</span>
+                      {deal.expected_close_date && (
+                        <>
+                          <span>•</span>
+                          <span>{new Date(deal.expected_close_date).toLocaleDateString('ru-RU')}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-bold">{deal.amount.toLocaleString('ru-RU')} ₽</div>
+                    <div className="text-xs text-muted-foreground">
+                      Взвеш: {(deal.amount * deal.probability / 100).toLocaleString('ru-RU')} ₽
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <Card>
+            <CardHeader>
+              <CardTitle>Аналитика воронки</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dealsByStage.map((stage) => {
+                  const stageValue = stage.deals?.reduce((sum, d) => sum + d.amount, 0) || 0;
+                  const percentage = totalDealsValue > 0 ? (stageValue / totalDealsValue) * 100 : 0;
+                  
+                  return (
+                    <div key={stage.id} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{stage.name}</span>
+                        <span className="text-muted-foreground">
+                          {stage.deals?.length || 0} сделок • {stageValue.toLocaleString('ru-RU')} ₽
+                        </span>
+                      </div>
+                      <Progress value={percentage} className="h-2" style={{ backgroundColor: `${stage.color}20` }} />
+                      <div className="text-xs text-muted-foreground">
+                        {percentage.toFixed(1)}% от общей суммы
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

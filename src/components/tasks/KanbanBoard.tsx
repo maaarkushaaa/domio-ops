@@ -8,6 +8,7 @@ import { Task } from '@/contexts/AppContext';
 import { TaskDialog } from '@/components/tasks/TaskDialog';
 import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu';
 import { TaskDetailsDialog } from '@/components/tasks/TaskDetailsDialog';
+import { QuickCallButton } from '@/components/video/QuickCallButton';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Column {
@@ -435,6 +436,15 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                         </div>
                       )}
                         </div>
+                        
+                        {task.assignee && (
+                          <div className="mt-2">
+                            <QuickCallButton 
+                              taskId={task.id} 
+                              participantName={task.assignee.full_name}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>

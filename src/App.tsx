@@ -38,6 +38,8 @@ import Admin from "./pages/Admin";
 import Features from "./pages/Features";
 import VideoCalls from "./pages/VideoCalls";
 import Automation from "./pages/Automation";
+import Inventory from "./pages/Inventory";
+import CRM from "./pages/CRM";
 import { NotificationTestPage } from "./pages/NotificationTest";
 import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
@@ -243,6 +245,20 @@ const App = () => {
                   <ProtectedRoute>
                     <AppLayout>
                       <Automation />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/inventory" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Inventory />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/crm" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <CRM />
                     </AppLayout>
                   </ProtectedRoute>
                 } />
