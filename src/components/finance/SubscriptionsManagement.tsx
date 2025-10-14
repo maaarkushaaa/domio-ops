@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,27 +82,56 @@ export function SubscriptionDialog({ subscription, trigger, onSuccess }: Subscri
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !amount) {
-      toast({
-        title: 'Ошибка',
-        description: 'Заполните обязательные поля',
-        variant: 'destructive'
-      });
+    const schema = z.object({
+      name: z.string().min(1, 'Название обязательно'),
+      description: z.string().optional().or(z.literal('')),
+      amount: z.preprocess((v) => Number(v), z.number().finite().nonnegative()),
+      currency: z.enum(['RUB','USD','EUR']),
+      period: z.enum(['monthly','quarterly','yearly','weekly','daily']),
+      status: z.enum(['active','paused','cancelled','expired']).optional(),
+      start_date: z.string().optional(),
+      next_payment_date: z.string().optional(),
+      auto_renewal: z.boolean(),
+      notes: z.string().optional().or(z.literal('')),
+    }).refine(
+      (val) => !val.next_payment_date || !val.start_date || new Date(val.next_payment_date) >= new Date(val.start_date),
+      { message: 'Следующий платеж не может быть раньше даты начала', path: ['next_payment_date'] }
+    );
+
+    const parsed = schema.safeParse({
+      name: name.trim(),
+      description: description.trim(),
+      amount,
+      currency,
+      period: billingCycle,
+      status,
+      start_date: startDate || undefined,
+      next_payment_date: nextPaymentDate || undefined,
+      auto_renewal: !!isAutoRenew,
+      notes: notes.trim(),
+    });
+
+    if (!parsed.success) {
+      const firstErr = parsed.error.issues[0];
+      toast({ title: 'Ошибка', description: firstErr?.message || 'Проверьте поля формы', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     try {
-      const isActive = status === 'active';
+      const p = parsed.data;
+      const isActive = p.status ? p.status === 'active' : (status === 'active');
       const subscriptionData: any = {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        amount: parseFloat(amount),
-        currency,
-        period: billingCycle,
+        name: p.name,
+        description: p.description || undefined,
+        amount: p.amount,
+        currency: p.currency,
+        period: p.period,
         is_active: isActive,
-        next_payment_date: nextPaymentDate || undefined,
-        auto_renewal: isAutoRenew,
+        next_payment_date: p.next_payment_date || undefined,
+        auto_renewal: p.auto_renewal,
+        notes: p.notes || undefined,
+        start_date: p.start_date || undefined,
       };
 
       if (isEdit && subscription) {
