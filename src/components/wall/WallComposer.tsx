@@ -7,8 +7,10 @@ import { WallGraffitiCanvas } from './WallGraffitiCanvas';
 import { VoiceRecorder } from './VoiceRecorder';
 import { PollCreator, PollData } from './PollCreator';
 import { createWallPost } from '@/hooks/use-wall';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; scopeId?: string }) {
+  const qc = useQueryClient();
   const [text, setText] = useState('');
   const [isGraffitiOpen, setGraffitiOpen] = useState(false);
   const [isVoiceOpen, setVoiceOpen] = useState(false);
@@ -18,7 +20,7 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
   const [isSubmitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!text && attachments.length === 0) return;
+    if (!text && attachments.length === 0 && !poll) return;
     try {
       setSubmitting(true);
       await createWallPost({
@@ -31,6 +33,7 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
       setText('');
       setAttachments([]);
       setPoll(null);
+      qc.invalidateQueries({ queryKey: ['wall_feed'] });
     } catch (e) {
       alert('Ошибка публикации поста');
       // eslint-disable-next-line no-console
@@ -108,7 +111,7 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
             <PollIcon className="h-4 w-4" /> Опрос
           </button>
         </div>
-        <Button onClick={handleSubmit} disabled={isSubmitting || (!text && attachments.length === 0)} size="sm">
+        <Button onClick={handleSubmit} disabled={isSubmitting || (!text && attachments.length === 0 && !poll)} size="sm">
           {isSubmitting ? 'Публикация…' : 'Опубликовать'}
         </Button>
       </div>

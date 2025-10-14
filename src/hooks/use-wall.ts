@@ -105,16 +105,29 @@ export async function createWallPost(params: { scope: WallScope; scopeId?: strin
 
   if (params.files && params.files.length > 0) {
     for (const f of params.files) {
-      const fileName = f.name || `blob-${Date.now()}.png`;
-      const path = `${user.id}/${post.id}/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('wall').upload(path, f.file, { upsert: true, contentType: (f as any).file?.type });
-      if (upErr) throw upErr;
-      const { data: signed } = await supabase.storage.from('wall').createSignedUrl(path, 60 * 60 * 24 * 7); // 7 дней
+      const fileName = f.name || `file-${Date.now()}`;
+      const folder = f.type === 'image' ? 'images' : f.type === 'video' ? 'videos' : f.type === 'audio' ? 'audio' : 'files';
+      const path = `${folder}/${fileName}`;
+      console.log('[WALL] Uploading file:', { type: f.type, path, size: f.file.size });
+      const { error: upErr } = await supabase.storage.from('wall').upload(path, f.file, { upsert: true });
+      if (upErr) {
+        console.error('[WALL] Upload error:', upErr);
+        throw upErr;
+      }
+      const { data: signed, error: signErr } = await supabase.storage.from('wall').createSignedUrl(path, 60 * 60 * 24 * 7); // 7 дней
+      if (signErr) {
+        console.error('[WALL] Signed URL error:', signErr);
+        throw signErr;
+      }
       const url = signed?.signedUrl || '';
+      console.log('[WALL] File uploaded, signed URL:', url);
       const { error: attErr } = await (supabase as any)
         .from('wall_attachments')
         .insert({ post_id: post.id, type: f.type, url, meta: { path, name: fileName } });
-      if (attErr) throw attErr;
+      if (attErr) {
+        console.error('[WALL] Attachment insert error:', attErr);
+        throw attErr;
+      }
     }
   }
 

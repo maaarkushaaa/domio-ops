@@ -99,7 +99,37 @@ export function WallGraffitiCanvas({ onSave, onCancel }: { onSave: (blob: Blob) 
   const handleSave = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.toBlob((blob) => {
+    
+    // Создаём временный canvas с правильными размерами для экспорта
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 600;
+    exportCanvas.height = 400;
+    const exportCtx = exportCanvas.getContext('2d');
+    if (!exportCtx) return;
+    
+    // Рисуем фон
+    exportCtx.fillStyle = '#f0f0f0';
+    exportCtx.fillRect(0, 0, 600, 400);
+    
+    // Рисуем все пути из истории
+    history.forEach((action) => {
+      if (action.type === 'path' && action.points.length > 1) {
+        exportCtx.strokeStyle = action.color;
+        exportCtx.lineWidth = action.size;
+        exportCtx.globalAlpha = action.opacity / 100;
+        exportCtx.lineCap = 'round';
+        exportCtx.lineJoin = 'round';
+        exportCtx.beginPath();
+        exportCtx.moveTo(action.points[0].x, action.points[0].y);
+        for (let i = 1; i < action.points.length; i++) {
+          exportCtx.lineTo(action.points[i].x, action.points[i].y);
+        }
+        exportCtx.stroke();
+        exportCtx.globalAlpha = 1;
+      }
+    });
+    
+    exportCanvas.toBlob((blob) => {
       if (blob) onSave(blob);
     }, 'image/png');
   };
