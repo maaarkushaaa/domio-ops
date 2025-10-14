@@ -1,11 +1,14 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useFeatureFlags } from '@/contexts/FeatureFlags';
 
 export function FinanceRealtimeProvider() {
   const queryClient = useQueryClient();
+  const { enableRealtimeInvalidations } = useFeatureFlags();
 
   useEffect(() => {
+    if (!enableRealtimeInvalidations) return;
     const invalidate = (key: readonly unknown[]) => {
       try { queryClient.invalidateQueries({ queryKey: key }); } catch {}
     };
@@ -52,7 +55,7 @@ export function FinanceRealtimeProvider() {
       try { supabase.removeChannel(bud); } catch {}
       try { supabase.removeChannel(subs); } catch {}
     };
-  }, [queryClient]);
+  }, [queryClient, enableRealtimeInvalidations]);
 
   return null;
 }
