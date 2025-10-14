@@ -1,4 +1,5 @@
-import { Search, User, LogOut } from "lucide-react";
+import { useState } from "react";
+import { Search, User, LogOut, Command } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -11,26 +12,39 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useApp } from "@/contexts/AppContext";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationPopover } from "@/components/notifications/NotificationPopover";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
+import { SmartSearch } from "@/components/modern/SmartSearch";
 
 export function AppHeader() {
   const { user, signOut } = useApp();
   const userInitials = user?.name?.charAt(0).toUpperCase() || user?.email?.substring(0, 2).toUpperCase() || "U";
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
+    <>
     <header className="h-16 border-b glass-card px-6 flex items-center justify-between sticky top-0 z-50">
       <div className="flex items-center gap-4 flex-1 max-w-2xl">
         <SidebarTrigger className="interactive" />
-        <div className="relative flex-1">
+        <div className="relative flex-1 cursor-pointer" onClick={() => setSearchOpen(true)}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Быстрый поиск..."
-            className="pl-9 focus-elegant"
+            placeholder="Умный поиск... (Ctrl+K)"
+            className="pl-9 focus-elegant cursor-pointer"
             data-tour="search"
+            readOnly
           />
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+            <Command className="h-3 w-3" />K
+          </kbd>
         </div>
       </div>
       
@@ -75,5 +89,15 @@ export function AppHeader() {
         </DropdownMenu>
       </div>
     </header>
+
+    <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Умный поиск</DialogTitle>
+        </DialogHeader>
+        <SmartSearch />
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
