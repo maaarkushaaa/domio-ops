@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useProjects } from '@/hooks/use-projects';
 import { supabase } from '@/integrations/supabase/client';
+import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
 
 export default function Projects() {
   const { projects, updateProjectStatus, deleteProject } = useProjects();
@@ -161,6 +162,7 @@ export default function Projects() {
                 </div>
               )}
               <div className="flex flex-col gap-2 pt-2">
+                <QRCodeGenerator projectId={project.id} projectName={project.name} />
                 <Button 
                   size="sm" 
                   variant="outline"

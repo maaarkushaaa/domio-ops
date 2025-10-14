@@ -11,6 +11,7 @@ import {
   Package,
   Clock,
   Calendar,
+  Trophy,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTasks } from "@/hooks/use-tasks";
@@ -22,6 +23,8 @@ import { useNavigate } from "react-router-dom";
 import { TaskListDialog } from "@/components/dashboard/TaskListDialog";
 import { Task } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { Achievements } from "@/components/gamification/Achievements";
+import { TeamAnalytics } from "@/components/modern/TeamAnalytics";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -125,10 +128,15 @@ export default function Dashboard() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Обзор</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline проектов</TabsTrigger>
+          <TabsTrigger value="timeline">Таймлайн</TabsTrigger>
+          <TabsTrigger value="achievements">
+            <Trophy className="h-4 w-4 mr-2" />
+            Достижения
+          </TabsTrigger>
+          <TabsTrigger value="analytics">Аналитика</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-4">
 
       {/* Статистика */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -390,6 +398,14 @@ export default function Dashboard() {
 
         <TabsContent value="timeline">
           <ProjectTimeline />
+        </TabsContent>
+
+        <TabsContent value="achievements">
+          <Achievements />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <TeamAnalytics />
         </TabsContent>
       </Tabs>
       

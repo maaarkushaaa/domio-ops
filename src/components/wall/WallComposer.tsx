@@ -6,6 +6,7 @@ import { Image as ImageIcon, Video, Mic, ListChecks as PollIcon, Brush } from 'l
 import { WallGraffitiCanvas } from './WallGraffitiCanvas';
 import { VoiceRecorder } from './VoiceRecorder';
 import { PollCreator, PollData } from './PollCreator';
+import { VoiceInput } from '@/components/voice/VoiceInput';
 import { createWallPost } from '@/hooks/use-wall';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -76,7 +77,10 @@ export function WallComposer({ scope, scopeId }: { scope: 'project' | 'task'; sc
 
   return (
     <div className="bg-white border border-gray-200 rounded shadow-sm p-4 space-y-3">
-      <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Написать сообщение..." className="text-sm" />
+      <div className="flex items-start gap-2">
+        <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Написать сообщение..." className="text-sm flex-1" />
+        <VoiceInput onTranscript={(transcript) => setText(prev => prev ? `${prev} ${transcript}` : transcript)} />
+      </div>
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {attachments.map((att, i) => (
