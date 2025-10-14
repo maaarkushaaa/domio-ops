@@ -541,7 +541,6 @@ export default function Finance() {
                     <p className="text-sm">Попробуйте изменить фильтры или добавить новую операцию</p>
                   </div>
                 )}
-              </div>
 
               {/* Пагинация операций */}
               {filteredOperations.length > 0 && (
