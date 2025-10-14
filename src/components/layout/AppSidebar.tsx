@@ -19,6 +19,7 @@ import {
   Sparkles,
   Video,
   Bell,
+  PenSquare,
 } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -38,6 +39,7 @@ const menuItems = [
   { title: "Дашборд", url: "/", icon: LayoutDashboard },
   { title: "Проекты", url: "/projects", icon: FolderKanban },
   { title: "Задачи", url: "/tasks", icon: CheckSquare },
+  { title: "Стена", url: "/wall", icon: PenSquare },
   { title: "Календарь", url: "/calendar", icon: Calendar },
   { title: "Производство", url: "/production", icon: Factory },
   { title: "Материалы", url: "/materials", icon: Package },

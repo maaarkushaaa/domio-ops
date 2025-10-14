@@ -28,6 +28,7 @@ import Documents from "./pages/Documents";
 import Email from "./pages/Email";
 import Knowledge from "./pages/Knowledge";
 import Calendar from "./pages/Calendar";
+import Wall from "./pages/Wall";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -100,6 +101,20 @@ const App = () => {
                   <ProtectedRoute>
                     <AppLayout>
                       <Tasks />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/wall" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Wall />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/calendar" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Calendar />
                     </AppLayout>
                   </ProtectedRoute>
                 } />
