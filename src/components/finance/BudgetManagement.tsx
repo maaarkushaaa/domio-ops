@@ -13,12 +13,9 @@ import {
   Edit, 
   Trash2, 
   Target,
-  TrendingUp,
-  TrendingDown,
   AlertCircle,
   CheckCircle2,
-  Calendar,
-  DollarSign
+  Calendar
 } from 'lucide-react';
 import { useFinance } from '@/hooks/use-finance';
 import type { Budget } from '@/hooks/use-finance';
@@ -34,19 +31,10 @@ interface BudgetDialogProps {
   onSuccess?: () => void;
 }
 
-const BUDGET_TYPES = [
+const PERIOD_TYPES = [
   { value: 'monthly', label: 'Ежемесячный', icon: Calendar },
   { value: 'quarterly', label: 'Квартальный', icon: Calendar },
-  { value: 'yearly', label: 'Годовой', icon: Calendar },
-  { value: 'project', label: 'Проектный', icon: Target },
-  { value: 'category', label: 'По категории', icon: Target }
-];
-
-const BUDGET_STATUSES = [
-  { value: 'active', label: 'Активный', color: 'bg-green-100 text-green-800' },
-  { value: 'completed', label: 'Завершен', color: 'bg-blue-100 text-blue-800' },
-  { value: 'exceeded', label: 'Превышен', color: 'bg-red-100 text-red-800' },
-  { value: 'paused', label: 'Приостановлен', color: 'bg-yellow-100 text-yellow-800' }
+  { value: 'yearly', label: 'Годовой', icon: Calendar }
 ];
 
 export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) {
@@ -55,15 +43,18 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
   
   // Форма
   const [name, setName] = useState(budget?.name || '');
-  const [description, setDescription] = useState(budget?.description || '');
-  const [type, setType] = useState(budget?.type || 'monthly');
-  const [status, setStatus] = useState(budget?.status || 'active');
-  const [amount, setAmount] = useState(budget?.amount?.toString() || '');
-  const [currency, setCurrency] = useState(budget?.currency || 'RUB');
-  const [startDate, setStartDate] = useState(budget?.start_date || '');
-  const [endDate, setEndDate] = useState(budget?.end_date || '');
   const [category, setCategory] = useState(budget?.category || '');
-  const [notes, setNotes] = useState(budget?.notes || '');
+  const [period, setPeriod] = useState<Budget['period']>(budget?.period || 'monthly');
+  const [year, setYear] = useState<number>(budget?.year || new Date().getFullYear());
+  const [month, setMonth] = useState<number | undefined>(budget?.month);
+  const [quarter, setQuarter] = useState<number | undefined>(budget?.quarter);
+  const [plannedAmount, setPlannedAmount] = useState<string>(
+    (budget?.planned_amount ?? '').toString()
+  );
+  const [actualAmount, setActualAmount] = useState<string>(
+    (budget?.actual_amount ?? '0').toString()
+  );
+  const [isActive, setIsActive] = useState<boolean>(budget?.is_active ?? true);
 
   const { createBudget, updateBudget } = useFinance();
   const { notifySuccess, notifyError } = useAppNotifications();
@@ -79,7 +70,7 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !amount) {
+    if (!name.trim() || !plannedAmount) {
       toast({
         title: 'Ошибка',
         description: 'Заполните обязательные поля',
@@ -90,17 +81,16 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
 
     setIsLoading(true);
     try {
-      const budgetData = {
+      const budgetData: any = {
         name: name.trim(),
-        description: description.trim() || undefined,
-        type,
-        status,
-        amount: parseFloat(amount),
-        currency,
-        start_date: startDate,
-        end_date: endDate,
         category: category.trim() || undefined,
-        notes: notes.trim() || undefined
+        period,
+        year,
+        month: period === 'monthly' ? (month || new Date().getMonth() + 1) : undefined,
+        quarter: period === 'quarterly' ? (quarter || Math.ceil((new Date().getMonth() + 1) / 3)) : undefined,
+        planned_amount: parseFloat(plannedAmount),
+        actual_amount: parseFloat(actualAmount || '0'),
+        is_active: isActive
       };
 
       if (isEdit && budget) {
@@ -114,10 +104,9 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
       // Сброс формы
       if (!isEdit) {
         setName('');
-        setDescription('');
-        setAmount('');
         setCategory('');
-        setNotes('');
+        setPlannedAmount('');
+        setActualAmount('0');
       }
       
       setOpen(false);
@@ -135,8 +124,8 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
     }
   };
 
-  const selectedType = BUDGET_TYPES.find(t => t.value === type);
-  const TypeIcon = selectedType?.icon || Target;
+  const selectedPeriod = PERIOD_TYPES.find(t => t.value === period);
+  const TypeIcon = selectedPeriod?.icon || Target;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -165,44 +154,15 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
                 placeholder="Маркетинг Q1 2024"
                 required
               />
-            </div>
-
-      {/* Графики */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Распределение бюджетов по типам</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {totalsByType.entries.length === 0 && (
-              <div className="text-sm text-muted-foreground">Нет данных для отображения</div>
-            )}
-            {totalsByType.entries.map(([type, value]) => {
-              const typeInfo = BUDGET_TYPES.find(t => t.value === type) || BUDGET_TYPES[0];
-              const width = `${Math.max(8, Math.round((value / totalsByType.max) * 100))}%`;
-              return (
-                <div key={type}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-muted-foreground">{typeInfo.label}</span>
-                    <span className="font-medium">{safeFormatCurrency(value)}</span>
-                  </div>
-                  <div className="w-full bg-muted rounded h-2">
-                    <div className="h-2 rounded bg-primary" style={{ width }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+              </div>
             <div className="space-y-2">
-              <Label>Тип бюджета</Label>
-              <Select value={type} onValueChange={setType}>
+              <Label>Период</Label>
+              <Select value={period} onValueChange={(v) => setPeriod(v as Budget['period'])}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {BUDGET_TYPES.map((type) => (
+                  {PERIOD_TYPES.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       <div className="flex items-center gap-2">
                         <type.icon className="h-4 w-4" />
@@ -215,108 +175,63 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
             </div>
           </div>
 
-          {/* Статус и сумма */}
+          {/* Параметры периода и суммы */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Статус</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUDGET_STATUSES.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="year">Год</Label>
+              <Input id="year" type="number" value={year}
+                onChange={(e) => setYear(parseInt(e.target.value) || new Date().getFullYear())} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="amount">Сумма бюджета *</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                required
-              />
+              {period === 'monthly' && (
+                <>
+                  <Label htmlFor="month">Месяц (1-12)</Label>
+                  <Input id="month" type="number" min={1} max={12}
+                    value={month ?? ''}
+                    onChange={(e) => setMonth(parseInt(e.target.value) || undefined)} />
+                </>
+              )}
+              {period === 'quarterly' && (
+                <>
+                  <Label htmlFor="quarter">Квартал (1-4)</Label>
+                  <Input id="quarter" type="number" min={1} max={4}
+                    value={quarter ?? ''}
+                    onChange={(e) => setQuarter(parseInt(e.target.value) || undefined)} />
+                </>
+              )}
             </div>
           </div>
 
-          {/* Валюта и категория */}
+          {/* Суммы и категория */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Валюта</Label>
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="RUB">Российский рубль (₽)</SelectItem>
-                  <SelectItem value="USD">Доллар США ($)</SelectItem>
-                  <SelectItem value="EUR">Евро (€)</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="planned">Плановая сумма *</Label>
+              <Input id="planned" type="number" step="0.01" value={plannedAmount}
+                onChange={(e) => setPlannedAmount(e.target.value)} placeholder="0.00" required />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="actual">Фактически потрачено</Label>
+              <Input id="actual" type="number" step="0.01" value={actualAmount}
+                onChange={(e) => setActualAmount(e.target.value)} placeholder="0.00" />
+            </div>
+          </div>
+
+          {/* Категория и активность */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="category">Категория</Label>
-              <Input
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Маркетинг, Разработка, Операции"
-              />
+              <Input id="category" value={category}
+                onChange={(e) => setCategory(e.target.value)} placeholder="Маркетинг" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 mt-6">
+                <input id="active" type="checkbox" className="h-4 w-4"
+                  checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+                <Label htmlFor="active">Активный бюджет</Label>
+              </div>
             </div>
           </div>
 
-          {/* Даты */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Дата начала</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Дата окончания</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Описание и примечания */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="description">Описание</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Описание бюджета и его цели"
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Примечания</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Дополнительная информация"
-                rows={2}
-              />
-            </div>
-          </div>
 
           {/* Кнопки */}
           <div className="flex justify-end gap-2 pt-4">
@@ -337,12 +252,15 @@ export function BudgetManagement() {
   const { budgets, deleteBudget, loadData } = useFinance();
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
 
-  const getStatusInfo = (status: string) => {
-    return BUDGET_STATUSES.find(s => s.value === status) || BUDGET_STATUSES[0];
+  const getStatusInfo = (b: Budget) => {
+    const exceeded = (b.actual_amount || 0) > (b.planned_amount || 0);
+    if (!b.is_active) return { label: 'Неактивный', color: 'bg-gray-100 text-gray-800' };
+    if (exceeded) return { label: 'Превышен', color: 'bg-red-100 text-red-800' };
+    return { label: 'Активный', color: 'bg-green-100 text-green-800' };
   };
 
-  const getTypeInfo = (type: string) => {
-    return BUDGET_TYPES.find(t => t.value === type) || BUDGET_TYPES[0];
+  const getPeriodInfo = (period: Budget['period']) => {
+    return PERIOD_TYPES.find(t => t.value === period) || PERIOD_TYPES[0];
   };
 
   const handleDeleteBudget = async (budgetId: string) => {
@@ -362,13 +280,13 @@ export function BudgetManagement() {
   };
 
   const calculateProgress = (budget: Budget) => {
-    // В реальном приложении здесь был бы расчет потраченной суммы
-    const spent = Math.random() * budget.amount; // Заглушка
-    const percentage = (spent / budget.amount) * 100;
+    const planned = budget.planned_amount || 0;
+    const spent = budget.actual_amount || 0;
+    const percentage = planned > 0 ? (spent / planned) * 100 : 0;
     return {
       spent,
       percentage: Math.min(percentage, 100),
-      remaining: budget.amount - spent
+      remaining: Math.max(0, planned - spent)
     };
   };
 
@@ -381,10 +299,11 @@ export function BudgetManagement() {
   // Простые графики: сумма бюджетов по типам (без внешних библиотек)
   const totalsByType = useMemo(() => {
     const map = budgets.reduce((acc, b) => {
-      acc[b.type] = (acc[b.type] || 0) + (b.amount || 0);
+      const key = b.period as string;
+      acc[key] = (acc[key] || 0) + (b.planned_amount || 0);
       return acc;
     }, {} as Record<string, number>);
-    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    const entries = Object.entries(map).sort((a, b) => (b[1] - a[1]));
     const max = Math.max(1, ...entries.map(([, v]) => v));
     return { entries, max };
   }, [budgets]);
@@ -416,7 +335,7 @@ export function BudgetManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {budgets.filter(budget => budget.status === 'active').length}
+              {budgets.filter(budget => budget.is_active).length}
             </div>
           </CardContent>
         </Card>
@@ -426,7 +345,7 @@ export function BudgetManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {budgets.filter(budget => budget.status === 'exceeded').length}
+              {budgets.filter(budget => (budget.actual_amount || 0) > (budget.planned_amount || 0)).length}
             </div>
           </CardContent>
         </Card>
@@ -436,7 +355,7 @@ export function BudgetManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {safeFormatCurrency(budgets.reduce((sum, budget) => sum + budget.amount, 0))}
+              {safeFormatCurrency(budgets.reduce((sum, budget) => sum + (budget.planned_amount || 0), 0))}
             </div>
           </CardContent>
         </Card>
@@ -445,8 +364,8 @@ export function BudgetManagement() {
       {/* Карточки бюджетов */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {budgets.map((budget) => {
-          const statusInfo = getStatusInfo(budget.status);
-          const typeInfo = getTypeInfo(budget.type);
+          const statusInfo = getStatusInfo(budget);
+          const typeInfo = getPeriodInfo(budget.period);
           const TypeIcon = typeInfo.icon;
           const progress = calculateProgress(budget);
           
@@ -491,7 +410,7 @@ export function BudgetManagement() {
                     <div className="flex justify-between text-sm">
                       <span>Потрачено</span>
                       <span className="font-medium">
-                        {safeFormatCurrency(progress.spent)} / {safeFormatCurrency(budget.amount)}
+                        {safeFormatCurrency(progress.spent)} / {safeFormatCurrency(budget.planned_amount || 0)}
                       </span>
                     </div>
                     <Progress 
@@ -512,16 +431,24 @@ export function BudgetManagement() {
                         <span>{budget.category}</span>
                       </div>
                     )}
-                    {budget.start_date && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Период:</span>
+                      <span>{typeInfo.label}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Год:</span>
+                      <span>{budget.year}</span>
+                    </div>
+                    {budget.period === 'monthly' && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Начало:</span>
-                        <span>{format(new Date(budget.start_date), 'dd.MM.yyyy', { locale: ru })}</span>
+                        <span className="text-muted-foreground">Месяц:</span>
+                        <span>{budget.month}</span>
                       </div>
                     )}
-                    {budget.end_date && (
+                    {budget.period === 'quarterly' && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Окончание:</span>
-                        <span>{format(new Date(budget.end_date), 'dd.MM.yyyy', { locale: ru })}</span>
+                        <span className="text-muted-foreground">Квартал:</span>
+                        <span>{budget.quarter}</span>
                       </div>
                     )}
                   </div>
