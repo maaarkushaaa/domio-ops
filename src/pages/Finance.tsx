@@ -38,6 +38,7 @@ import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAppNotifications } from "@/components/NotificationIntegration";
 import { toast } from "@/hooks/use-toast";
+import { FinancialInsights } from "@/components/analytics/FinancialInsights";
 
 // Безопасная функция форматирования чисел - VERSION 2.0 FIX
 const safeFormatNumber = (value: any, fallback = '0'): string => {
@@ -620,6 +621,8 @@ export default function Finance() {
               </CardContent>
             </Card>
           </div>
+
+          <FinancialInsights />
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
