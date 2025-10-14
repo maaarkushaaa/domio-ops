@@ -44,18 +44,46 @@ do $$
 declare
   tbl text;
   tables text[] := array['accounts','invoices','budgets','subscriptions','financial_operations'];
+  pol text;
 begin
   foreach tbl in array tables loop
     execute format('alter table if exists %I enable row level security', tbl);
 
     -- SELECT policy
-    execute format('create policy if not exists %I_select_own on %I for select using (created_by = auth.uid())', tbl||'_p', tbl);
+    pol := tbl || '_select_own';
+    if not exists (
+      select 1 from pg_policies p
+      where p.schemaname = 'public' and p.tablename = tbl and p.policyname = pol
+    ) then
+      execute format('create policy %I on %I for select using (created_by = auth.uid())', pol, tbl);
+    end if;
+
     -- INSERT policy
-    execute format('create policy if not exists %I_insert_own on %I for insert with check (created_by = auth.uid())', tbl||'_p2', tbl);
+    pol := tbl || '_insert_own';
+    if not exists (
+      select 1 from pg_policies p
+      where p.schemaname = 'public' and p.tablename = tbl and p.policyname = pol
+    ) then
+      execute format('create policy %I on %I for insert with check (created_by = auth.uid())', pol, tbl);
+    end if;
+
     -- UPDATE policy
-    execute format('create policy if not exists %I_update_own on %I for update using (created_by = auth.uid()) with check (created_by = auth.uid())', tbl||'_p3', tbl);
+    pol := tbl || '_update_own';
+    if not exists (
+      select 1 from pg_policies p
+      where p.schemaname = 'public' and p.tablename = tbl and p.policyname = pol
+    ) then
+      execute format('create policy %I on %I for update using (created_by = auth.uid()) with check (created_by = auth.uid())', pol, tbl);
+    end if;
+
     -- DELETE policy
-    execute format('create policy if not exists %I_delete_own on %I for delete using (created_by = auth.uid())', tbl||'_p4', tbl);
+    pol := tbl || '_delete_own';
+    if not exists (
+      select 1 from pg_policies p
+      where p.schemaname = 'public' and p.tablename = tbl and p.policyname = pol
+    ) then
+      execute format('create policy %I on %I for delete using (created_by = auth.uid())', pol, tbl);
+    end if;
   end loop;
 end $$;
 

@@ -25,7 +25,7 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatNumber, safeFormatCurrency } from '@/utils/safeFormat';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Brush } from 'recharts';
 
 interface BudgetDialogProps {
   budget?: Budget;
@@ -536,13 +536,23 @@ export function BudgetManagement() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={totalsByPeriod}>
+                  <defs>
+                    <linearGradient id="gradPlanned" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.4} />
+                    </linearGradient>
+                    <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="period" />
                   <YAxis />
-                  <RechartsTooltip />
+                  <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
                   <Legend />
-                  <Bar dataKey="planned" name="План" fill="#8884d8" />
-                  <Bar dataKey="actual" name="Факт" fill="#82ca9d" />
+                  <Bar dataKey="planned" name="План" fill="url(#gradPlanned)" />
+                  <Bar dataKey="actual" name="Факт" fill="url(#gradActual)" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -564,10 +574,11 @@ export function BudgetManagement() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <RechartsTooltip />
+                  <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
                   <Legend />
-                  <Line type="monotone" dataKey="planned" name="План" stroke="#8884d8" strokeWidth={2} />
-                  <Line type="monotone" dataKey="actual" name="Факт" stroke="#82ca9d" strokeWidth={2} />
+                  <Line type="monotone" dataKey="planned" name="План" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="actual" name="Факт" stroke="#10b981" strokeWidth={2} dot={false} />
+                  <Brush dataKey="month" height={20} travellerWidth={10} />
                 </LineChart>
               </ResponsiveContainer>
             )}
