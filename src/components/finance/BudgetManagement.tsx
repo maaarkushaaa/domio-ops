@@ -18,12 +18,14 @@ import {
   Calendar
 } from 'lucide-react';
 import { useFinance } from '@/hooks/use-finance';
+import { useBudgetsQuery } from '@/hooks/finance-queries';
 import type { Budget } from '@/hooks/use-finance';
 import { useAppNotifications } from '@/components/NotificationIntegration';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatNumber, safeFormatCurrency } from '@/utils/safeFormat';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
 interface BudgetDialogProps {
   budget?: Budget;
@@ -155,6 +157,47 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
                 required
               />
               </div>
+
+      {/* Графики (Recharts) */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">План/Факт по типу периода</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={totalsByPeriod}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="period" />
+                <YAxis />
+                <RechartsTooltip />
+                <Legend />
+                <Bar dataKey="planned" name="План" fill="#8884d8" />
+                <Bar dataKey="actual" name="Факт" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Тренд план/факт по месяцам</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyTrend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <RechartsTooltip />
+                <Legend />
+                <Line type="monotone" dataKey="planned" name="План" stroke="#8884d8" strokeWidth={2} />
+                <Line type="monotone" dataKey="actual" name="Факт" stroke="#82ca9d" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
             <div className="space-y-2">
               <Label>Период</Label>
               <Select value={period} onValueChange={(v) => setPeriod(v as Budget['period'])}>
@@ -249,7 +292,7 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
 }
 
 export function BudgetManagement() {
-  const { budgets, deleteBudget, loadData } = useFinance();
+  const { budgets, deleteBudget, updateBudget } = useBudgetsQuery();
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
 
   const getStatusInfo = (b: Budget) => {
@@ -260,7 +303,12 @@ export function BudgetManagement() {
   };
 
   const getPeriodInfo = (period: Budget['period']) => {
-    return PERIOD_TYPES.find(t => t.value === period) || PERIOD_TYPES[0];
+    switch (period) {
+      case 'monthly': return { label: 'Ежемесячный', icon: Calendar };
+      case 'quarterly': return { label: 'Квартальный', icon: Calendar };
+      case 'yearly': return { label: 'Годовой', icon: Calendar };
+      default: return { label: String(period), icon: Calendar };
+    }
   };
 
   const handleDeleteBudget = async (budgetId: string) => {
@@ -306,6 +354,42 @@ export function BudgetManagement() {
     const entries = Object.entries(map).sort((a, b) => (b[1] - a[1]));
     const max = Math.max(1, ...entries.map(([, v]) => v));
     return { entries, max };
+  }, [budgets]);
+
+  const totalsByPeriod = useMemo(() => {
+    const map = budgets.reduce((acc, b) => {
+      const key = b.period as string;
+      acc[key] = acc[key] || { period: key, planned: 0, actual: 0 };
+      acc[key].planned += b.planned_amount || 0;
+      acc[key].actual += b.actual_amount || 0;
+      return acc;
+    }, {} as Record<string, { period: string; planned: number; actual: number }>);
+    return Object.values(map);
+  }, [budgets]);
+
+  const monthlyTrend = useMemo(() => {
+    const map = new Map<string, { month: string; planned: number; actual: number }>();
+    const add = (ym: string, planned: number, actual: number) => {
+      if (!map.has(ym)) map.set(ym, { month: ym, planned: 0, actual: 0 });
+      const obj = map.get(ym)!;
+      obj.planned += planned;
+      obj.actual += actual;
+    };
+    budgets.forEach(b => {
+      const y = b.year;
+      if (b.period === 'monthly' && b.month) {
+        const ym = `${y}-${String(b.month).padStart(2, '0')}`;
+        add(ym, b.planned_amount || 0, b.actual_amount || 0);
+      } else if (b.period === 'quarterly' && b.quarter) {
+        const firstMonth = (b.quarter - 1) * 3 + 1;
+        const ym = `${y}-${String(firstMonth).padStart(2, '0')}`;
+        add(ym, b.planned_amount || 0, b.actual_amount || 0);
+      } else if (b.period === 'yearly') {
+        const ym = `${y}-01`;
+        add(ym, b.planned_amount || 0, b.actual_amount || 0);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
   }, [budgets]);
 
   return (
@@ -479,8 +563,6 @@ export function BudgetManagement() {
           budget={selectedBudget}
           onSuccess={() => {
             setSelectedBudget(null);
-            // Немедленно обновляем список бюджетов из этого экземпляра useFinance
-            try { loadData(); } catch (e) { console.warn('Budgets reload failed:', e); }
           }}
         />
       )}
