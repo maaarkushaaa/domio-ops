@@ -14,6 +14,7 @@ import {
 import { useApp } from "@/contexts/AppContext";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationPopover } from "@/components/notifications/NotificationPopover";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 
 export function AppHeader() {
   const { user, signOut } = useApp();
@@ -36,7 +37,7 @@ export function AppHeader() {
       <div className="flex items-center gap-2">
         <ThemeToggle />
         <div data-tour="notifications">
-          <NotificationPopover />
+          <NotificationDropdown />
         </div>
         
         <DropdownMenu>

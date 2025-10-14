@@ -8,10 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTasks, TaskStatus, TaskPriority } from '@/hooks/use-tasks';
 import { useProjects } from '@/hooks/use-projects';
 import { VoiceInput } from '@/components/voice/VoiceInput';
+import { DragDropZone } from '@/components/files/DragDropZone';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface TaskDialogProps {
   trigger?: React.ReactNode;
@@ -39,6 +41,7 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
   const [assigneeId, setAssigneeId] = useState('');
   const [profiles, setProfiles] = useState<Array<{ id: string; name: string }>>([]);
   const [dueRange, setDueRange] = useState<{ from?: Date; to?: Date }>({});
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
   const { createTask, updateTask } = useTasks();
   const { projects } = useProjects();
@@ -253,7 +256,20 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
             </div>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <Tabs defaultValue="main" className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="main">Основное</TabsTrigger>
+              <TabsTrigger value="files">Файлы ({attachedFiles.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="main" className="mt-4">
+              {/* Основная форма уже выше */}
+            </TabsContent>
+            <TabsContent value="files" className="mt-4">
+              <DragDropZone onFilesAdded={(files) => setAttachedFiles(prev => [...prev, ...files])} />
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex justify-end gap-2 mt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Отмена
             </Button>
