@@ -1,20 +1,52 @@
 -- Document Versioning System
 -- Таблицы для версионирования документов с историей изменений
 
--- Документы (основная таблица)
-create table if not exists public.documents (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  description text,
-  project_id uuid references public.projects(id) on delete cascade,
-  created_by uuid not null references auth.users(id) on delete set null,
-  created_at timestamp with time zone not null default now(),
-  updated_at timestamp with time zone not null default now(),
-  current_version_id uuid,
-  status text not null default 'draft' check (status in ('draft', 'review', 'approved', 'archived')),
-  tags text[],
-  category text default 'general' check (category in ('general', 'contract', 'specification', 'drawing', 'report', 'other'))
-);
+-- Документы (основная таблица) - создаём или обновляем
+do $$ 
+begin
+  if not exists (select from pg_tables where schemaname = 'public' and tablename = 'documents') then
+    create table public.documents (
+      id uuid primary key default gen_random_uuid(),
+      name text not null,
+      description text,
+      project_id uuid references public.projects(id) on delete cascade,
+      created_by uuid not null references auth.users(id) on delete set null,
+      created_at timestamp with time zone not null default now(),
+      updated_at timestamp with time zone not null default now(),
+      current_version_id uuid,
+      status text not null default 'draft' check (status in ('draft', 'review', 'approved', 'archived')),
+      tags text[],
+      category text default 'general' check (category in ('general', 'contract', 'specification', 'drawing', 'report', 'other'))
+    );
+  else
+    -- Добавляем недостающие колонки если таблица уже существует
+    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'documents' and column_name = 'created_by') then
+      alter table public.documents add column created_by uuid references auth.users(id) on delete set null;
+      update public.documents set created_by = (select id from auth.users limit 1) where created_by is null;
+      alter table public.documents alter column created_by set not null;
+    end if;
+    
+    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'documents' and column_name = 'updated_at') then
+      alter table public.documents add column updated_at timestamp with time zone not null default now();
+    end if;
+    
+    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'documents' and column_name = 'current_version_id') then
+      alter table public.documents add column current_version_id uuid;
+    end if;
+    
+    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'documents' and column_name = 'status') then
+      alter table public.documents add column status text not null default 'draft' check (status in ('draft', 'review', 'approved', 'archived'));
+    end if;
+    
+    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'documents' and column_name = 'tags') then
+      alter table public.documents add column tags text[];
+    end if;
+    
+    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'documents' and column_name = 'category') then
+      alter table public.documents add column category text default 'general' check (category in ('general', 'contract', 'specification', 'drawing', 'report', 'other'));
+    end if;
+  end if;
+end $$;
 
 -- Версии документов
 create table if not exists public.document_versions (
