@@ -157,59 +157,6 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
                 required
               />
               </div>
-
-      {/* Графики (Recharts) */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">План/Факт по типу периода</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {isLoading ? (
-              <div className="w-full h-full bg-muted animate-pulse rounded" />
-            ) : totalsByPeriod.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных для графика</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={totalsByPeriod}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="period" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Legend />
-                  <Bar dataKey="planned" name="План" fill="#8884d8" />
-                  <Bar dataKey="actual" name="Факт" fill="#82ca9d" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Тренд план/факт по месяцам</CardTitle>
-          </CardHeader>
-          <CardContent className="h-72">
-            {isLoading ? (
-              <div className="w-full h-full bg-muted animate-pulse rounded" />
-            ) : monthlyTrend.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных для графика</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="planned" name="План" stroke="#8884d8" strokeWidth={2} />
-                  <Line type="monotone" dataKey="actual" name="Факт" stroke="#82ca9d" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
             <div className="space-y-2">
               <Label>Период</Label>
               <Select value={period} onValueChange={(v) => setPeriod(v as Budget['period'])}>
@@ -573,6 +520,59 @@ export function BudgetManagement() {
             </Card>
           );
         })}
+      </div>
+
+      {/* Графики (Recharts) */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">План/Факт по типу периода</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {isLoading ? (
+              <div className="w-full h-full bg-muted animate-pulse rounded" />
+            ) : totalsByPeriod.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных для графика</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={totalsByPeriod}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="period" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="planned" name="План" fill="#8884d8" />
+                  <Bar dataKey="actual" name="Факт" fill="#82ca9d" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Тренд план/факт по месяцам</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {isLoading ? (
+              <div className="w-full h-full bg-muted animate-pulse rounded" />
+            ) : monthlyTrend.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">Нет данных для графика</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="planned" name="План" stroke="#8884d8" strokeWidth={2} />
+                  <Line type="monotone" dataKey="actual" name="Факт" stroke="#82ca9d" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Диалог редактирования */}
