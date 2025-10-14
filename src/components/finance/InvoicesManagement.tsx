@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +68,13 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!invoice;
+
+  // Авто-открытие диалога при переданном инвойсе (режим редактирования)
+  useEffect(() => {
+    if (invoice) {
+      setOpen(true);
+    }
+  }, [invoice]);
 
   const calculateTotal = () => {
     const amountNum = parseFloat(amount) || 0;
@@ -296,7 +303,7 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
 }
 
 export function InvoicesManagement() {
-  const { invoices } = useFinance();
+  const { invoices, updateInvoice, deleteInvoice, loadData } = useFinance();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
 
@@ -494,7 +501,11 @@ export function InvoicesManagement() {
       {selectedInvoice && (
         <InvoiceDialog
           invoice={selectedInvoice}
-          onSuccess={() => setSelectedInvoice(null)}
+          onSuccess={() => {
+            setSelectedInvoice(null);
+            // Немедленно обновляем список инвойсов из этого экземпляра useFinance
+            try { loadData(); } catch (e) { console.warn('Invoices reload failed:', e); }
+          }}
         />
       )}
 
