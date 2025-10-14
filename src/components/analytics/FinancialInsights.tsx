@@ -1,18 +1,20 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Brain, TrendingDown, TrendingUp } from 'lucide-react';
 import { useFeatureFlags } from '@/contexts/FeatureFlags';
 import { useInvoicesQuery, useBudgetsQuery, useAccountsQuery } from '@/hooks/finance-queries';
 import { safeFormatCurrency } from '@/utils/safeFormat';
+import { fetchFinanceInsights, type AISuggestion } from '@/integrations/ai/client';
 
 export function FinancialInsights() {
   const { enableAI } = useFeatureFlags();
   const { invoices } = useInvoicesQuery();
   const { budgets } = useBudgetsQuery();
   const { accounts } = useAccountsQuery();
+  const [ai, setAi] = useState<AISuggestion[]>([]);
 
-  const insights = useMemo(() => {
+  const { insights, payload } = useMemo(() => {
     const list: { title: string; severity: 'info' | 'warn' | 'error'; details?: string }[] = [];
 
     // Runway heuristic
@@ -20,8 +22,9 @@ export function FinancialInsights() {
     const monthlyBudgetPlan = budgets
       .filter(b => b.period === 'monthly')
       .reduce((s, b) => s + (b.planned_amount || 0), 0);
+    let runway: number | undefined = undefined;
     if (monthlyBudgetPlan > 0) {
-      const runway = Math.max(0, Math.floor(totalBalance / monthlyBudgetPlan));
+      runway = Math.max(0, Math.floor(totalBalance / monthlyBudgetPlan));
       if (runway <= 3) {
         list.push({
           title: `Низкий runway: ~${runway} мес`,
@@ -45,10 +48,13 @@ export function FinancialInsights() {
 
     // Overdue invoices heuristic
     const overdue = invoices.filter(i => i.status === 'overdue');
+    let overdueCount = 0;
+    let overdueSum = 0;
     if (overdue.length > 0) {
-      const sum = overdue.reduce((s, i) => s + (i.total_amount || 0), 0);
+      overdueCount = overdue.length;
+      overdueSum = overdue.reduce((s, i) => s + (i.total_amount || 0), 0);
       list.push({
-        title: `Просроченных инвойсов: ${overdue.length} на ${safeFormatCurrency(sum)}`,
+        title: `Просроченных инвойсов: ${overdueCount} на ${safeFormatCurrency(overdueSum)}`,
         severity: 'warn',
         details: 'Рекомендуется связаться с клиентами и предложить мотивацию к оплате',
       });
@@ -56,17 +62,33 @@ export function FinancialInsights() {
 
     // Budget overruns heuristic
     const exceeded = budgets.filter(b => (b.actual_amount || 0) > (b.planned_amount || 0));
+    let exceededCount = 0;
+    let exceededSum = 0;
     if (exceeded.length > 0) {
-      const sum = exceeded.reduce((s, b) => s + ((b.actual_amount || 0) - (b.planned_amount || 0)), 0);
+      exceededCount = exceeded.length;
+      exceededSum = exceeded.reduce((s, b) => s + ((b.actual_amount || 0) - (b.planned_amount || 0)), 0);
       list.push({
-        title: `Перерасход по бюджетам (${exceeded.length}) на ${safeFormatCurrency(sum)}`,
+        title: `Перерасход по бюджетам (${exceededCount}) на ${safeFormatCurrency(exceededSum)}`,
         severity: 'warn',
         details: 'Пересмотрите лимиты или оптимизируйте траты в затронутых категориях',
       });
     }
 
-    return list;
+    return {
+      insights: list,
+      payload: { runway, overdueCount, overdueSum, exceededCount, exceededSum },
+    };
   }, [invoices, budgets, accounts]);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      if (!enableAI) { setAi([]); return; }
+      const suggestions = await fetchFinanceInsights(payload);
+      if (!ignore) setAi(suggestions);
+    })();
+    return () => { ignore = true; };
+  }, [enableAI, payload]);
 
   return (
     <Card>
@@ -80,11 +102,11 @@ export function FinancialInsights() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {insights.length === 0 ? (
+        {insights.length + ai.length === 0 ? (
           <div className="text-sm text-muted-foreground">Недостаточно данных для инсайтов</div>
         ) : (
           <div className="space-y-3">
-            {insights.map((i, idx) => (
+            {[...insights, ...ai].map((i, idx) => (
               <div key={idx} className="flex items-start gap-2">
                 {i.severity === 'error' ? (
                   <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
