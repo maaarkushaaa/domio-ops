@@ -28,6 +28,8 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatCurrency } from '@/utils/safeFormat';
+import { useMemo } from 'react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
 interface InvoiceDialogProps {
   invoice?: Invoice;
@@ -123,6 +125,28 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
     return amountNum + taxNum;
   };
 
+  const statusData = useMemo(() => {
+    const map = invoices.reduce((acc, inv) => {
+      const k = inv.status;
+      acc[k] = (acc[k] || 0) + (inv.total_amount || 0);
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(map).map(([status, total]) => ({ status, total }));
+  }, [invoices]);
+
+  const issueTrend = useMemo(() => {
+    const map = new Map<string, number>();
+    invoices.forEach(inv => {
+      const d = inv.issue_date ? new Date(inv.issue_date) : null;
+      if (!d) return;
+      const ym = d.toISOString().slice(0, 7); // YYYY-MM
+      map.set(ym, (map.get(ym) || 0) + (inv.total_amount || 0));
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, total]) => ({ month, total }));
+  }, [invoices]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!number.trim() || !amount) {
@@ -212,6 +236,45 @@ export function InvoiceDialog({ invoice, trigger, onSuccess }: InvoiceDialogProp
                 required
               />
             </div>
+
+      {/* Графики (Recharts) */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Сумма по статусам</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={statusData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="status" />
+                <YAxis />
+                <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
+                <Legend />
+                <Bar dataKey="total" name="Итого" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Тренд сумм по месяцам</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={issueTrend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <RechartsTooltip formatter={(v: any) => safeFormatCurrency(Number(v))} />
+                <Legend />
+                <Line type="monotone" dataKey="total" name="Итого" stroke="#82ca9d" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
             <div className="space-y-2">
               <Label>Тип</Label>
               <Select value={type} onValueChange={(value) => setType(value as Invoice['type'])}>
