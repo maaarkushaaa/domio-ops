@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +69,13 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!budget;
+
+  // Авто-открытие диалога при переданном бюджете (режим редактирования)
+  useEffect(() => {
+    if (budget) {
+      setOpen(true);
+    }
+  }, [budget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +166,35 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
                 required
               />
             </div>
+
+      {/* Графики */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Распределение бюджетов по типам</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {totalsByType.entries.length === 0 && (
+              <div className="text-sm text-muted-foreground">Нет данных для отображения</div>
+            )}
+            {totalsByType.entries.map(([type, value]) => {
+              const typeInfo = BUDGET_TYPES.find(t => t.value === type) || BUDGET_TYPES[0];
+              const width = `${Math.max(8, Math.round((value / totalsByType.max) * 100))}%`;
+              return (
+                <div key={type}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-muted-foreground">{typeInfo.label}</span>
+                    <span className="font-medium">{safeFormatCurrency(value)}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded h-2">
+                    <div className="h-2 rounded bg-primary" style={{ width }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
             <div className="space-y-2">
               <Label>Тип бюджета</Label>
               <Select value={type} onValueChange={setType}>
@@ -298,7 +334,7 @@ export function BudgetDialog({ budget, trigger, onSuccess }: BudgetDialogProps) 
 }
 
 export function BudgetManagement() {
-  const { budgets, deleteBudget } = useFinance();
+  const { budgets, deleteBudget, loadData } = useFinance();
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
 
   const getStatusInfo = (status: string) => {
@@ -341,6 +377,17 @@ export function BudgetManagement() {
     if (percentage >= 75) return 'bg-orange-500';
     return 'bg-green-500';
   };
+
+  // Простые графики: сумма бюджетов по типам (без внешних библиотек)
+  const totalsByType = useMemo(() => {
+    const map = budgets.reduce((acc, b) => {
+      acc[b.type] = (acc[b.type] || 0) + (b.amount || 0);
+      return acc;
+    }, {} as Record<string, number>);
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    const max = Math.max(1, ...entries.map(([, v]) => v));
+    return { entries, max };
+  }, [budgets]);
 
   return (
     <div className="space-y-6">
@@ -503,7 +550,11 @@ export function BudgetManagement() {
       {selectedBudget && (
         <BudgetDialog
           budget={selectedBudget}
-          onSuccess={() => setSelectedBudget(null)}
+          onSuccess={() => {
+            setSelectedBudget(null);
+            // Немедленно обновляем список бюджетов из этого экземпляра useFinance
+            try { loadData(); } catch (e) { console.warn('Budgets reload failed:', e); }
+          }}
         />
       )}
     </div>
