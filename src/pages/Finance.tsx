@@ -73,6 +73,8 @@ export default function Finance() {
   const [selectedAccount, setSelectedAccount] = useState('');
   const [dateRange, setDateRange] = useState('current');
   const [selectedOperation, setSelectedOperation] = useState<any>(null);
+  const [opPage, setOpPage] = useState(1);
+  const [opPageSize, setOpPageSize] = useState(20);
 
   // Фильтрация операций
   const filteredOperations = useMemo(() => {
@@ -131,6 +133,12 @@ export default function Finance() {
 
     return filtered;
   }, [operations, searchTerm, selectedCategory, selectedAccount, dateRange]);
+
+  const totalOpPages = useMemo(() => Math.max(1, Math.ceil(filteredOperations.length / opPageSize)), [filteredOperations.length, opPageSize]);
+  const paginatedOperations = useMemo(() => {
+    const start = (opPage - 1) * opPageSize;
+    return filteredOperations.slice(start, start + opPageSize);
+  }, [filteredOperations, opPage, opPageSize]);
 
   // Уникальные категории для фильтра
   const categories = useMemo(() => {
@@ -454,7 +462,7 @@ export default function Finance() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {filteredOperations.map((op) => {
+                {paginatedOperations.map((op) => {
                   const account = accounts.find(acc => acc.id === op.account_id);
                   return (
                     <div
@@ -548,6 +556,25 @@ export default function Finance() {
                   </div>
                 )}
               </div>
+
+              {/* Пагинация операций */}
+              {filteredOperations.length > 0 && (
+                <div className="flex items-center justify-between pt-4">
+                  <div className="text-sm text-muted-foreground">Страница {opPage} из {totalOpPages}</div>
+                  <div className="flex items-center gap-2">
+                    <Select value={String(opPageSize)} onValueChange={(v) => { setOpPageSize(parseInt(v)); setOpPage(1); }}>
+                      <SelectTrigger className="w-28"><SelectValue placeholder="Размер" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" disabled={opPage <= 1} onClick={() => setOpPage(opPage - 1)}>Назад</Button>
+                    <Button variant="outline" disabled={opPage >= totalOpPages} onClick={() => setOpPage(opPage + 1)}>Вперед</Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
