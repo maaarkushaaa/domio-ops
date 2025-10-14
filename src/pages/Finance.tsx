@@ -539,7 +539,7 @@ export default function Finance() {
                     <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Операции не найдены</p>
                     <p className="text-sm">Попробуйте изменить фильтры или добавить новую операцию</p>
-{{ ... }}
+                  </div>
                 )}
               </div>
 
