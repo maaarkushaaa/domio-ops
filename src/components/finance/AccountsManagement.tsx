@@ -348,7 +348,7 @@ export function AccountDialog({ account, trigger, onSuccess }: AccountDialogProp
 }
 
 export function AccountsManagement() {
-  const { accounts, deleteAccount } = useFinance();
+  const { accounts, deleteAccount, loadData } = useFinance();
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
   const handleDeleteAccount = async (accountId: string) => {
@@ -467,6 +467,8 @@ export function AccountsManagement() {
           onSuccess={() => {
             console.log('🔧 ACCOUNTS V5.0 - Dialog success, closing dialog');
             setSelectedAccount(null);
+            // Немедленно обновляем список счетов из этого экземпляра useFinance
+            try { loadData(); } catch (e) { console.warn('Accounts reload failed:', e); }
           }}
         />
       )}
