@@ -194,7 +194,7 @@ export function useSubscriptionsQuery() {
     queryFn: async (): Promise<Subscription[]> => {
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('id, name, description, amount, currency, period, next_payment_date, is_active, auto_renewal, notes, created_at, updated_at, created_by')
+        .select('id, name, description, amount, currency, period, next_payment_date, start_date, is_active, auto_renewal, notes, created_at, updated_at, created_by')
         .order('next_payment_date', { ascending: true });
       if (error) throw error;
       return data || [];
@@ -328,7 +328,7 @@ export function useBudgetsQuery() {
     queryFn: async (): Promise<Budget[]> => {
       const { data, error } = await supabase
         .from('budgets')
-        .select('id, name, category, subcategory, period, year, month, quarter, planned_amount, actual_amount, is_active, created_at, updated_at, created_by')
+        .select('id, name, category, subcategory, period, year, month, quarter, planned_amount, actual_amount, is_active')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
