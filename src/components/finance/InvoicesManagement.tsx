@@ -28,7 +28,8 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatCurrency } from '@/utils/safeFormat';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Brush } from 'recharts';
 
 interface InvoiceDialogProps {
@@ -479,6 +480,14 @@ export function InvoicesManagement() {
     setPageSize,
   } = useInvoicesQueryPaged(1, 20);
 
+  const parentRef = useRef<HTMLDivElement | null>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: invoices.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 56,
+    overscan: 8,
+  });
+
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
 
@@ -614,55 +623,50 @@ export function InvoicesManagement() {
                 <TableHead>Действия</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {invoices.map((invoice) => {
+          </Table>
+          <div ref={parentRef} className="h-[520px] overflow-auto rounded-md border mt-2">
+            <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+              {rowVirtualizer.getVirtualItems().map(vRow => {
+                const invoice = invoices[vRow.index];
                 const statusInfo = getStatusInfo(invoice.status);
-                const isOverdue = invoice.status === 'overdue' || 
-                  (invoice.status === 'sent' && new Date(invoice.due_date) < new Date());
-                
+                const isOverdue = invoice.status === 'overdue' || (invoice.status === 'sent' && new Date(invoice.due_date) < new Date());
                 return (
-                  <TableRow key={invoice.id} className={isOverdue ? 'bg-red-50' : ''}>
-                    <TableCell className="font-medium">{invoice.number}</TableCell>
-                    <TableCell>
+                  <div
+                    key={invoice.id}
+                    className={`grid grid-cols-7 items-center px-4 py-3 border-b ${isOverdue ? 'bg-red-50' : ''}`}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }}
+                  >
+                    <div className="font-medium truncate">{invoice.number}</div>
+                    <div>
                       <Badge variant="outline">
                         {INVOICE_TYPES.find(t => t.value === invoice.type)?.label}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusInfo.color}>
-                        {statusInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {safeFormatCurrency(invoice.total_amount)}
-                    </TableCell>
-                    <TableCell>
-                      {invoice.issue_date ? format(new Date(invoice.issue_date), 'dd.MM.yyyy', { locale: ru }) : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {invoice.due_date ? format(new Date(invoice.due_date), 'dd.MM.yyyy', { locale: ru }) : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(invoice)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteInvoice(invoice.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                    <div>
+                      <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
+                    </div>
+                    <div className="font-medium">{safeFormatCurrency(invoice.total_amount)}</div>
+                    <div>{invoice.issue_date ? format(new Date(invoice.issue_date), 'dd.MM.yyyy', { locale: ru }) : '-'}</div>
+                    <div>{invoice.due_date ? format(new Date(invoice.due_date), 'dd.MM.yyyy', { locale: ru }) : '-'}</div>
+                    <div className="flex gap-1 justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(invoice)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteInvoice(invoice.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 );
               })}
-            </TableBody>
-          </Table>
+            </div>
+          </div>
           {/* Пагинация */}
           <div className="flex items-center justify-between pt-4">
             <div className="text-sm text-muted-foreground">
