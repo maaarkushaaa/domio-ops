@@ -99,11 +99,20 @@ create index if not exists document_history_user_idx on public.document_history 
 create index if not exists document_comments_version_idx on public.document_comments (version_id);
 
 -- Foreign key для current_version_id (добавляем после создания document_versions)
-alter table public.documents 
-  add constraint documents_current_version_fk 
-  foreign key (current_version_id) 
-  references public.document_versions(id) 
-  on delete set null;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint 
+    where conname = 'documents_current_version_fk' 
+    and conrelid = 'public.documents'::regclass
+  ) then
+    alter table public.documents 
+      add constraint documents_current_version_fk 
+      foreign key (current_version_id) 
+      references public.document_versions(id) 
+      on delete set null;
+  end if;
+end $$;
 
 -- RLS
 alter table public.documents enable row level security;
@@ -188,7 +197,42 @@ create trigger log_document_change_trigger
   execute function log_document_change();
 
 -- Enable Realtime
-alter publication supabase_realtime add table public.documents;
-alter publication supabase_realtime add table public.document_versions;
-alter publication supabase_realtime add table public.document_history;
-alter publication supabase_realtime add table public.document_comments;
+do $$
+begin
+  -- Добавляем таблицы в publication только если их там ещё нет
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' 
+    and schemaname = 'public' 
+    and tablename = 'documents'
+  ) then
+    alter publication supabase_realtime add table public.documents;
+  end if;
+  
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' 
+    and schemaname = 'public' 
+    and tablename = 'document_versions'
+  ) then
+    alter publication supabase_realtime add table public.document_versions;
+  end if;
+  
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' 
+    and schemaname = 'public' 
+    and tablename = 'document_history'
+  ) then
+    alter publication supabase_realtime add table public.document_history;
+  end if;
+  
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' 
+    and schemaname = 'public' 
+    and tablename = 'document_comments'
+  ) then
+    alter publication supabase_realtime add table public.document_comments;
+  end if;
+end $$;

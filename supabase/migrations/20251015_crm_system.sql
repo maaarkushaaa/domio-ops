@@ -297,13 +297,40 @@ create trigger update_deal_status_on_stage_trigger
   execute function update_deal_status_on_stage();
 
 -- Enable Realtime
-alter publication supabase_realtime add table public.client_segments;
-alter publication supabase_realtime add table public.clients;
-alter publication supabase_realtime add table public.sales_stages;
-alter publication supabase_realtime add table public.deals;
-alter publication supabase_realtime add table public.deal_stage_history;
-alter publication supabase_realtime add table public.client_interactions;
-alter publication supabase_realtime add table public.crm_tasks;
+do $$
+begin
+  perform add_table_to_publication('supabase_realtime', 'public', 'client_segments');
+  perform add_table_to_publication('supabase_realtime', 'public', 'clients');
+  perform add_table_to_publication('supabase_realtime', 'public', 'sales_stages');
+  perform add_table_to_publication('supabase_realtime', 'public', 'deals');
+  perform add_table_to_publication('supabase_realtime', 'public', 'deal_stage_history');
+  perform add_table_to_publication('supabase_realtime', 'public', 'client_interactions');
+  perform add_table_to_publication('supabase_realtime', 'public', 'crm_tasks');
+exception
+  when undefined_function then
+    -- Если функция не существует, добавляем таблицы напрямую с проверкой
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'client_segments') then
+      alter publication supabase_realtime add table public.client_segments;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'clients') then
+      alter publication supabase_realtime add table public.clients;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'sales_stages') then
+      alter publication supabase_realtime add table public.sales_stages;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'deals') then
+      alter publication supabase_realtime add table public.deals;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'deal_stage_history') then
+      alter publication supabase_realtime add table public.deal_stage_history;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'client_interactions') then
+      alter publication supabase_realtime add table public.client_interactions;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'crm_tasks') then
+      alter publication supabase_realtime add table public.crm_tasks;
+    end if;
+end $$;
 
 -- Вставка демо-данных
 insert into public.client_segments (name, description, color) values
