@@ -16,7 +16,25 @@ create table if not exists public.integration_configs (
   updated_at timestamp with time zone not null default now()
 );
 
--- Webhook endpoints
+-- Webhook endpoints - сначала удаляем старую таблицу если она несовместима
+do $$
+begin
+  -- Проверяем, существует ли таблица webhooks с правильной структурой
+  if exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'webhooks') then
+    -- Проверяем наличие поля id типа uuid
+    if not exists (
+      select 1 from information_schema.columns 
+      where table_schema = 'public' 
+      and table_name = 'webhooks' 
+      and column_name = 'id' 
+      and data_type = 'uuid'
+    ) then
+      -- Если структура не совпадает, удаляем таблицу
+      drop table if exists public.webhooks cascade;
+    end if;
+  end if;
+end $$;
+
 create table if not exists public.webhooks (
   id uuid primary key default gen_random_uuid(),
   name text not null,
