@@ -12,6 +12,7 @@ import { ProductionDetailsDialog } from "@/components/production/ProductionDetai
 import { QualityInspectionDialog } from "@/components/production/QualityInspectionDialog";
 import { ProductMaterialsDialog } from "@/components/production/ProductMaterialsDialog";
 import { ProductEditDialog } from "@/components/production/ProductEditDialog";
+import { ProductQRCode } from "@/components/production/ProductQRCode";
 import { useState, useMemo, useEffect } from "react";
 import {
   Select,
@@ -227,6 +228,9 @@ export default function Production() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ProductQRCode product={{ id: product.id, name: product.name, sku: product.sku }} />
+                    </div>
                     <Button
                       size="sm"
                       variant="outline"
