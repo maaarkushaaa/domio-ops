@@ -34,10 +34,8 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
-import Features from "./pages/Features";
 import VideoCalls from "./pages/VideoCalls";
 import Automation from "./pages/Automation";
-import Inventory from "./pages/Inventory";
 import CRM from "./pages/CRM";
 import Integrations from "./pages/Integrations";
 import Security from "./pages/Security";
@@ -227,13 +225,6 @@ const App = () => {
                     </AppLayout>
                   </ProtectedRoute>
                 } />
-                <Route path="/features" element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Features />
-                    </AppLayout>
-                  </ProtectedRoute>
-                } />
                 <Route path="/video-calls" element={
                   <ProtectedRoute>
                     <AppLayout>
@@ -245,13 +236,6 @@ const App = () => {
                   <ProtectedRoute>
                     <AppLayout>
                       <Automation />
-                    </AppLayout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/inventory" element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Inventory />
                     </AppLayout>
                   </ProtectedRoute>
                 } />

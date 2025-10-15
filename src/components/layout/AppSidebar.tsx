@@ -46,7 +46,6 @@ const menuItems = [
   { title: "Календарь", url: "/calendar", icon: Calendar },
   { title: "Производство", url: "/production", icon: Factory },
   { title: "Материалы", url: "/materials", icon: Package },
-  { title: "Учёт запасов", url: "/inventory", icon: Warehouse },
   { title: "Финансы", url: "/finance", icon: DollarSign },
   { title: "Закупки", url: "/procurement", icon: ShoppingCart },
   { title: "Клиенты", url: "/clients", icon: Users },
@@ -61,7 +60,6 @@ const menuItems = [
   { title: "Безопасность", url: "/security", icon: Lock },
   { title: "База знаний", url: "/knowledge", icon: BookOpen },
   { title: "Уведомления", url: "/notification-settings", icon: Bell },
-  { title: "Функции", url: "/features", icon: Sparkles },
 ];
 
 export function AppSidebar() {
