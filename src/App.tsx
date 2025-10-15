@@ -235,9 +235,11 @@ function App() {
                         <Route path="/calendar" element={
                           <ProtectedRoute>
                             <AppLayout>
-                              <LazyPage>
-                                <Calendar />
-                              </LazyPage>
+                              <ErrorBoundary>
+                                <LazyPage>
+                                  <Calendar />
+                                </LazyPage>
+                              </ErrorBoundary>
                             </AppLayout>
                           </ProtectedRoute>
                         } />
