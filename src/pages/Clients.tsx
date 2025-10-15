@@ -1,16 +1,62 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Mail, Phone, TrendingUp } from "lucide-react";
+import { Plus, Mail, Phone, TrendingUp, Edit, Trash2 } from "lucide-react";
 import { useClients } from "@/hooks/use-clients";
 import { ClientDialog } from "@/components/clients/ClientDialog";
 import { ClientDetailsDialog } from "@/components/clients/ClientDetailsDialog";
+import { useState } from "react";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Clients() {
   const { clients, deals, isLoading } = useClients();
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getClientDealCount = (clientId: string) => {
     return deals.filter(d => d.client_id === clientId).length;
+  };
+
+  const handleDeleteClient = async () => {
+    if (!clientToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientToDelete);
+
+      if (error) throw error;
+
+      toast({
+        title: "Клиент удалён",
+        description: "Клиент успешно удалён из системы",
+      });
+      
+      setClientToDelete(null);
+      // Перезагрузка списка произойдёт автоматически через realtime
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить клиента",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoading) {
@@ -108,10 +154,27 @@ export default function Clients() {
                           <TrendingUp className="h-4 w-4 text-success" />
                         </p>
                       </div>
-                      <ClientDetailsDialog 
-                        client={client}
-                        trigger={<Button>Открыть</Button>}
-                      />
+                      <div className="flex gap-2">
+                        <ClientDetailsDialog 
+                          client={client}
+                          trigger={<Button variant="outline" size="sm">Открыть</Button>}
+                        />
+                        <ClientDialog 
+                          client={client}
+                          trigger={
+                            <Button variant="outline" size="sm">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setClientToDelete(client.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -120,6 +183,33 @@ export default function Clients() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Диалог подтверждения удаления */}
+      <AlertDialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить клиента?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Клиент будет удалён из системы.
+              {getClientDealCount(clientToDelete || '') > 0 && (
+                <span className="block mt-2 text-destructive font-medium">
+                  ⚠️ У этого клиента есть {getClientDealCount(clientToDelete || '')} активных сделок!
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteClient}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Удаление..." : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
