@@ -11,29 +11,50 @@ create table if not exists public.client_segments (
   created_at timestamp with time zone not null default now()
 );
 
--- Расширение таблицы клиентов (если существует, добавляем колонки)
+-- Таблица клиентов (если не существует, создаём)
+create table if not exists public.clients (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text,
+  phone text,
+  company text,
+  website text,
+  address text,
+  notes text,
+  segment_id uuid references public.client_segments(id) on delete set null,
+  lifetime_value decimal(12,2) default 0,
+  last_contact_date timestamp with time zone,
+  lead_source text check (lead_source in ('website', 'referral', 'cold_call', 'social_media', 'advertising', 'other')),
+  priority text default 'medium' check (priority in ('low', 'medium', 'high', 'vip')),
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now()
+);
+
+-- Добавление user_id если таблица уже существует или только что создана
 do $$ 
 begin
-  if exists (select from pg_tables where schemaname = 'public' and tablename = 'clients') then
-    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'segment_id') then
-      alter table public.clients add column segment_id uuid references public.client_segments(id) on delete set null;
-    end if;
-    
-    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'lifetime_value') then
-      alter table public.clients add column lifetime_value decimal(12,2) default 0;
-    end if;
-    
-    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'last_contact_date') then
-      alter table public.clients add column last_contact_date timestamp with time zone;
-    end if;
-    
-    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'lead_source') then
-      alter table public.clients add column lead_source text check (lead_source in ('website', 'referral', 'cold_call', 'social_media', 'advertising', 'other'));
-    end if;
-    
-    if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'priority') then
-      alter table public.clients add column priority text default 'medium' check (priority in ('low', 'medium', 'high', 'vip'));
-    end if;
+  if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'user_id') then
+    alter table public.clients add column user_id uuid references auth.users(id) on delete cascade;
+  end if;
+  
+  if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'segment_id') then
+    alter table public.clients add column segment_id uuid references public.client_segments(id) on delete set null;
+  end if;
+  
+  if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'lifetime_value') then
+    alter table public.clients add column lifetime_value decimal(12,2) default 0;
+  end if;
+  
+  if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'last_contact_date') then
+    alter table public.clients add column last_contact_date timestamp with time zone;
+  end if;
+  
+  if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'lead_source') then
+    alter table public.clients add column lead_source text check (lead_source in ('website', 'referral', 'cold_call', 'social_media', 'advertising', 'other'));
+  end if;
+  
+  if not exists (select from information_schema.columns where table_schema = 'public' and table_name = 'clients' and column_name = 'priority') then
+    alter table public.clients add column priority text default 'medium' check (priority in ('low', 'medium', 'high', 'vip'));
   end if;
 end $$;
 
@@ -114,6 +135,11 @@ create table if not exists public.crm_tasks (
 );
 
 -- Индексы
+create index if not exists clients_user_idx on public.clients (user_id);
+create index if not exists clients_segment_idx on public.clients (segment_id);
+create index if not exists clients_priority_idx on public.clients (priority);
+create index if not exists clients_email_idx on public.clients (email);
+
 create index if not exists deals_client_idx on public.deals (client_id);
 create index if not exists deals_stage_idx on public.deals (stage_id);
 create index if not exists deals_owner_idx on public.deals (owner_id);
@@ -132,6 +158,7 @@ create index if not exists crm_tasks_assigned_idx on public.crm_tasks (assigned_
 
 -- RLS
 alter table public.client_segments enable row level security;
+alter table public.clients enable row level security;
 alter table public.sales_stages enable row level security;
 alter table public.deals enable row level security;
 alter table public.deal_stage_history enable row level security;
@@ -141,6 +168,18 @@ alter table public.crm_tasks enable row level security;
 -- Policies
 drop policy if exists client_segments_select_all on public.client_segments;
 create policy client_segments_select_all on public.client_segments for select using (auth.role() = 'authenticated');
+
+drop policy if exists clients_select_own on public.clients;
+create policy clients_select_own on public.clients for select using (auth.uid() = user_id);
+
+drop policy if exists clients_insert_own on public.clients;
+create policy clients_insert_own on public.clients for insert with check (auth.uid() = user_id);
+
+drop policy if exists clients_update_own on public.clients;
+create policy clients_update_own on public.clients for update using (auth.uid() = user_id);
+
+drop policy if exists clients_delete_own on public.clients;
+create policy clients_delete_own on public.clients for delete using (auth.uid() = user_id);
 
 drop policy if exists sales_stages_select_all on public.sales_stages;
 create policy sales_stages_select_all on public.sales_stages for select using (auth.role() = 'authenticated');
@@ -176,6 +215,20 @@ drop policy if exists crm_tasks_update_assigned on public.crm_tasks;
 create policy crm_tasks_update_assigned on public.crm_tasks for update using (auth.uid() = assigned_to);
 
 -- Функции
+create or replace function update_clients_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists update_clients_updated_at_trigger on public.clients;
+create trigger update_clients_updated_at_trigger
+  before update on public.clients
+  for each row
+  execute function update_clients_updated_at();
+
 create or replace function update_deals_updated_at()
 returns trigger as $$
 begin
@@ -245,6 +298,7 @@ create trigger update_deal_status_on_stage_trigger
 
 -- Enable Realtime
 alter publication supabase_realtime add table public.client_segments;
+alter publication supabase_realtime add table public.clients;
 alter publication supabase_realtime add table public.sales_stages;
 alter publication supabase_realtime add table public.deals;
 alter publication supabase_realtime add table public.deal_stage_history;

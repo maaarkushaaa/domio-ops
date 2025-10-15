@@ -21,6 +21,7 @@ import {
   Bell,
   PenSquare,
   Warehouse,
+  Lock,
 } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -55,6 +56,8 @@ const menuItems = [
   { title: "Почта", url: "/email", icon: Mail },
   { title: "Видеозвонки", url: "/video-calls", icon: Video },
   { title: "Автоматизация", url: "/automation", icon: Sparkles },
+  { title: "Интеграции", url: "/integrations", icon: Zap },
+  { title: "Безопасность", url: "/security", icon: Lock },
   { title: "База знаний", url: "/knowledge", icon: BookOpen },
   { title: "Уведомления", url: "/notification-settings", icon: Bell },
   { title: "Функции", url: "/features", icon: Sparkles },
