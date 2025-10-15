@@ -5,16 +5,63 @@
 create table if not exists public.user_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  session_id text not null unique,
-  status text not null default 'online' check (status in ('online', 'away', 'offline')),
-  current_page text,
-  current_entity_type text, -- 'project', 'task', 'document', etc.
-  current_entity_id uuid,
-  last_activity timestamp with time zone not null default now(),
-  metadata jsonb default '{}',
-  created_at timestamp with time zone not null default now(),
-  updated_at timestamp with time zone not null default now()
+  created_at timestamp with time zone not null default now()
 );
+
+-- Расширение таблицы user_sessions
+do $$
+begin
+  -- Добавляем session_id если нет (или используем session_token)
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'session_id') then
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'session_token') then
+      -- Переименовываем session_token в session_id
+      alter table public.user_sessions rename column session_token to session_id;
+    else
+      alter table public.user_sessions add column session_id text unique;
+    end if;
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'status') then
+    alter table public.user_sessions add column status text not null default 'online';
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'current_page') then
+    alter table public.user_sessions add column current_page text;
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'current_entity_type') then
+    alter table public.user_sessions add column current_entity_type text;
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'current_entity_id') then
+    alter table public.user_sessions add column current_entity_id uuid;
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'last_activity') then
+    alter table public.user_sessions add column last_activity timestamp with time zone not null default now();
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'metadata') then
+    alter table public.user_sessions add column metadata jsonb default '{}';
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'updated_at') then
+    alter table public.user_sessions add column updated_at timestamp with time zone not null default now();
+  end if;
+  
+  -- Добавляем поля из старой миграции если их нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'ip_address') then
+    alter table public.user_sessions add column ip_address inet;
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'user_agent') then
+    alter table public.user_sessions add column user_agent text;
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'user_sessions' and column_name = 'expires_at') then
+    alter table public.user_sessions add column expires_at timestamp with time zone;
+  end if;
+end $$;
 
 -- Таблица действий пользователей в реальном времени
 create table if not exists public.user_activities (
@@ -290,54 +337,79 @@ alter table public.collaborative_locks enable row level security;
 alter table public.user_cursors enable row level security;
 
 -- Политики для user_sessions
+drop policy if exists "Users can view all active sessions" on public.user_sessions;
 create policy "Users can view all active sessions"
   on public.user_sessions for select
   using (true);
 
+drop policy if exists "Users can insert their own sessions" on public.user_sessions;
 create policy "Users can insert their own sessions"
   on public.user_sessions for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update their own sessions" on public.user_sessions;
 create policy "Users can update their own sessions"
   on public.user_sessions for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete their own sessions" on public.user_sessions;
 create policy "Users can delete their own sessions"
   on public.user_sessions for delete
   using (auth.uid() = user_id);
 
 -- Политики для user_activities
+drop policy if exists "Users can view all activities" on public.user_activities;
 create policy "Users can view all activities"
   on public.user_activities for select
   using (true);
 
+drop policy if exists "Users can insert their own activities" on public.user_activities;
 create policy "Users can insert their own activities"
   on public.user_activities for insert
   with check (auth.uid() = user_id);
 
 -- Политики для collaborative_locks
+drop policy if exists "Users can view all locks" on public.collaborative_locks;
 create policy "Users can view all locks"
   on public.collaborative_locks for select
   using (true);
 
+drop policy if exists "Users can manage their own locks" on public.collaborative_locks;
 create policy "Users can manage their own locks"
   on public.collaborative_locks for all
   using (auth.uid() = user_id);
 
 -- Политики для user_cursors
+drop policy if exists "Users can view all cursors" on public.user_cursors;
 create policy "Users can view all cursors"
   on public.user_cursors for select
   using (true);
 
+drop policy if exists "Users can manage their own cursors" on public.user_cursors;
 create policy "Users can manage their own cursors"
   on public.user_cursors for all
   using (auth.uid() = user_id);
 
 -- Включаем Realtime для таблиц
-alter publication supabase_realtime add table public.user_sessions;
-alter publication supabase_realtime add table public.user_activities;
-alter publication supabase_realtime add table public.collaborative_locks;
-alter publication supabase_realtime add table public.user_cursors;
+-- Enable Realtime
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'user_sessions') then
+    alter publication supabase_realtime add table public.user_sessions;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'user_activities') then
+    alter publication supabase_realtime add table public.user_activities;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'collaborative_locks') then
+    alter publication supabase_realtime add table public.collaborative_locks;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'user_cursors') then
+    alter publication supabase_realtime add table public.user_cursors;
+  end if;
+end $$;
 
 -- Комментарии
 comment on table public.user_sessions is 'Активные сессии пользователей для real-time collaboration';

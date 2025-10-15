@@ -21,41 +21,119 @@ create table if not exists public.api_keys (
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
   key_hash text not null unique, -- SHA-256 hash ключа
-  key_prefix text not null, -- Первые 8 символов для идентификации
-  permissions jsonb not null default '[]', -- ['read', 'write', 'delete', etc.]
-  rate_limit integer not null default 1000, -- Запросов в час
-  allowed_ips text[], -- Разрешённые IP адреса
   expires_at timestamp with time zone,
   last_used_at timestamp with time zone,
-  usage_count integer not null default 0,
-  is_active boolean not null default true,
-  metadata jsonb default '{}',
-  created_at timestamp with time zone not null default now(),
-  updated_at timestamp with time zone not null default now()
+  created_at timestamp with time zone not null default now()
 );
+
+-- Расширение таблицы api_keys недостающими полями
+do $$
+begin
+  -- Добавляем key_prefix если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'key_prefix') then
+    alter table public.api_keys add column key_prefix text;
+  end if;
+  
+  -- Добавляем permissions если нет (или переименовываем scopes)
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'permissions') then
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'scopes') then
+      -- Переименовываем scopes в permissions
+      alter table public.api_keys rename column scopes to permissions;
+    else
+      alter table public.api_keys add column permissions jsonb not null default '[]';
+    end if;
+  end if;
+  
+  -- Добавляем rate_limit если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'rate_limit') then
+    alter table public.api_keys add column rate_limit integer not null default 1000;
+  end if;
+  
+  -- Добавляем allowed_ips если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'allowed_ips') then
+    alter table public.api_keys add column allowed_ips text[];
+  end if;
+  
+  -- Добавляем usage_count если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'usage_count') then
+    alter table public.api_keys add column usage_count integer not null default 0;
+  end if;
+  
+  -- Добавляем is_active если нет (или переименовываем revoked)
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'is_active') then
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'revoked') then
+      -- Переименовываем revoked в is_active и инвертируем значения
+      alter table public.api_keys rename column revoked to is_active;
+      update public.api_keys set is_active = not is_active;
+    else
+      alter table public.api_keys add column is_active boolean not null default true;
+    end if;
+  end if;
+  
+  -- Добавляем metadata если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'metadata') then
+    alter table public.api_keys add column metadata jsonb default '{}';
+  end if;
+  
+  -- Добавляем updated_at если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'api_keys' and column_name = 'updated_at') then
+    alter table public.api_keys add column updated_at timestamp with time zone not null default now();
+  end if;
+end $$;
 
 -- Таблица для аудита доступа
 create table if not exists public.security_audit_log (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
-  event_type text not null check (event_type in (
-    'login', 'logout', 'login_failed', 'password_change', 'password_reset',
-    '2fa_enabled', '2fa_disabled', '2fa_verified', '2fa_failed',
-    'api_key_created', 'api_key_deleted', 'api_key_used',
-    'permission_granted', 'permission_revoked',
-    'data_access', 'data_modification', 'data_deletion',
-    'suspicious_activity', 'security_breach'
-  )),
-  severity text not null default 'info' check (severity in ('info', 'warning', 'error', 'critical')),
-  description text not null,
   ip_address inet,
-  user_agent text,
-  location jsonb, -- {country, city, lat, lon}
-  resource_type text,
-  resource_id uuid,
   metadata jsonb default '{}',
   created_at timestamp with time zone not null default now()
 );
+
+-- Расширение таблицы security_audit_log
+do $$
+begin
+  -- Переименовываем action в event_type если нужно
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'security_audit_log' and column_name = 'event_type') then
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'security_audit_log' and column_name = 'action') then
+      alter table public.security_audit_log rename column action to event_type;
+      -- Удаляем старый constraint
+      alter table public.security_audit_log drop constraint if exists security_audit_log_action_check;
+    else
+      alter table public.security_audit_log add column event_type text not null default 'data_access';
+    end if;
+  end if;
+  
+  -- Добавляем severity если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'security_audit_log' and column_name = 'severity') then
+    alter table public.security_audit_log add column severity text not null default 'info';
+  end if;
+  
+  -- Добавляем description если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'security_audit_log' and column_name = 'description') then
+    alter table public.security_audit_log add column description text;
+  end if;
+  
+  -- Добавляем user_agent если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'security_audit_log' and column_name = 'user_agent') then
+    alter table public.security_audit_log add column user_agent text;
+  end if;
+  
+  -- Добавляем location если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'security_audit_log' and column_name = 'location') then
+    alter table public.security_audit_log add column location jsonb;
+  end if;
+  
+  -- Добавляем resource_type если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'security_audit_log' and column_name = 'resource_type') then
+    alter table public.security_audit_log add column resource_type text;
+  end if;
+  
+  -- Добавляем resource_id если нет
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'security_audit_log' and column_name = 'resource_id') then
+    alter table public.security_audit_log add column resource_id uuid;
+  end if;
+end $$;
 
 -- Таблица для отслеживания подозрительной активности
 create table if not exists public.security_alerts (

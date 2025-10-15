@@ -77,7 +77,6 @@ end $$;
 -- Лог вызовов webhooks
 create table if not exists public.webhook_logs (
   id uuid primary key default gen_random_uuid(),
-  webhook_id uuid not null references public.webhooks(id) on delete cascade,
   event_type text not null,
   payload jsonb not null,
   response_status integer,
@@ -86,6 +85,20 @@ create table if not exists public.webhook_logs (
   duration_ms integer,
   created_at timestamp with time zone not null default now()
 );
+
+-- Добавляем webhook_id после того как убедились что webhooks существует
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns 
+    where table_schema = 'public' 
+    and table_name = 'webhook_logs' 
+    and column_name = 'webhook_id'
+  ) then
+    alter table public.webhook_logs 
+      add column webhook_id uuid references public.webhooks(id) on delete cascade;
+  end if;
+end $$;
 
 -- Telegram интеграция
 create table if not exists public.telegram_users (

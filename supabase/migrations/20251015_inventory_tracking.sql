@@ -242,11 +242,28 @@ create trigger check_inventory_alerts_trigger
   execute function check_inventory_alerts();
 
 -- Enable Realtime
-alter publication supabase_realtime add table public.material_categories;
-alter publication supabase_realtime add table public.inventory_items;
-alter publication supabase_realtime add table public.inventory_transactions;
-alter publication supabase_realtime add table public.inventory_reservations;
-alter publication supabase_realtime add table public.inventory_alerts;
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'material_categories') then
+    alter publication supabase_realtime add table public.material_categories;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'inventory_items') then
+    alter publication supabase_realtime add table public.inventory_items;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'inventory_transactions') then
+    alter publication supabase_realtime add table public.inventory_transactions;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'inventory_reservations') then
+    alter publication supabase_realtime add table public.inventory_reservations;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'inventory_alerts') then
+    alter publication supabase_realtime add table public.inventory_alerts;
+  end if;
+end $$;
 
 -- Вставка демо-категорий
 insert into public.material_categories (name, description) values
