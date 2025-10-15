@@ -1,5 +1,4 @@
-import { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/toaster";
+﻿import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -15,358 +14,276 @@ import { TaskHotkeys } from "./components/common/TaskHotkeys";
 import { NotificationContainer } from "./components/ui/NotificationContainer";
 import { NotificationIntegration } from "./components/NotificationIntegration";
 import { FinanceRealtimeProvider } from "./providers/FinanceRealtimeProvider";
+import { NotificationSettingsPage } from "./pages/NotificationSettings";
 import { useAppNotifications } from "./hooks/use-app-notifications";
+import Dashboard from "./pages/Dashboard";
+import Tasks from "./pages/Tasks";
+import Projects from "./pages/Projects";
+import Production from "./pages/Production";
+import Materials from "./pages/Materials";
+import Finance from "./pages/Finance";
+import Procurement from "./pages/Procurement";
+import Clients from "./pages/Clients";
+import Documents from "./pages/Documents";
+import Email from "./pages/Email";
+import Knowledge from "./pages/Knowledge";
+import Calendar from "./pages/Calendar";
+import Wall from "./pages/Wall";
+import Analytics from "./pages/Analytics";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
+import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
+import VideoCalls from "./pages/VideoCalls";
+import Automation from "./pages/Automation";
+import CRM from "./pages/CRM";
+import Integrations from "./pages/Integrations";
+import Security from "./pages/Security";
+import { NotificationTestPage } from "./pages/NotificationTest";
+import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { FeatureFlagsProvider } from "./contexts/FeatureFlags";
 import { initSentry } from "@/integrations/monitoring/sentry";
-import { Loader2 } from "lucide-react";
 
-// Lazy load страниц для оптимизации
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Tasks = lazy(() => import("./pages/Tasks"));
-const Projects = lazy(() => import("./pages/Projects"));
-const Production = lazy(() => import("./pages/Production"));
-const Materials = lazy(() => import("./pages/Materials"));
-const Finance = lazy(() => import("./pages/Finance"));
-const Procurement = lazy(() => import("./pages/Procurement"));
-const Clients = lazy(() => import("./pages/Clients"));
-const Documents = lazy(() => import("./pages/Documents"));
-const Email = lazy(() => import("./pages/Email"));
-const Knowledge = lazy(() => import("./pages/Knowledge"));
-// Временно убираем lazy loading для Calendar для отладки
-import Calendar from "./pages/Calendar";
-// const Calendar = lazy(() => import("./pages/Calendar"));
-const Wall = lazy(() => import("./pages/Wall"));
-const Analytics = lazy(() => import("./pages/Analytics"));
-const Reports = lazy(() => import("./pages/Reports"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Auth = lazy(() => import("./pages/Auth"));
-const Admin = lazy(() => import("./pages/Admin"));
-const VideoCalls = lazy(() => import("./pages/VideoCalls"));
-const Automation = lazy(() => import("./pages/Automation"));
-const CRM = lazy(() => import("./pages/CRM"));
-const Integrations = lazy(() => import("./pages/Integrations"));
-const Security = lazy(() => import("./pages/Security"));
-const NotificationSettingsPage = lazy(() => import("./pages/NotificationSettings"));
-const NotificationTestPage = lazy(() => import("./pages/NotificationTest"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-
-// Оптимизированный QueryClient с кешированием
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 минут
-      cacheTime: 10 * 60 * 1000, // 10 минут
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
-
+const queryClient = new QueryClient();
 initSentry({
   dsn: (import.meta as any)?.env?.VITE_SENTRY_DSN,
-  environment: (import.meta as any)?.env?.MODE || 'development',
-  enabled: (import.meta as any)?.env?.PROD,
+  environment: (import.meta as any)?.env?.MODE,
 });
 
-// Компонент загрузки
-function PageLoader() {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center space-y-4">
-        <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-        <p className="text-sm text-muted-foreground">Загрузка...</p>
-      </div>
-    </div>
-  );
-}
-
-// Обёртка для lazy-loaded страниц
-function LazyPage({ children }: { children: React.ReactNode }) {
-  return (
-    <Suspense fallback={<PageLoader />}>
-      {children}
-    </Suspense>
-  );
-}
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useApp();
-
-  if (loading) {
-    return <PageLoader />;
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoadingAuth } = useApp();
+  
+  console.log('ЁЯФР ProtectedRoute check - User:', user ? `${user.email} (${user.role})` : 'Not authenticated', 'Loading:', isLoadingAuth);
+  
+  if (isLoadingAuth) {
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>;
   }
-
+  
   if (!user) {
+    console.log('ЁЯЪк Redirecting to /auth');
     return <Navigate to="/auth" replace />;
   }
-
+  
+  console.log('тЬЕ Access granted');
   return <>{children}</>;
-}
+};
 
-function AppNotifications() {
+const AppNotifications = () => {
   useAppNotifications();
   return null;
-}
+};
 
-function App() {
+const App = () => {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="system" storageKey="domio-theme">
-          <TooltipProvider>
-            <AppProvider>
-              <NotificationProvider>
-                <FeatureFlagsProvider>
-                  <FinanceRealtimeProvider>
-                    <Toaster />
-                    <Sonner />
-                    <NotificationContainer />
-                    <NotificationIntegration />
-                    <AppNotifications />
-                    <BrowserRouter>
-                      <CommandPalette />
-                      <GlobalSearch />
-                      <KeyboardShortcuts />
-                      <TaskHotkeys />
-                      <Routes>
-                        <Route path="/auth" element={
-                          <LazyPage>
-                            <Auth />
-                          </LazyPage>
-                        } />
-                        <Route path="/" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Dashboard />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/tasks" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Tasks />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/projects" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Projects />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/production" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Production />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/materials" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Materials />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/finance" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Finance />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/procurement" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Procurement />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/clients" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Clients />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/documents" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Documents />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/email" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Email />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/knowledge" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Knowledge />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/calendar" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <ErrorBoundary>
-                                <Calendar />
-                              </ErrorBoundary>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/wall" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Wall />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/analytics" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Analytics />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/reports" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Reports />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/settings" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Settings />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/video-calls" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <VideoCalls />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/automation" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Automation />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/crm" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <CRM />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/integrations" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Integrations />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/security" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Security />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/notification-settings" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <NotificationSettingsPage />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/admin" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <Admin />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/notification-test" element={
-                          <ProtectedRoute>
-                            <AppLayout>
-                              <LazyPage>
-                                <NotificationTestPage />
-                              </LazyPage>
-                            </AppLayout>
-                          </ProtectedRoute>
-                        } />
-                        <Route path="*" element={
-                          <LazyPage>
-                            <NotFound />
-                          </LazyPage>
-                        } />
-                      </Routes>
-                    </BrowserRouter>
-                  </FinanceRealtimeProvider>
-                </FeatureFlagsProvider>
-              </NotificationProvider>
-            </AppProvider>
+    <QueryClientProvider client={queryClient}>
+      <FeatureFlagsProvider>
+        <FinanceRealtimeProvider />
+        <ThemeProvider defaultTheme="light">
+        <AppProvider>
+          <NotificationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <NotificationContainer />
+              <NotificationIntegration />
+              <AppNotifications />
+              <BrowserRouter>
+              <CommandPalette />
+              <GlobalSearch />
+              <KeyboardShortcuts />
+              <TaskHotkeys />
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Dashboard />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/tasks" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Tasks />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/wall" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Wall />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/calendar" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Calendar />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/projects" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Projects />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/production" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Production />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/materials" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Materials />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/finance" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <ErrorBoundary>
+                        <Finance />
+                      </ErrorBoundary>
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/procurement" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Procurement />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/clients" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Clients />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/documents" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Documents />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/email" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Email />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/knowledge" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Knowledge />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/calendar" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Calendar />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/analytics" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Analytics />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/reports" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Reports />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Admin />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Settings />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/video-calls" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <VideoCalls />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/automation" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Automation />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/crm" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <CRM />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/integrations" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Integrations />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/security" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Security />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/notifications-test" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <NotificationTestPage />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/notification-settings" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <NotificationSettingsPage />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
           </TooltipProvider>
+          </NotificationProvider>
+        </AppProvider>
         </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+      </FeatureFlagsProvider>
+    </QueryClientProvider>
   );
-}
+};
 
 export default App;
