@@ -22,15 +22,39 @@ create table if not exists public.webhooks (
   name text not null,
   url text not null,
   secret text, -- для верификации подписи
-  events text[] not null, -- ['task.created', 'project.updated', etc]
+  events text[] not null default '{}', -- ['task.created', 'project.updated', etc]
   enabled boolean not null default true,
   headers jsonb default '{}', -- дополнительные заголовки
   retry_count integer default 3,
   timeout_seconds integer default 30,
-  created_by uuid not null references auth.users(id) on delete cascade,
+  created_by uuid references auth.users(id) on delete cascade,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now()
 );
+
+-- Добавление недостающих полей если таблица уже существует
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'webhooks' and column_name = 'created_by') then
+    alter table public.webhooks add column created_by uuid references auth.users(id) on delete cascade;
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'webhooks' and column_name = 'events') then
+    alter table public.webhooks add column events text[] default '{}';
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'webhooks' and column_name = 'headers') then
+    alter table public.webhooks add column headers jsonb default '{}';
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'webhooks' and column_name = 'retry_count') then
+    alter table public.webhooks add column retry_count integer default 3;
+  end if;
+  
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'webhooks' and column_name = 'timeout_seconds') then
+    alter table public.webhooks add column timeout_seconds integer default 30;
+  end if;
+end $$;
 
 -- Лог вызовов webhooks
 create table if not exists public.webhook_logs (
@@ -335,14 +359,40 @@ $$ language plpgsql security definer;
 -- REALTIME
 -- ============================================================================
 
-alter publication supabase_realtime add table public.integration_configs;
-alter publication supabase_realtime add table public.webhooks;
-alter publication supabase_realtime add table public.webhook_logs;
-alter publication supabase_realtime add table public.telegram_users;
-alter publication supabase_realtime add table public.whatsapp_users;
-alter publication supabase_realtime add table public.google_calendar_sync;
-alter publication supabase_realtime add table public.onec_sync;
-alter publication supabase_realtime add table public.security_audit_log;
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'integration_configs') then
+    alter publication supabase_realtime add table public.integration_configs;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'webhooks') then
+    alter publication supabase_realtime add table public.webhooks;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'webhook_logs') then
+    alter publication supabase_realtime add table public.webhook_logs;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'telegram_users') then
+    alter publication supabase_realtime add table public.telegram_users;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'whatsapp_users') then
+    alter publication supabase_realtime add table public.whatsapp_users;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'google_calendar_sync') then
+    alter publication supabase_realtime add table public.google_calendar_sync;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'onec_sync') then
+    alter publication supabase_realtime add table public.onec_sync;
+  end if;
+  
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'security_audit_log') then
+    alter publication supabase_realtime add table public.security_audit_log;
+  end if;
+end $$;
 
 -- ============================================================================
 -- ДЕМО-ДАННЫЕ
