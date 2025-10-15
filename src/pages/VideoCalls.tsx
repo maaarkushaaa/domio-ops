@@ -16,7 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { DailyVideoCall } from "@/components/video/DailyVideoCall";
+import { JitsiVideoCall } from "@/components/video/JitsiVideoCall";
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -221,7 +221,7 @@ export default function VideoCalls() {
           </div>
         </div>
 
-        <DailyVideoCall 
+        <JitsiVideoCall 
           roomName={activeCall}
           onLeave={() => {
             if (activeMeeting) {
@@ -392,7 +392,7 @@ export default function VideoCalls() {
         </TabsContent>
 
         <TabsContent value="quick" className="space-y-4">
-          <DailyVideoCall />
+          <JitsiVideoCall />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">

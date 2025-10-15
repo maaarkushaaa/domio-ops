@@ -306,19 +306,35 @@ export default function Dashboard() {
           <div className="space-y-3">
             {/* Объединяем события календаря и задачи с дедлайнами */}
             {(() => {
-              // Календарные события
-              const calEvs = calendarEvents.map((ce: any) => ({
-                id: ce.id,
-                title: ce.title,
-                date: new Date(ce.start_at),
-                endDate: ce.end_at ? new Date(ce.end_at) : undefined,
-                type: ce.type || 'event',
-                description: ce.description,
-                source: 'calendar'
-              }));
-              // Задачи с дедлайнами
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              
+              // Календарные события (только будущие и сегодняшние)
+              const calEvs = calendarEvents
+                .filter((ce: any) => {
+                  const eventDate = new Date(ce.start_at);
+                  eventDate.setHours(0, 0, 0, 0);
+                  return eventDate >= now;
+                })
+                .map((ce: any) => ({
+                  id: ce.id,
+                  title: ce.title,
+                  date: new Date(ce.start_at),
+                  endDate: ce.end_at ? new Date(ce.end_at) : undefined,
+                  type: ce.type || 'event',
+                  description: ce.description,
+                  source: 'calendar'
+                }));
+              
+              // Задачи с дедлайнами (только будущие и сегодняшние, незавершённые)
               const taskEvs = tasks
-                .filter((t: any) => t.due_date)
+                .filter((t: any) => {
+                  if (t.status === 'done') return false;
+                  if (!t.due_date) return false;
+                  const taskDate = new Date(t.due_date);
+                  taskDate.setHours(0, 0, 0, 0);
+                  return taskDate >= now;
+                })
                 .map((t: any) => ({
                   id: t.id,
                   title: t.title,
@@ -328,7 +344,8 @@ export default function Dashboard() {
                   description: t.description,
                   source: 'task'
                 }));
-              // Объединяем и сортируем по дате
+              
+              // Объединяем и сортируем по дате (от ближайших к дальним)
               const allEvents = [...calEvs, ...taskEvs]
                 .sort((a, b) => a.date.getTime() - b.date.getTime())
                 .slice(0, 15);
