@@ -191,12 +191,26 @@ export function ChatWidget() {
   }));
   const [chatSize, setChatSize] = useState<{ w: number; h: number }>({ w: 420, h: 560 });
 
-  // Detect mobile resize
+  // Detect mobile resize and constrain chat position
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      
+      // Constrain chat position to stay within viewport
+      setChatPos(prev => ({
+        x: Math.max(0, Math.min(prev.x, window.innerWidth - chatSize.w)),
+        y: Math.max(0, Math.min(prev.y, window.innerHeight - chatSize.h))
+      }));
+      
+      // Constrain chat size
+      setChatSize(prev => ({
+        w: Math.min(prev.w, window.innerWidth - 20),
+        h: Math.min(prev.h, window.innerHeight - 20)
+      }));
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, []);
+  }, [chatSize.w, chatSize.h]);
 
   // Adjust chat width when task mode is selected
   useEffect(() => {
@@ -750,7 +764,7 @@ export function ChatWidget() {
 
   if (isMinimized) {
     return (
-      <Card className="fixed bottom-6 right-6 w-80 glass-card shadow-glow hover-lift z-50 animate-scale-in">
+      <Card className="fixed bottom-6 right-6 w-80 max-w-[calc(100vw-3rem)] glass-card shadow-glow hover-lift z-50 animate-scale-in">
         <CardHeader className="flex flex-row items-center justify-between p-4 cursor-pointer" onClick={() => setIsMinimized(false)}>
           <CardTitle className="text-sm flex items-center gap-2">
             <MessageCircle className="h-4 w-4" />
@@ -764,10 +778,17 @@ export function ChatWidget() {
     );
   }
 
-  // Make chat responsive to screen size
+  // Make chat responsive to screen size with constraints
   const chatStyle = isMobile 
     ? { left: 0, top: 0, right: 0, bottom: 0, width: '100vw', height: '100dvh', maxHeight: '100dvh' }
-    : { left: chatPos.x, top: chatPos.y, width: chatSize.w, height: chatSize.h };
+    : { 
+        left: Math.max(0, Math.min(chatPos.x, window.innerWidth - chatSize.w)),
+        top: Math.max(0, Math.min(chatPos.y, window.innerHeight - chatSize.h)),
+        width: Math.min(chatSize.w, window.innerWidth - 20),
+        height: Math.min(chatSize.h, window.innerHeight - 20),
+        maxWidth: '90vw',
+        maxHeight: '90vh'
+      };
 
   const chatClasses = isMobile
     ? "fixed inset-0 flex flex-col z-50 overflow-hidden border-0 rounded-none bg-background"
