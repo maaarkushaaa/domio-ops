@@ -33,7 +33,9 @@ const Clients = lazy(() => import("./pages/Clients"));
 const Documents = lazy(() => import("./pages/Documents"));
 const Email = lazy(() => import("./pages/Email"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
-const Calendar = lazy(() => import("./pages/Calendar"));
+// Временно убираем lazy loading для Calendar для отладки
+import Calendar from "./pages/Calendar";
+// const Calendar = lazy(() => import("./pages/Calendar"));
 const Wall = lazy(() => import("./pages/Wall"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -236,9 +238,7 @@ function App() {
                           <ProtectedRoute>
                             <AppLayout>
                               <ErrorBoundary>
-                                <LazyPage>
-                                  <Calendar />
-                                </LazyPage>
+                                <Calendar />
                               </ErrorBoundary>
                             </AppLayout>
                           </ProtectedRoute>
