@@ -2,7 +2,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import { ChatWidget } from "@/components/chat/ChatWidget";
-import { AIAssistantFloat } from "@/components/ai/AIAssistantFloat";
+import { AIAssistantFloat } from "@/components/ai/AIAssistantFloatDraggable";
 
 interface AppLayoutProps {
   children: React.ReactNode;
