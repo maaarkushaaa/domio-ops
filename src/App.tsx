@@ -11,7 +11,6 @@ import { CommandPalette } from "./components/common/CommandPalette";
 import { GlobalSearch } from "./components/search/GlobalSearch";
 import { KeyboardShortcuts } from "./components/shortcuts/KeyboardShortcuts";
 import { TaskHotkeys } from "./components/common/TaskHotkeys";
-import { AIAssistantAdvanced } from "./components/ai/AIAssistantAdvanced";
 import { NotificationContainer } from "./components/ui/NotificationContainer";
 import { NotificationIntegration } from "./components/NotificationIntegration";
 import { FinanceRealtimeProvider } from "./providers/FinanceRealtimeProvider";
@@ -98,7 +97,6 @@ const App = () => {
               <GlobalSearch />
               <KeyboardShortcuts />
               <TaskHotkeys />
-              <AIAssistantAdvanced />
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/" element={
