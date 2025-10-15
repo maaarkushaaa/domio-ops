@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,8 @@ interface Event {
 }
 
 export default function Calendar() {
+  console.log('📅 Calendar component mounted');
+  
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [newEventName, setNewEventName] = useState('');
@@ -52,28 +54,63 @@ export default function Calendar() {
 
   const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
   const monthName = currentDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  
   // Load from Supabase + realtime
-  useState(() => {
+  useEffect(() => {
+    console.log('📅 Calendar: Loading events for', monthName);
     let ch: ReturnType<typeof supabase.channel> | null = null;
+    
     const load = async () => {
-      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
-      const { data } = await (supabase as any)
-        .from('calendar_events')
-        .select('id, title, start_at, end_at, type, description')
-        .gte('start_at', monthStart.toISOString())
-        .lte('start_at', monthEnd.toISOString())
-        .order('start_at', { ascending: true });
-      setEvents((data || []).map((r: any) => ({ id: r.id, title: r.title, date: new Date(r.start_at), endDate: r.end_at ? new Date(r.end_at) : undefined, type: r.type, description: r.description })));
+      try {
+        console.log('📅 Calendar: Fetching events from Supabase...');
+        const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+        
+        const { data, error } = await (supabase as any)
+          .from('calendar_events')
+          .select('id, title, start_at, end_at, type, description')
+          .gte('start_at', monthStart.toISOString())
+          .lte('start_at', monthEnd.toISOString())
+          .order('start_at', { ascending: true });
+        
+        if (error) {
+          console.error('❌ Calendar: Error loading events:', error);
+          return;
+        }
+        
+        const mappedEvents = (data || []).map((r: any) => ({ 
+          id: r.id, 
+          title: r.title, 
+          date: new Date(r.start_at), 
+          endDate: r.end_at ? new Date(r.end_at) : undefined, 
+          type: r.type, 
+          description: r.description 
+        }));
+        
+        console.log('✅ Calendar: Loaded', mappedEvents.length, 'events');
+        setEvents(mappedEvents);
 
-      ch = supabase
-        .channel('calendar_events_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, () => load())
-        .subscribe();
+        ch = supabase
+          .channel('calendar_events_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, () => {
+            console.log('🔄 Calendar: Realtime update detected');
+            load();
+          })
+          .subscribe();
+      } catch (err) {
+        console.error('❌ Calendar: Exception loading events:', err);
+      }
     };
+    
     load();
-    return () => { if (ch) supabase.removeChannel(ch); };
-  });
+    
+    return () => { 
+      if (ch) {
+        console.log('🧹 Calendar: Cleaning up realtime subscription');
+        supabase.removeChannel(ch);
+      }
+    };
+  }, [currentDate]);
 
 
   const previousMonth = () => {
