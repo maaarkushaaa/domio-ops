@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,10 +63,26 @@ export function OperationDialog({ trigger, accountId, operation, onSuccess }: Op
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState(accountId || '');
 
-  const { createOperation, updateOperation, accounts } = useFinance();
+  const { createOperation, updateOperation, accounts, operations } = useFinance();
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!operation;
+  const existingTags = useMemo(() => {
+    const uniqueTags = new Set<string>();
+    operations.forEach((op) => {
+      op.tags?.forEach((tag) => uniqueTags.add(tag));
+    });
+    return Array.from(uniqueTags).sort();
+  }, [operations]);
+
+  const [tags, setTags] = useState<string[]>(
+    operation?.tags
+      ? Array.from(new Set(operation.tags.filter(Boolean)))
+      : []
+  );
+
+  const availableTags = useMemo(() => existingTags.filter((tag) => !tags.includes(tag)), [existingTags, tags]);
+  const [newTag, setNewTag] = useState('');
 
   useEffect(() => {
     if (!accountId) {
