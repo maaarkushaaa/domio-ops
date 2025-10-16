@@ -56,7 +56,7 @@ serve(async (req) => {
 
     if (type === "suggest") {
       systemPrompt = "Ты AI-ассистент для мебельного производства. Анализируй текст и предлагай конкретные задачи. Возвращай 3-5 предложений с приоритетами (low/medium/high) и категориями.";
-      
+
       body.tools = [
         {
           type: "function",
@@ -86,9 +86,10 @@ serve(async (req) => {
           }
         }
       ];
-      body.model = "gpt-4";
+      body.tool_choice = { type: "function", function: { name: "suggest_tasks" } };
+    } else if (type === "deadline") {
       systemPrompt = "Ты AI-ассистент для прогнозирования сроков в мебельном производстве. Анализируй описание задачи и предлагай реалистичные сроки выполнения с учётом сложности.";
-      
+
       body.tools = [
         {
           type: "function",
@@ -111,7 +112,7 @@ serve(async (req) => {
       body.tool_choice = { type: "function", function: { name: "predict_deadline" } };
     } else if (type === "allocate") {
       systemPrompt = "Ты AI-ассистент для распределения ресурсов в мебельном производстве. Предлагай оптимальное распределение людей, материалов и времени.";
-      
+
       body.tools = [
         {
           type: "function",
@@ -132,8 +133,8 @@ serve(async (req) => {
           }
         }
       ];
-      body.model = "gpt-4";
-      systemPrompt = "Ты AI-ассистент для распределения ресурсов в мебельном производстве. Предлагай оптимальное распределение людей, материалов и времени.";
+      body.tool_choice = { type: "function", function: { name: "allocate_resources" } };
+    }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
