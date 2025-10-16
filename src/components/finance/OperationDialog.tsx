@@ -61,11 +61,23 @@ export function OperationDialog({ trigger, accountId, operation, onSuccess }: Op
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date>(new Date());
   const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState(accountId || '');
 
   const { createOperation, updateOperation, accounts } = useFinance();
   const { notifySuccess, notifyError } = useAppNotifications();
 
   const isEdit = !!operation;
+
+  useEffect(() => {
+    if (!accountId) {
+      const defaultAccount = accounts.find((acc) => acc.is_default) || accounts.find((acc) => acc.is_active);
+      if (defaultAccount && !selectedAccountId) {
+        setSelectedAccountId(defaultAccount.id);
+      }
+    } else if (accountId !== selectedAccountId) {
+      setSelectedAccountId(accountId);
+    }
+  }, [accounts, accountId, selectedAccountId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
