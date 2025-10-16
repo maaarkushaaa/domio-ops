@@ -511,5 +511,3 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
     </div>
   );
 }
-
-export { ClientManagement };
