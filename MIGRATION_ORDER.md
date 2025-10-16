@@ -53,6 +53,15 @@
 ```sql
 -- 4.1 Автозаполнение created_by
 20250116_fix_invoices_created_by.sql
+
+-- 4.2 Исправление budgets (добавление start_date, end_date)
+20250116_fix_budgets_dates.sql
+
+-- 4.3 Исправление clients (добавление status, contact_person)
+20250116_fix_clients_status.sql
+
+-- 4.4 Исправление subscriptions (добавление всех недостающих колонок)
+20250116_fix_subscriptions_columns.sql
 ```
 
 ### 5. Дополнительные модули
@@ -146,14 +155,19 @@ ORDER BY table_name;
 Если нужно быстро запустить, примените минимум:
 
 ```sql
+⚠️ ВАЖНО: Сначала патчи для существующих таблиц, потом создание новых!
+
 1. 20250115_helper_functions.sql
-2. 20250115_base_finance_tables.sql
-3. 20251015_crm_system.sql
-4. 20250116_fix_audit_function.sql
-5. 20250116_fix_invoices_created_by.sql
-6. 20250116_video_meetings.sql
-7. 20250116_integrations.sql
-8. 20250116_deals_clients_relation.sql
+2. 20251015_crm_system.sql  (создаёт clients, deals)
+3. 20250116_fix_clients_status.sql  (патч для clients)
+4. 20250116_fix_budgets_dates.sql  (патч для budgets если существует)
+5. 20250116_fix_subscriptions_columns.sql  (патч для subscriptions если существует)
+6. 20250116_safe_base_finance_tables.sql  (создаёт финансовые таблицы)
+7. 20250116_fix_audit_function.sql
+8. 20250116_fix_invoices_created_by.sql
+9. 20250116_video_meetings.sql
+10. 20250116_integrations.sql
+11. 20250116_deals_clients_relation.sql
 ```
 
 Остальные миграции можно применить позже.

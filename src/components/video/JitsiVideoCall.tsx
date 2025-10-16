@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,6 @@ import {
   Mic,
   MicOff,
   PhoneOff,
-  Monitor,
   Copy,
   Users,
 } from 'lucide-react';
@@ -21,31 +20,11 @@ interface VideoCallProps {
   onLeave?: () => void;
 }
 
-// Загрузка Jitsi API
-const loadJitsiScript = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if ((window as any).JitsiMeetExternalAPI) {
-      resolve();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://meet.jit.si/external_api.js';
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Jitsi script'));
-    document.body.appendChild(script);
-  });
-};
-
 export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
   const { toast } = useToast();
-  const [jitsiApi, setJitsiApi] = useState<any>(null);
   const [inCall, setInCall] = useState(false);
-  const [participants, setParticipants] = useState<number>(0);
   const [roomUrl, setRoomUrl] = useState('');
   const [inputRoomName, setInputRoomName] = useState(roomName || '');
-  const jitsiContainerRef = useRef<HTMLDivElement>(null);
 
   // Создание комнаты
   const createRoom = async () => {
@@ -58,8 +37,8 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
 
       // Генерируем уникальное имя комнаты
       const room = inputRoomName || `domio-${Date.now()}`;
-      const url = `https://meet.jit.si/${room}`;
-      
+      const url = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+
       setRoomUrl(url);
       return room;
     } catch (error) {
@@ -72,111 +51,30 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
   // Присоединиться к звонку
   const joinCall = async () => {
     try {
-      await loadJitsiScript();
-
       let room = inputRoomName;
       if (!room) {
         room = await createRoom();
         if (!room) return;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Пользователь';
-
-      if (!jitsiContainerRef.current) return;
-
-      const domain = 'meet.jit.si';
-      const options = {
-        roomName: room,
-        width: '100%',
-        height: 600,
-        parentNode: jitsiContainerRef.current,
-        configOverwrite: {
-          startWithAudioMuted: false,
-          startWithVideoMuted: false,
-          enableWelcomePage: false,
-          prejoinPageEnabled: false,
-          disableDeepLinking: true,
-        },
-        interfaceConfigOverwrite: {
-          TOOLBAR_BUTTONS: [
-            'microphone',
-            'camera',
-            'closedcaptions',
-            'desktop',
-            'fullscreen',
-            'fodeviceselection',
-            'hangup',
-            'profile',
-            'chat',
-            'recording',
-            'livestreaming',
-            'etherpad',
-            'sharedvideo',
-            'settings',
-            'raisehand',
-            'videoquality',
-            'filmstrip',
-            'invite',
-            'feedback',
-            'stats',
-            'shortcuts',
-            'tileview',
-            'videobackgroundblur',
-            'download',
-            'help',
-            'mute-everyone',
-          ],
-          SHOW_JITSI_WATERMARK: false,
-          SHOW_WATERMARK_FOR_GUESTS: false,
-        },
-        userInfo: {
-          displayName: displayName,
-        },
-      };
-
-      const api = new (window as any).JitsiMeetExternalAPI(domain, options);
-
-      api.addEventListener('videoConferenceJoined', () => {
-        setInCall(true);
-        toast({ title: 'Подключено', description: 'Вы присоединились к звонку' });
-      });
-
-      api.addEventListener('videoConferenceLeft', () => {
-        setInCall(false);
-        api.dispose();
-        setJitsiApi(null);
-        onLeave?.();
-        toast({ title: 'Звонок завершён', description: 'Вы покинули видеоконференцию' });
-      });
-
-      api.addEventListener('participantJoined', () => {
-        const count = api.getNumberOfParticipants();
-        setParticipants(count);
-      });
-
-      api.addEventListener('participantLeft', () => {
-        const count = api.getNumberOfParticipants();
-        setParticipants(count);
-      });
-
-      setJitsiApi(api);
+      setInCall(true);
+      toast({ title: 'Подключено', description: 'Видеоконференция запущена' });
 
     } catch (error) {
       console.error('Error joining call:', error);
-      toast({ 
-        title: 'Ошибка подключения', 
-        description: 'Не удалось присоединиться к звонку', 
-        variant: 'destructive' 
+      toast({
+        title: 'Ошибка подключения',
+        description: 'Не удалось присоединиться к звонку',
+        variant: 'destructive'
       });
     }
   };
 
   // Покинуть звонок
   const leaveCall = () => {
-    if (jitsiApi) {
-      jitsiApi.executeCommand('hangup');
-    }
+    setInCall(false);
+    onLeave?.();
+    toast({ title: 'Звонок завершён', description: 'Вы покинули видеоконференцию' });
   };
 
   // Копировать ссылку на комнату
@@ -187,14 +85,13 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
     }
   };
 
-  // Очистка при размонтировании
+  // Генерируем ссылку при изменении inputRoomName
   useEffect(() => {
-    return () => {
-      if (jitsiApi) {
-        jitsiApi.dispose();
-      }
-    };
-  }, [jitsiApi]);
+    if (inputRoomName) {
+      const url = `https://meet.jit.si/${inputRoomName}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+      setRoomUrl(url);
+    }
+  }, [inputRoomName]);
 
   if (inCall) {
     return (
@@ -205,12 +102,6 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
               <CardTitle className="flex items-center gap-2">
                 <Video className="h-5 w-5 text-green-500" />
                 Видеозвонок активен
-                {participants > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    <Users className="h-3 w-3 mr-1" />
-                    {participants}
-                  </Badge>
-                )}
               </CardTitle>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={copyRoomLink}>
@@ -224,11 +115,17 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div 
-              ref={jitsiContainerRef} 
-              className="relative rounded-lg overflow-hidden bg-black"
-              style={{ minHeight: '600px' }}
+          <CardContent className="p-0">
+            <iframe
+              src={roomUrl}
+              allow="camera; microphone; fullscreen; display-capture"
+              style={{
+                width: '100%',
+                height: '600px',
+                border: 'none',
+                borderRadius: '8px',
+              }}
+              title="Jitsi Meet"
             />
           </CardContent>
         </Card>
@@ -302,4 +199,4 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
       </CardContent>
     </Card>
   );
-}
+};
