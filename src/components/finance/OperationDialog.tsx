@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Plus, Tag } from 'lucide-react';
+import { CalendarIcon, Plus, Tag, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { safeFormatCurrency } from '@/utils/safeFormat';
@@ -60,9 +60,7 @@ export function OperationDialog({ trigger, accountId, operation, onSuccess }: Op
   const [subcategory, setSubcategory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date>(new Date());
-  const [selectedAccountId, setSelectedAccountId] = useState(accountId || '');
-  const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState('');
 
   const { createOperation, updateOperation, accounts } = useFinance();
   const { notifySuccess, notifyError } = useAppNotifications();

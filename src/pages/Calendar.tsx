@@ -2,12 +2,14 @@ import { useRef, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Plus, Edit2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Edit2, Trash2, Video, Phone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { JitsiVideoCall } from "@/components/video/JitsiVideoCall";
 import { EventDetailsDialog } from "@/components/calendar/EventDetailsDialog";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,11 +20,13 @@ interface Event {
   endDate?: Date;  // конец (необязательно)
   type: string;
   description?: string;
+  has_video?: boolean;
+  video_room?: string;
 }
 
 export default function Calendar() {
   console.log('📅 Calendar component mounted');
-  
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [newEventName, setNewEventName] = useState('');
@@ -30,12 +34,15 @@ export default function Calendar() {
   const [newEventEnd, setNewEventEnd] = useState('');
   const [newEventType, setNewEventType] = useState('');
   const [newEventDescription, setNewEventDescription] = useState('');
+  const [newEventHasVideo, setNewEventHasVideo] = useState(false);
+  const [newEventVideoRoom, setNewEventVideoRoom] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   const [dayDialogDate, setDayDialogDate] = useState<Date | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [activeVideoCall, setActiveVideoCall] = useState<string | null>(null);
   // Диапазонное выделение
   const [isSelecting, setIsSelecting] = useState(false);
   const selectStartRef = useRef<number | null>(null);
@@ -48,45 +55,47 @@ export default function Calendar() {
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
-    
+
     return { daysInMonth, startingDayOfWeek };
   };
 
   const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
   const monthName = currentDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
-  
+
   // Load from Supabase + realtime
   useEffect(() => {
     console.log('📅 Calendar: Loading events for', monthName);
     let ch: ReturnType<typeof supabase.channel> | null = null;
-    
+
     const load = async () => {
       try {
         console.log('📅 Calendar: Fetching events from Supabase...');
         const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
-        
+
         const { data, error } = await (supabase as any)
           .from('calendar_events')
-          .select('id, title, start_at, end_at, type, description')
+          .select('id, title, start_at, end_at, type, description, has_video, video_room')
           .gte('start_at', monthStart.toISOString())
           .lte('start_at', monthEnd.toISOString())
           .order('start_at', { ascending: true });
-        
+
         if (error) {
           console.error('❌ Calendar: Error loading events:', error);
           return;
         }
-        
-        const mappedEvents = (data || []).map((r: any) => ({ 
-          id: r.id, 
-          title: r.title, 
-          date: new Date(r.start_at), 
-          endDate: r.end_at ? new Date(r.end_at) : undefined, 
-          type: r.type, 
-          description: r.description 
+
+        const mappedEvents = (data || []).map((r: any) => ({
+          id: r.id,
+          title: r.title,
+          date: new Date(r.start_at),
+          endDate: r.end_at ? new Date(r.end_at) : undefined,
+          type: r.type,
+          description: r.description,
+          has_video: r.has_video || false,
+          video_room: r.video_room || null
         }));
-        
+
         console.log('✅ Calendar: Loaded', mappedEvents.length, 'events');
         setEvents(mappedEvents);
 
@@ -101,17 +110,16 @@ export default function Calendar() {
         console.error('❌ Calendar: Exception loading events:', err);
       }
     };
-    
+
     load();
-    
-    return () => { 
+
+    return () => {
       if (ch) {
         console.log('🧹 Calendar: Cleaning up realtime subscription');
         supabase.removeChannel(ch);
       }
     };
   }, [currentDate]);
-
 
   const previousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
@@ -131,6 +139,40 @@ export default function Calendar() {
     });
   };
 
+  // Создание видео комнаты
+  const generateVideoRoom = () => {
+    return `meeting-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  // Закрыть видео звонок
+  const handleVideoCallEnd = () => {
+    setActiveVideoCall(null);
+  };
+
+  // Если активен видео звонок, показываем только его
+  if (activeVideoCall) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <Video className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
+              Видеоконференция
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Подключено к видео комнате: {activeVideoCall}
+            </p>
+          </div>
+        </div>
+
+        <JitsiVideoCall
+          roomName={activeVideoCall}
+          onLeave={handleVideoCallEnd}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -138,14 +180,14 @@ export default function Calendar() {
           <h1 className="text-3xl font-bold">Календарь</h1>
           <p className="text-muted-foreground">Планирование и события</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(v)=>{ setDialogOpen(v); if(!v){ setEditingEvent(null);} }}>
+        <Dialog open={dialogOpen} onOpenChange={(v)=>{ setDialogOpen(v); if(!v){ setEditingEvent(null); setNewEventHasVideo(false); setNewEventVideoRoom(''); } }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Создать событие
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>{editingEvent ? 'Редактировать событие' : 'Новое событие'}</DialogTitle>
             </DialogHeader>
@@ -154,29 +196,54 @@ export default function Calendar() {
               if (!newEventName || !newEventStart || !newEventType) return;
               const start = new Date(newEventStart);
               const end = newEventEnd ? new Date(newEventEnd) : undefined;
+
+              // Генерируем видео комнату если включено видео
+              let videoRoom = null;
+              if (newEventHasVideo) {
+                videoRoom = newEventVideoRoom || generateVideoRoom();
+              }
+
               if (editingEvent) {
                 // Update in Supabase
                 await (supabase as any)
                   .from('calendar_events')
-                  .update({ title: newEventName, start_at: start.toISOString(), end_at: end ? end.toISOString() : null, type: newEventType, description: newEventDescription || null })
+                  .update({
+                    title: newEventName,
+                    start_at: start.toISOString(),
+                    end_at: end ? end.toISOString() : null,
+                    type: newEventType,
+                    description: newEventDescription || null,
+                    has_video: newEventHasVideo,
+                    video_room: videoRoom
+                  })
                   .eq('id', editingEvent.id);
               } else {
                 // Insert in Supabase
                 const { data: userData } = await supabase.auth.getUser();
                 await (supabase as any)
                   .from('calendar_events')
-                  .insert({ title: newEventName, start_at: start.toISOString(), end_at: end ? end.toISOString() : null, type: newEventType, description: newEventDescription || null, created_by: userData.user?.id })
+                  .insert({
+                    title: newEventName,
+                    start_at: start.toISOString(),
+                    end_at: end ? end.toISOString() : null,
+                    type: newEventType,
+                    description: newEventDescription || null,
+                    has_video: newEventHasVideo,
+                    video_room: videoRoom,
+                    created_by: userData.user?.id
+                  })
                   .select()
                   .single();
               }
               setEditingEvent(null);
-              setNewEventName(''); setNewEventStart(''); setNewEventEnd(''); setNewEventType(''); setNewEventDescription('');
+              setNewEventName(''); setNewEventStart(''); setNewEventEnd(''); setNewEventType('');
+              setNewEventDescription(''); setNewEventHasVideo(false); setNewEventVideoRoom('');
               setDialogOpen(false);
             }} className="space-y-4">
               <div className="space-y-2">
                 <Label>Название</Label>
-                <Input 
-                  placeholder="Название события" 
+                <Input
+                  placeholder="Название события"
                   value={newEventName}
                   onChange={(e) => setNewEventName(e.target.value)}
                   required
@@ -221,9 +288,37 @@ export default function Calendar() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="has-video"
+                    checked={newEventHasVideo}
+                    onCheckedChange={(checked) => {
+                      setNewEventHasVideo(checked as boolean);
+                      if (checked && !newEventVideoRoom) {
+                        setNewEventVideoRoom(generateVideoRoom());
+                      }
+                    }}
+                  />
+                  <Label htmlFor="has-video" className="text-sm font-medium">
+                    Видеоконференция
+                  </Label>
+                </div>
+                {newEventHasVideo && (
+                  <div className="space-y-2">
+                    <Label htmlFor="video-room">Название видео комнаты</Label>
+                    <Input
+                      id="video-room"
+                      placeholder="Автоматически сгенерируется если оставить пустым"
+                      value={newEventVideoRoom}
+                      onChange={(e) => setNewEventVideoRoom(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
                 <Label>Описание</Label>
-                <Textarea 
-                  placeholder="Описание события" 
+                <Textarea
+                  placeholder="Описание события"
                   value={newEventDescription}
                   onChange={(e) => setNewEventDescription(e.target.value)}
                 />
@@ -262,18 +357,18 @@ export default function Calendar() {
                 {day}
               </div>
             ))}
-            
+
             {Array.from({ length: startingDayOfWeek }).map((_, i) => (
               <div key={`empty-${i}`} className="p-2" />
             ))}
-            
+
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const dayEvents = getEventsForDay(day);
-              const isToday = new Date().getDate() === day && 
+              const isToday = new Date().getDate() === day &&
                              new Date().getMonth() === currentDate.getMonth() &&
                              new Date().getFullYear() === currentDate.getFullYear();
-              
+
               return (
                 <div
                   key={day}
@@ -312,17 +407,35 @@ export default function Calendar() {
                   </div>
                   <div className="space-y-1">
                     {dayEvents.map(event => (
-                      <Badge 
-                        key={event.id} 
-                        variant={event.type === 'deadline' ? 'destructive' : 'secondary'}
-                        className="text-xs w-full justify-start truncate cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => {
-                          setSelectedEvent(event);
-                          setEventDetailsOpen(true);
-                        }}
-                      >
-                        {event.title}
-                      </Badge>
+                      <div key={event.id} className="relative">
+                        <Badge
+                          variant={event.type === 'deadline' ? 'destructive' : 'secondary'}
+                          className="text-xs w-full justify-start truncate cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            setEventDetailsOpen(true);
+                          }}
+                        >
+                          {event.title}
+                          {event.has_video && (
+                            <Video className="h-3 w-3 ml-1 text-green-500" />
+                          )}
+                        </Badge>
+                        {event.has_video && (
+                          <Button
+                            size="sm"
+                            className="absolute -top-1 -right-1 h-5 w-5 p-0 bg-green-500 hover:bg-green-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (event.video_room) {
+                                setActiveVideoCall(event.video_room);
+                              }
+                            }}
+                          >
+                            <Phone className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -340,16 +453,32 @@ export default function Calendar() {
           <div className="space-y-3">
             {events.map(event => (
               <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">{event.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {event.date.toLocaleDateString('ru-RU', { 
-                      day: 'numeric', 
-                      month: 'long',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}{event.endDate ? ' — ' + event.endDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="font-medium">{event.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {event.date.toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}{event.endDate ? ' — ' + event.endDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''}
+                    </p>
+                  </div>
+                  {event.has_video && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (event.video_room) {
+                          setActiveVideoCall(event.video_room);
+                        }
+                      }}
+                    >
+                      <Video className="h-4 w-4 mr-2" />
+                      Видео
+                    </Button>
+                  )}
                 </div>
                 <Badge variant={event.type === 'deadline' ? 'destructive' : 'secondary'}>
                   {event.type === 'meeting' && 'Встреча'}
@@ -376,11 +505,27 @@ export default function Calendar() {
             )}
             {dayDialogDate && getEventsForDay(dayDialogDate.getDate()).map(ev => (
               <div key={ev.id} className="flex items-center justify-between p-2 rounded border">
-                <div>
-                  <div className="font-medium text-sm">{ev.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {ev.date.toLocaleString('ru-RU')} {ev.endDate ? '— ' + ev.endDate.toLocaleString('ru-RU') : ''}
+                <div className="flex items-center gap-3">
+                  <div>
+                    <div className="font-medium text-sm">{ev.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {ev.date.toLocaleString('ru-RU')} {ev.endDate ? '— ' + ev.endDate.toLocaleString('ru-RU') : ''}
+                    </div>
                   </div>
+                  {ev.has_video && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (ev.video_room) {
+                          setActiveVideoCall(ev.video_room);
+                        }
+                      }}
+                    >
+                      <Video className="h-3 w-3 mr-1" />
+                      Видео
+                    </Button>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => {
@@ -390,6 +535,8 @@ export default function Calendar() {
                     setNewEventEnd(ev.endDate ? ev.endDate.toISOString().slice(0,16) : '');
                     setNewEventType(ev.type);
                     setNewEventDescription(ev.description || '');
+                    setNewEventHasVideo(ev.has_video || false);
+                    setNewEventVideoRoom(ev.video_room || '');
                     setDialogOpen(true);
                   }}>
                     <Edit2 className="h-3 w-3 mr-1" /> Редактировать
@@ -413,7 +560,7 @@ export default function Calendar() {
         event={selectedEvent}
         open={eventDetailsOpen}
         onOpenChange={(v)=>{ setEventDetailsOpen(v); if(!v) setSelectedEvent(null); }}
-        onEdit={(ev)=>{ setEventDetailsOpen(false); setDayDialogOpen(false); setEditingEvent(ev); setNewEventName(ev.title); setNewEventStart(ev.date.toISOString().slice(0,16)); setNewEventEnd(ev.endDate? ev.endDate.toISOString().slice(0,16):''); setNewEventType(ev.type); setNewEventDescription(ev.description||''); setDialogOpen(true); }}
+        onEdit={(ev)=>{ setEventDetailsOpen(false); setDayDialogOpen(false); setEditingEvent(ev); setNewEventName(ev.title); setNewEventStart(ev.date.toISOString().slice(0,16)); setNewEventEnd(ev.endDate? ev.endDate.toISOString().slice(0,16):''); setNewEventType(ev.type); setNewEventDescription(ev.description||''); setNewEventHasVideo(ev.has_video||false); setNewEventVideoRoom(ev.video_room||''); setDialogOpen(true); }}
         onDelete={(ev)=>{ setEvents(prev=>prev.filter(e=>e.id!==ev.id)); setEventDetailsOpen(false); }}
       />
     </div>
