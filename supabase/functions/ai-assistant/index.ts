@@ -19,10 +19,10 @@ serve(async (req) => {
 
   try {
     const { text, type } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
     const authHeader = req.headers.get('Authorization')!;
@@ -47,6 +47,7 @@ serve(async (req) => {
 
     let systemPrompt = '';
     const body: any = {
+      model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: text }
@@ -85,8 +86,7 @@ serve(async (req) => {
           }
         }
       ];
-      body.tool_choice = { type: "function", function: { name: "suggest_tasks" } };
-    } else if (type === "deadline") {
+      body.model = "gpt-4";
       systemPrompt = "Ты AI-ассистент для прогнозирования сроков в мебельном производстве. Анализируй описание задачи и предлагай реалистичные сроки выполнения с учётом сложности.";
       
       body.tools = [
@@ -132,13 +132,13 @@ serve(async (req) => {
           }
         }
       ];
-      body.tool_choice = { type: "function", function: { name: "allocate_resources" } };
-    }
+      body.model = "gpt-4";
+      systemPrompt = "Ты AI-ассистент для распределения ресурсов в мебельном производстве. Предлагай оптимальное распределение людей, материалов и времени.";
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -146,8 +146,8 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+      console.error("OpenAI API error:", response.status, errorText);
+      return new Response(JSON.stringify({ error: "OpenAI API error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -156,11 +156,13 @@ serve(async (req) => {
     const data = await response.json();
     let result;
 
+    // OpenAI format - check for tool calls
     if (data.choices?.[0]?.message?.tool_calls?.[0]) {
       const toolCall = data.choices[0].message.tool_calls[0];
       result = JSON.parse(toolCall.function.arguments);
     } else {
-      result = { text: data.choices?.[0]?.message?.content || "No response" };
+      // Regular chat completion response
+      result = { text: data.choices?.[0]?.message?.content || "No response from AI" };
     }
 
     // Save analysis to database (optional - table may not exist)
