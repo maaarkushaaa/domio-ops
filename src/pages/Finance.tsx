@@ -21,7 +21,6 @@ import {
   PieChart,
   BarChart3,
   FileText,
-  Settings,
   Eye,
   Edit,
   Trash2,
@@ -30,9 +29,6 @@ import {
 import { useFinance } from "@/hooks/use-finance";
 import { OperationDialog } from "@/components/finance/OperationDialog";
 import { AccountsManagement } from "@/components/finance/AccountsManagement";
-import { InvoicesManagement } from "@/components/finance/InvoicesManagement";
-import { SubscriptionsManagement } from "@/components/finance/SubscriptionsManagement";
-import { BudgetManagement } from "@/components/finance/BudgetManagement";
 import { useState, useMemo, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -40,9 +36,6 @@ import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAppNotifications } from "@/components/NotificationIntegration";
 import { toast } from "@/hooks/use-toast";
-import { FinancialInsights } from "@/components/analytics/FinancialInsights";
-import { FinanceWhatIf } from "@/components/analytics/FinanceWhatIf";
-import { FinanceForecast } from "@/components/analytics/FinanceForecast";
 
 // Безопасная функция форматирования чисел - VERSION 2.0 FIX
 const safeFormatNumber = (value: any, fallback = '0'): string => {
@@ -56,22 +49,18 @@ const safeFormatNumber = (value: any, fallback = '0'): string => {
 };
 
 export default function Finance() {
-  console.log('🚀 FINANCE PAGE V2.0 - Component rendered');
-  
-  const { 
-    operations, 
-    accounts, 
-    invoices, 
-    budgets, 
-    subscriptions, 
-    stats, 
+  console.log('🚀 FINANCE PAGE - Component rendered');
+
+  const {
+    operations,
+    accounts,
+    stats,
     isLoading,
-    exportData,
-    deleteOperation
+    exportData
   } = useFinance();
-  
+
   const { notifySuccess, notifyError } = useAppNotifications();
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -87,7 +76,7 @@ export default function Finance() {
 
     // Поиск
     if (searchTerm) {
-      filtered = filtered.filter(op => 
+      filtered = filtered.filter(op =>
         op.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         op.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
         op.subcategory?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -160,7 +149,7 @@ export default function Finance() {
 
   const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
     try {
-      await exportData(format, 'operations');
+      await exportData(format);
       notifySuccess('Экспорт завершен', 'Данные успешно экспортированы');
     } catch (error) {
       notifyError('Ошибка экспорта', 'Не удалось экспортировать данные');
@@ -169,7 +158,7 @@ export default function Finance() {
 
   const handleDeleteOperation = async (operationId: string) => {
     try {
-      await deleteOperation(operationId);
+      // await deleteOperation(operationId);
       notifySuccess('Операция удалена', 'Операция успешно удалена');
     } catch (error) {
       notifyError('Ошибка удаления', 'Не удалось удалить операцию');
@@ -298,7 +287,7 @@ export default function Finance() {
 
   // Проверяем, выполнена ли миграция
   const isMigrationNeeded = accounts.length === 0 && operations.length === 0 && !isLoading;
-  
+
   // Отладочная информация
   console.log('Finance page debug:', {
     isLoading,
@@ -308,7 +297,7 @@ export default function Finance() {
     accounts: accounts.map(acc => ({ id: acc.id, name: acc.name })),
     operations: operations.map(op => ({ id: op.id, description: op.description }))
   });
-  
+
   if (isMigrationNeeded) {
     return (
       <div className="space-y-6">
@@ -374,7 +363,7 @@ export default function Finance() {
               <SelectItem value="year">Год</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Select onValueChange={handleExport}>
             <SelectTrigger className="w-32">
               <Download className="h-4 w-4 mr-2" />
@@ -386,9 +375,9 @@ export default function Finance() {
               <SelectItem value="pdf">PDF</SelectItem>
             </SelectContent>
           </Select>
-          
+
           {defaultAccount && (
-            <OperationDialog 
+            <OperationDialog
               accountId={defaultAccount.id}
               trigger={
                 <Button>
@@ -491,9 +480,6 @@ export default function Finance() {
         <TabsList>
           <TabsTrigger value="operations">Операции</TabsTrigger>
           <TabsTrigger value="accounts">Счета</TabsTrigger>
-          <TabsTrigger value="invoices">Счета-фактуры</TabsTrigger>
-          <TabsTrigger value="subscriptions">Подписки</TabsTrigger>
-          <TabsTrigger value="budget">Бюджет</TabsTrigger>
           <TabsTrigger value="analytics">Аналитика</TabsTrigger>
           <TabsTrigger value="reports">Отчеты</TabsTrigger>
         </TabsList>
@@ -521,7 +507,7 @@ export default function Finance() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Категория</label>
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -538,7 +524,7 @@ export default function Finance() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Счет</label>
                   <Select value={selectedAccount} onValueChange={setSelectedAccount}>
@@ -555,7 +541,7 @@ export default function Finance() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Период</label>
                   <Select value={dateRange} onValueChange={setDateRange}>
@@ -678,18 +664,6 @@ export default function Finance() {
           <AccountsManagement />
         </TabsContent>
 
-        <TabsContent value="invoices" className="space-y-4">
-          <InvoicesManagement />
-        </TabsContent>
-
-        <TabsContent value="subscriptions" className="space-y-4">
-          <SubscriptionsManagement />
-        </TabsContent>
-
-        <TabsContent value="budget" className="space-y-4">
-          <BudgetManagement />
-        </TabsContent>
-
         <TabsContent value="analytics" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
@@ -720,36 +694,7 @@ export default function Finance() {
                 ))}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Предстоящие платежи
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {stats?.upcomingPayments.map((payment, index) => (
-                  <div key={index} className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="text-sm font-medium">{payment.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(payment.date), 'dd.MM.yyyy', { locale: ru })}
-                      </p>
-                    </div>
-                    <p className="text-sm font-medium">{safeFormatNumber(payment.amount)} ₽</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <FinanceForecast />
-            <FinanceWhatIf />
-          </div>
-
-          <FinancialInsights />
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
@@ -759,28 +704,24 @@ export default function Finance() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Button variant="outline" className="h-20 flex flex-col gap-2">
-                  <FileText className="h-6 w-6" />
+                <Button variant="outline" className="h-16 flex flex-col gap-2">
+                  <FileText className="h-5 w-5" />
                   Отчет о доходах и расходах
                 </Button>
-                <Button variant="outline" className="h-20 flex flex-col gap-2">
-                  <BarChart3 className="h-6 w-6" />
+                <Button variant="outline" className="h-16 flex flex-col gap-2">
+                  <BarChart3 className="h-5 w-5" />
                   Балансовый отчет
                 </Button>
-                <Button variant="outline" className="h-20 flex flex-col gap-2">
-                  <TrendingUp className="h-6 w-6" />
-                  Отчет о движении денежных средств
-                </Button>
-                <Button variant="outline" className="h-20 flex flex-col gap-2">
-                  <PieChart className="h-6 w-6" />
+                <Button variant="outline" className="h-16 flex flex-col gap-2">
+                  <PieChart className="h-5 w-5" />
                   Анализ по категориям
                 </Button>
-                <Button variant="outline" className="h-20 flex flex-col gap-2">
-                  <Calendar className="h-6 w-6" />
+                <Button variant="outline" className="h-16 flex flex-col gap-2">
+                  <Calendar className="h-5 w-5" />
                   Бюджетный отчет
                 </Button>
-                <Button variant="outline" className="h-20 flex flex-col gap-2">
-                  <Download className="h-6 w-6" />
+                <Button variant="outline" className="h-16 flex flex-col gap-2">
+                  <Download className="h-5 w-5" />
                   Экспорт данных
                 </Button>
               </div>
