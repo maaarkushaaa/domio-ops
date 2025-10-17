@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Phone, Calendar, TrendingUp } from 'lucide-react';
+import { Mail, Phone, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Client {
   id: string;
@@ -21,8 +23,59 @@ interface ClientDetailsDialogProps {
 }
 
 export function ClientDetailsDialog({ client, trigger }: ClientDetailsDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [dealsStats, setDealsStats] = useState<{ totalDeals: number; totalAmount: number }>({
+    totalDeals: 0,
+    totalAmount: 0,
+  });
+
+  const fetchStats = async () => {
+    setIsLoadingStats(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from('deals')
+        .select('amount')
+        .eq('client_id', client.id);
+
+      if (error) throw error;
+
+      const totalDeals = data?.length ?? 0;
+      const totalAmount = (data ?? []).reduce((sum: number, deal: any) => sum + Number(deal.amount || 0), 0);
+
+      setDealsStats({ totalDeals, totalAmount });
+    } catch (error) {
+      console.error('Error loading client deals stats:', error);
+      setDealsStats({ totalDeals: 0, totalAmount: 0 });
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      fetchStats();
+    }
+  };
+
+  const getStatusBadge = () => {
+    switch (client.status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800">Активный</Badge>;
+      case 'inactive':
+        return <Badge className="bg-yellow-100 text-yellow-800">Неактивный</Badge>;
+      case 'archived':
+        return <Badge className="bg-gray-100 text-gray-800">Архивирован</Badge>;
+      default:
+        return <Badge variant="outline">{client.status}</Badge>;
+    }
+  };
+
+  const formattedAmount = `${dealsStats.totalAmount.toLocaleString('ru-RU')} ₽`;
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || <Button>Открыть</Button>}
       </DialogTrigger>
@@ -40,7 +93,7 @@ export function ClientDetailsDialog({ client, trigger }: ClientDetailsDialogProp
                 <CardTitle className="text-sm font-medium">Статус</CardTitle>
               </CardHeader>
               <CardContent>
-                <Badge variant="outline">Активен</Badge>
+                {getStatusBadge()}
               </CardContent>
             </Card>
             <Card>
@@ -97,11 +150,15 @@ export function ClientDetailsDialog({ client, trigger }: ClientDetailsDialogProp
             <CardContent className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Всего сделок</p>
-                <p className="text-2xl font-bold">5</p>
+                <p className="text-2xl font-bold">
+                  {isLoadingStats ? '—' : dealsStats.totalDeals}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Общая сумма</p>
-                <p className="text-2xl font-bold">625 000 ₽</p>
+                <p className="text-2xl font-bold">
+                  {isLoadingStats ? '—' : formattedAmount}
+                </p>
               </div>
             </CardContent>
           </Card>
