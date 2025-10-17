@@ -476,9 +476,9 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Статус</Label>
+              <Label htmlFor="client-status">Статус</Label>
               <Select value={formData.status} onValueChange={(value: Client['status']) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
+                <SelectTrigger id="client-status" aria-describedby="client-status-description">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
