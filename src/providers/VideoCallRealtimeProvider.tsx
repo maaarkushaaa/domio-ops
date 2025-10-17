@@ -14,6 +14,7 @@ export interface ActiveQuickCall {
 interface VideoCallRealtimeContextValue {
   activeCall: ActiveQuickCall | null;
   setActiveCall: (call: ActiveQuickCall | null) => void;
+  clearNotification: () => void;
 }
 
 const VideoCallRealtimeContext = createContext<VideoCallRealtimeContextValue | undefined>(undefined);
@@ -27,7 +28,7 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const notifiedCallIdRef = useRef<string | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
-  const notificationRef = useRef<string | null>(null);
+  const notificationRef = useRef<Map<string, string>>(new Map());
 
   const vapidPublicKey = (import.meta as any)?.env?.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
@@ -184,9 +185,10 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
           if (newCall.status === 'active') {
             setActiveCallState(newCall);
             if (notifiedCallIdRef.current !== newCall.id && newCall.created_by !== currentUserIdRef.current) {
-              if (notificationRef.current) {
-                removeNotification(notificationRef.current);
-                notificationRef.current = null;
+              const existing = notificationRef.current.get(newCall.id);
+              if (existing) {
+                removeNotification(existing);
+                notificationRef.current.delete(newCall.id);
               }
               const id = addNotification({
                 type: 'info',
@@ -205,7 +207,7 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
                   },
                 ],
               });
-              notificationRef.current = id;
+              notificationRef.current.set(newCall.id, id);
             }
             setNotifiedCallId(newCall.id);
           } else if (newCall.status === 'ended') {
@@ -213,9 +215,10 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
             if (notifiedCallIdRef.current === newCall.id) {
               setNotifiedCallId(null);
             }
-            if (notificationRef.current) {
-              removeNotification(notificationRef.current);
-              notificationRef.current = null;
+            const existing = notificationRef.current.get(newCall.id);
+            if (existing) {
+              removeNotification(existing);
+              notificationRef.current.delete(newCall.id);
             }
           }
         }
@@ -224,10 +227,11 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
 
     return () => {
       supabase.removeChannel(channel);
-      if (notificationRef.current) {
-        removeNotification(notificationRef.current);
-        notificationRef.current = null;
-      }
+      notificationRef.current.forEach((notificationId) => {
+        removeNotification(notificationId);
+      });
+      notificationRef.current.clear();
+      notifiedCallIdRef.current = null;
     };
   }, [fetchLatestCall, addNotification, removeNotification]);
 
@@ -235,8 +239,14 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
     setActiveCallState(call);
   }, []);
 
+  const clearNotification = useCallback(() => {
+    notificationRef.current.forEach((notificationId) => removeNotification(notificationId));
+    notificationRef.current.clear();
+    notifiedCallIdRef.current = null;
+  }, [removeNotification]);
+
   return (
-    <VideoCallRealtimeContext.Provider value={{ activeCall, setActiveCall }}>
+    <VideoCallRealtimeContext.Provider value={{ activeCall, setActiveCall, clearNotification }}>
       {children}
     </VideoCallRealtimeContext.Provider>
   );
@@ -244,8 +254,8 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
 
 export function useVideoCallRealtime() {
   const context = useContext(VideoCallRealtimeContext);
-  if (!context) {
-    throw new Error('useVideoCallRealtime must be used within VideoCallRealtimeProvider');
+  if (context === undefined) {
+    throw new Error('useVideoCallRealtime must be used within a VideoCallRealtimeProvider');
   }
   return context;
 }
