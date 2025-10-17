@@ -8,6 +8,7 @@ import { Users, TrendingUp, DollarSign, Target, Plus, Phone, Mail, Calendar, Use
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ClientManagement } from '@/components/crm/ClientManagement';
+import { TaskDialog } from '@/components/tasks/TaskDialog';
 
 interface Deal {
   id: string;
@@ -165,10 +166,14 @@ export default function CRM() {
           </h1>
           <p className="text-muted-foreground mt-1">Клиенты, сделки и воронка продаж</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Новая сделка
-        </Button>
+        <TaskDialog
+          trigger={
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Новая задача
+            </Button>
+          }
+        />
       </div>
 
       {/* Метрики */}
