@@ -38,7 +38,8 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isLoadingClients, setIsLoadingClients] = useState(false);
+  const [isSavingClient, setIsSavingClient] = useState(false);
   const { toast } = useToast();
 
   // Форма нового/редактируемого клиента
@@ -63,7 +64,7 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
   }, [clients, searchTerm, statusFilter]);
 
   const loadClients = async () => {
-    setLoading(true);
+    setIsLoadingClients(true);
     try {
       const { data, error } = await (supabase as any)
         .from('clients')
@@ -81,7 +82,7 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
         variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      setIsLoadingClients(false);
     }
   };
 
@@ -152,7 +153,7 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
       return;
     }
 
-    setLoading(true);
+    setIsSavingClient(true);
     try {
       if (isEditing && selectedClient) {
         // Обновление клиента
@@ -222,12 +223,12 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
         variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      setIsSavingClient(false);
     }
   };
 
   const handleDelete = async (clientId: string) => {
-    setLoading(true);
+    setIsLoadingClients(true);
     try {
       const { error } = await (supabase as any)
         .from('clients')
@@ -252,7 +253,7 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
         variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      setIsLoadingClients(false);
     }
   };
 
@@ -504,8 +505,8 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="flex-1">
                 Отмена
               </Button>
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? 'Сохранение...' : (isEditing ? 'Сохранить' : 'Создать')}
+              <Button type="submit" disabled={isSavingClient} className="flex-1">
+                {isSavingClient ? 'Сохранение...' : (isEditing ? 'Сохранить' : 'Создать')}
               </Button>
             </div>
           </form>
