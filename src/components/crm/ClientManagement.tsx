@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Users, Plus, Edit, Trash2, Search, Phone, Mail, Building, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -411,11 +411,14 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
 
       {/* Диалог создания/редактирования клиента */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" aria-describedby="client-dialog-description">
           <DialogHeader>
             <DialogTitle>
               {isEditing ? 'Редактировать клиента' : 'Новый клиент'}
             </DialogTitle>
+            <DialogDescription id="client-dialog-description">
+              Заполните обязательные поля перед сохранением. Название клиента требуется.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
