@@ -137,8 +137,8 @@ export function JitsiVideoCall({ roomName, roomUrl: initialRoomUrl, title, autoJ
       if (error) {
         console.error('Error ending quick call:', error);
       }
-      setRealtimeActive(null);
     }
+    setRealtimeActive(null);
     onLeave?.();
     toast({ title: 'Звонок завершён', description: 'Вы покинули видеоконференцию' });
   };
