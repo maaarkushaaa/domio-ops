@@ -234,6 +234,30 @@ export default function CRM() {
 
     setIsSavingDeal(true);
     try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        throw authError;
+      }
+
+      if (!user?.id) {
+        throw new Error('User is not authenticated');
+      }
+
+      const ownerId = newDealData.ownerId || user.id;
+
+      if (ownerId !== user.id) {
+        toast({
+          title: 'Ошибка',
+          description: 'Сделку можно назначить только на себя из-за ограничений доступа.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const { error } = await (supabase as any)
         .from('deals')
         .insert({
@@ -243,7 +267,7 @@ export default function CRM() {
           status: newDealData.status,
           client_id: newDealData.clientId,
           stage_id: newDealData.stageId,
-          owner_id: newDealData.ownerId || null,
+          owner_id: ownerId,
           expected_close_date: newDealData.expectedCloseDate || null,
           description: newDealData.description || null
         });
