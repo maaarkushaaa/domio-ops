@@ -36,6 +36,7 @@ export default function CRM() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [stages, setStages] = useState<SalesStage[]>([]);
   const [draggedDeal, setDraggedDeal] = useState<Deal | null>(null);
+  const [isDealDialogOpen, setDealDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -159,21 +160,29 @@ export default function CRM() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
             <Target className="h-8 w-8 text-primary" />
-            CRM - Управление продажами
-          </h1>
-          <p className="text-muted-foreground mt-1">Клиенты, сделки и воронка продаж</p>
+            <div>
+              <h1 className="text-3xl font-bold">CRM - Управление продажами</h1>
+              <p className="text-muted-foreground">Клиенты, сделки и воронка продаж</p>
+            </div>
+          </div>
         </div>
-        <TaskDialog
-          trigger={
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Новая задача
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setDealDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Новая сделка
+          </Button>
+          <TaskDialog
+            trigger={
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Новая задача
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       {/* Метрики */}
