@@ -23,6 +23,7 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
   const { addNotification } = useNotifications();
   const [notifiedCallId, setNotifiedCallId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const notifiedCallIdRef = useRef<string | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
 
@@ -43,6 +44,43 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
   useEffect(() => {
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
+
+  useEffect(() => {
+    if (!('Notification' in window)) return;
+
+    const permission = Notification.permission;
+    setNotificationsEnabled(permission === 'granted');
+
+    if (permission === 'default') {
+      Notification.requestPermission().then(result => {
+        const granted = result === 'granted';
+        setNotificationsEnabled(granted);
+        if (granted && 'serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistration().then(registration => {
+            if (!registration) {
+              navigator.serviceWorker.register('/service-worker.js').catch(error => {
+                console.error('Service worker registration failed after permission grant:', error);
+              });
+            }
+          }).catch(error => {
+            console.error('Service worker getRegistration failed:', error);
+          });
+        }
+      }).catch(error => {
+        console.error('Notification permission request failed:', error);
+      });
+    } else if (permission === 'granted' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(registration => {
+        if (!registration) {
+          navigator.serviceWorker.register('/service-worker.js').catch(error => {
+            console.error('Service worker registration failed after existing permission:', error);
+          });
+        }
+      }).catch(error => {
+        console.error('Service worker getRegistration failed:', error);
+      });
+    }
+  }, []);
 
   const fetchLatestCall = useCallback(async () => {
     const { data, error } = await (supabase as any)

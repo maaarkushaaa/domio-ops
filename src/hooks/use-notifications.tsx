@@ -159,20 +159,42 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     // Показываем desktop notification
     if (settings.desktop && 'Notification' in window) {
-      if (Notification.permission === 'granted') {
-        new Notification(newNotification.title, {
-          body: newNotification.message,
-          icon: '/favicon.ico',
-          tag: newNotification.id,
-        });
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
+      const showBrowserNotification = () => {
+        if (Notification.permission === 'granted') {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+              registration.showNotification(newNotification.title, {
+                body: newNotification.message,
+                icon: '/favicon.ico',
+                tag: newNotification.id,
+                data: {
+                  url: window.location.href,
+                },
+              });
+            }).catch(error => {
+              console.error('Service worker notification fallback:', error);
+              new Notification(newNotification.title, {
+                body: newNotification.message,
+                icon: '/favicon.ico',
+                tag: newNotification.id,
+              });
+            });
+          } else {
             new Notification(newNotification.title, {
               body: newNotification.message,
               icon: '/favicon.ico',
               tag: newNotification.id,
             });
+          }
+        }
+      };
+
+      if (Notification.permission === 'granted') {
+        showBrowserNotification();
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            showBrowserNotification();
           }
         });
       }

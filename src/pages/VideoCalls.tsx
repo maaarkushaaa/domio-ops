@@ -30,7 +30,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useSearchParams } from "react-router-dom";
-import { useVideoCallRealtime } from '@/providers/VideoCallRealtimeProvider';
+import { useVideoCallRealtime, ActiveQuickCall } from '@/providers/VideoCallRealtimeProvider';
 
 interface Meeting {
   id: string;
@@ -57,6 +57,7 @@ export default function VideoCalls() {
   });
   const [quickCallAutoJoin, setQuickCallAutoJoin] = useState(false);
   const [pendingQuickRoom, setPendingQuickRoom] = useState<string | null>(null);
+  const [pendingQuickData, setPendingQuickData] = useState<ActiveQuickCall | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeCall: realtimeQuickCall, setActiveCall: setRealtimeActiveCall } = useVideoCallRealtime();
 
@@ -79,10 +80,54 @@ export default function VideoCalls() {
   useEffect(() => {
     const roomParam = searchParams.get('room');
     const autoJoinParam = searchParams.get('autoJoin');
-    if (roomParam && autoJoinParam === '1') {
+    if (roomParam) {
       setPendingQuickRoom(roomParam);
+      setActiveCall(roomParam);
+      setQuickCallAutoJoin(autoJoinParam === '1');
+    } else {
+      setPendingQuickRoom(null);
+      setQuickCallAutoJoin(false);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!pendingQuickRoom) {
+      setPendingQuickData(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchQuickCall = async () => {
+      const { data, error } = await (supabase as any)
+        .from('video_quick_calls')
+        .select('*')
+        .eq('room_name', pendingQuickRoom)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (isCancelled) return;
+
+      if (error) {
+        console.error('Error loading quick call by room:', error);
+        setPendingQuickData(null);
+        return;
+      }
+
+      if (data) {
+        setPendingQuickData(data as ActiveQuickCall);
+        setRealtimeActiveCall(data as ActiveQuickCall);
+      } else {
+        setPendingQuickData(null);
+      }
+    };
+
+    fetchQuickCall();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [pendingQuickRoom, setRealtimeActiveCall]);
 
   useEffect(() => {
     if (!pendingQuickRoom) return;
@@ -98,7 +143,10 @@ export default function VideoCalls() {
 
   useEffect(() => {
     if (!realtimeQuickCall) {
-      if (activeCall && activeCall === pendingQuickRoom) {
+      if (activeCall && pendingQuickRoom && activeCall === pendingQuickRoom) {
+        return;
+      }
+      if (!pendingQuickRoom) {
         setActiveCall(null);
       }
       return;
@@ -244,34 +292,38 @@ export default function VideoCalls() {
 
   if (activeCall) {
     const activeMeeting = meetings.find(m => m.room_name === activeCall);
-    const activeQuick = realtimeQuickCall && realtimeQuickCall.room_name === activeCall ? realtimeQuickCall : null;
+    const activeQuickSource = realtimeQuickCall && realtimeQuickCall.room_name === activeCall
+      ? realtimeQuickCall
+      : (pendingQuickData && pendingQuickData.room_name === activeCall ? pendingQuickData : null);
     return (
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
               <Video className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-              {activeMeeting?.title || activeQuick?.title || 'Видеозвонок'}
+              {activeMeeting?.title || activeQuickSource?.title || 'Видеозвонок'}
             </h1>
-            {(activeMeeting?.description || activeQuick?.room_name) && (
+            {(activeMeeting?.description || activeQuickSource?.room_name) && (
               <p className="text-sm text-muted-foreground mt-1">
-                {activeMeeting?.description || `Комната: ${activeQuick?.room_name}`}
+                {activeMeeting?.description || `Комната: ${activeQuickSource?.room_name}`}
               </p>
             )}
           </div>
         </div>
 
         <JitsiVideoCall 
-          roomName={activeQuick?.room_name || activeCall}
-          roomUrl={activeQuick?.room_url}
-          title={activeMeeting?.title || activeQuick?.title}
-          autoJoin={quickCallAutoJoin && !!activeQuick}
+          roomName={activeQuickSource?.room_name || activeCall}
+          roomUrl={activeQuickSource?.room_url}
+          title={activeMeeting?.title || activeQuickSource?.title}
+          autoJoin={quickCallAutoJoin && !!activeQuickSource}
           onLeave={() => {
             if (activeMeeting) {
               endMeeting(activeMeeting.id);
             } else {
               setActiveCall(null);
               setQuickCallAutoJoin(false);
+              setPendingQuickRoom(null);
+              setPendingQuickData(null);
             }
           }}
         />
@@ -437,18 +489,21 @@ export default function VideoCalls() {
 
         <TabsContent value="quick" className="space-y-4">
           <JitsiVideoCall
-            roomName={realtimeQuickCall?.room_name}
-            roomUrl={realtimeQuickCall?.room_url}
-            title={realtimeQuickCall?.title}
-            autoJoin={quickCallAutoJoin && !!realtimeQuickCall}
+            roomName={realtimeQuickCall?.room_name || pendingQuickData?.room_name}
+            roomUrl={realtimeQuickCall?.room_url || pendingQuickData?.room_url}
+            title={realtimeQuickCall?.title || pendingQuickData?.title}
+            autoJoin={quickCallAutoJoin && (!!realtimeQuickCall || !!pendingQuickData)}
             onJoin={(room) => {
               setActiveCall(room);
               setQuickCallAutoJoin(false);
+              setPendingQuickRoom(room);
             }}
             onLeave={() => {
               setActiveCall(null);
               setQuickCallAutoJoin(false);
               setRealtimeActiveCall(null);
+              setPendingQuickRoom(null);
+              setPendingQuickData(null);
             }}
           />
         </TabsContent>

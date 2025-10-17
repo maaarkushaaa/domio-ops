@@ -5,15 +5,10 @@ import "./index.css";
 // Apply dark theme by default
 document.documentElement.classList.add('dark');
 
-// SERVICE WORKER DISABLED TO FIX DEMO USER CACHING ISSUE
-// Unregister any existing service workers
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      registrations.forEach(registration => {
-        console.log('🚫 Unregistering existing Service Worker:', registration.scope);
-        registration.unregister();
-      });
+    navigator.serviceWorker.register('/service-worker.js').catch(error => {
+      console.error('Service worker registration failed:', error);
     });
   });
 }
