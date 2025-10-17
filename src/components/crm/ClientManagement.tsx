@@ -410,14 +410,11 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
 
       {/* Диалог создания/редактирования клиента */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md" aria-describedby="client-dialog-description">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {isEditing ? 'Редактировать клиента' : 'Новый клиент'}
             </DialogTitle>
-            <DialogDescription id="client-dialog-description">
-              Заполните обязательные поля перед сохранением. Название клиента требуется.
-            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
