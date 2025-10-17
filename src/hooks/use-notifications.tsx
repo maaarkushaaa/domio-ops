@@ -71,6 +71,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('notification-settings', JSON.stringify(settings));
   }, [settings]);
 
+  const removeNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
   // Звуки для разных типов уведомлений
   const playSound = useCallback((type: Notification['type']) => {
     if (!settings.sounds) return;
@@ -128,6 +132,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [settings.sounds, settings.soundType]);
 
   // Добавление уведомления
+  const createNotificationId = useCallback(() => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return Math.random().toString(36).slice(2, 11);
+  }, []);
+
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp'>) => {
     console.log('addNotification called with:', notification);
     console.log('Current settings:', settings);
@@ -139,7 +150,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     const newNotification: Notification = {
       ...notification,
-      id: Math.random().toString(36).substr(2, 9),
+      id: createNotificationId(),
       timestamp: new Date(),
     };
 
@@ -208,12 +219,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
 
     return newNotification.id;
-  }, [settings, playSound, removeNotification]);
-
-  // Удаление уведомления
-  const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }, []);
+  }, [settings, playSound, removeNotification, createNotificationId]);
 
   // Очистка всех уведомлений
   const clearAllNotifications = useCallback(() => {
