@@ -243,6 +243,8 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
     notificationRef.current.forEach((notificationId) => removeNotification(notificationId));
     notificationRef.current.clear();
     notifiedCallIdRef.current = null;
+    setNotifiedCallId(null);
+    setActiveCallState(null);
   }, [removeNotification]);
 
   return (
