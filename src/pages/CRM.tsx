@@ -96,8 +96,24 @@ export default function CRM() {
       (supabase as any).from('profiles').select('id, full_name').order('full_name')
     ]);
 
-    setClientsOptions((clientsData || []).map((client: any) => ({ id: client.id, name: client.name, company: client.company || undefined })));
-    setOwnersOptions((ownersData || []).map((owner: any) => ({ id: owner.id, name: owner.full_name || 'Без имени' })));
+    setClientsOptions(
+      (clientsData || [])
+        .filter((client: any) => Boolean(client?.id))
+        .map((client: any) => ({
+          id: String(client.id),
+          name: client.name,
+          company: client.company || undefined
+        }))
+    );
+
+    setOwnersOptions(
+      (ownersData || [])
+        .filter((owner: any) => Boolean(owner?.id))
+        .map((owner: any) => ({
+          id: String(owner.id),
+          name: owner.full_name || 'Без имени'
+        }))
+    );
   };
 
   const loadDeals = async () => {
@@ -187,19 +203,27 @@ export default function CRM() {
   const weightedValue = deals.reduce((sum, deal) => sum + (deal.amount * deal.probability / 100), 0);
   const avgDealSize = deals.length > 0 ? totalDealsValue / deals.length : 0;
 
+  const firstStageId = stages.find((stage) => stage?.id)?.id || '';
+
   const resetDealForm = () => {
     setNewDealData({
       title: '',
       amount: '',
       probability: 50,
       clientId: '',
-      stageId: stages[0]?.id || '',
+      stageId: firstStageId,
       ownerId: '',
       expectedCloseDate: '',
       description: '',
       status: 'open'
     });
   };
+
+  useEffect(() => {
+    if (!newDealData.stageId && firstStageId) {
+      setNewDealData((prev) => ({ ...prev, stageId: firstStageId }));
+    }
+  }, [firstStageId]);
 
   const handleCreateDeal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -535,11 +559,13 @@ export default function CRM() {
                     <SelectValue placeholder="Выберите стадию" />
                   </SelectTrigger>
                   <SelectContent>
-                    {stages.map((stage) => (
-                      <SelectItem key={stage.id} value={stage.id}>
-                        {stage.name}
-                      </SelectItem>
-                    ))}
+                    {stages
+                      .filter((stage) => Boolean(stage?.id))
+                      .map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          {stage.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -559,14 +585,16 @@ export default function CRM() {
               <div className="space-y-2">
                 <Label>Ответственный</Label>
                 <Select
-                  value={newDealData.ownerId}
-                  onValueChange={(value) => setNewDealData((prev) => ({ ...prev, ownerId: value }))}
+                  value={newDealData.ownerId || 'none'}
+                  onValueChange={(value) =>
+                    setNewDealData((prev) => ({ ...prev, ownerId: value === 'none' ? '' : value }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите сотрудника" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Без ответственного</SelectItem>
+                    <SelectItem value="none">Без ответственного</SelectItem>
                     {ownersOptions.map((owner) => (
                       <SelectItem key={owner.id} value={owner.id}>
                         {owner.name}
