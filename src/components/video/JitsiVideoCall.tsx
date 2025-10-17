@@ -2,64 +2,120 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Video,
-  VideoOff,
-  Mic,
-  MicOff,
-  PhoneOff,
-  Copy,
-  Users,
-} from 'lucide-react';
+import { Video, PhoneOff, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useVideoCallRealtime } from '@/providers/VideoCallRealtimeProvider';
+
+const buildJitsiUrl = (room: string) =>
+  `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
 
 interface VideoCallProps {
   roomName?: string;
+  roomUrl?: string;
+  title?: string;
+  autoJoin?: boolean;
+  onJoin?: (room: string, payload: { url: string; id?: string; title: string }) => void;
   onLeave?: () => void;
 }
 
-export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
+export function JitsiVideoCall({ roomName, roomUrl: initialRoomUrl, title, autoJoin = false, onJoin, onLeave }: VideoCallProps) {
   const { toast } = useToast();
+  const { setActiveCall: setRealtimeActive } = useVideoCallRealtime();
   const [inCall, setInCall] = useState(false);
-  const [roomUrl, setRoomUrl] = useState('');
+  const [roomUrl, setRoomUrl] = useState(initialRoomUrl || '');
   const [inputRoomName, setInputRoomName] = useState(roomName || '');
+  const [broadcastId, setBroadcastId] = useState<string | null>(null);
+  const [isBroadcastOwner, setIsBroadcastOwner] = useState(false);
+  const [joining, setJoining] = useState(false);
 
-  // Создание комнаты
-  const createRoom = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({ title: 'Ошибка', description: 'Необходимо авторизоваться', variant: 'destructive' });
-        return null;
-      }
-
-      // Генерируем уникальное имя комнаты
-      const room = inputRoomName || `domio-${Date.now()}`;
-      const url = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
-
-      setRoomUrl(url);
-      return room;
-    } catch (error) {
-      console.error('Error creating room:', error);
-      toast({ title: 'Ошибка', description: 'Не удалось создать комнату', variant: 'destructive' });
-      return null;
+  const ensureRoom = () => {
+    let room = roomName || inputRoomName;
+    if (!room) {
+      room = `domio-${Date.now()}`;
+      setInputRoomName(room);
     }
+    const url = buildJitsiUrl(room);
+    setRoomUrl(url);
+    return { room, url };
   };
 
-  // Присоединиться к звонку
-  const joinCall = async () => {
+  const fetchExistingBroadcast = async (room: string) => {
+    const { data, error } = await (supabase as any)
+      .from('video_quick_calls')
+      .select('*')
+      .eq('room_name', room)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching existing quick call:', error);
+      return null;
+    }
+    return data;
+  };
+
+  const joinCall = async (options?: { auto?: boolean }) => {
+    if (joining || inCall) return;
+    setJoining(true);
     try {
-      let room = inputRoomName;
-      if (!room) {
-        room = await createRoom();
-        if (!room) return;
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        toast({ title: 'Ошибка', description: 'Необходимо авторизоваться', variant: 'destructive' });
+        return;
+      }
+      const { room, url } = ensureRoom();
+      let createdId: string | null = null;
+      let createdTitle = title || inputRoomName || 'Быстрый звонок';
+
+      if (!roomName) {
+        const insertPayload = {
+          title: createdTitle,
+          room_name: room,
+          room_url: url,
+          created_by: userData.user.id,
+        };
+
+        const { data, error } = await (supabase as any)
+          .from('video_quick_calls')
+          .insert(insertPayload)
+          .select()
+          .single();
+
+        if (error && error.code !== '23505') {
+          throw error;
+        }
+
+        if (error && error.code === '23505') {
+          const existing = await fetchExistingBroadcast(room);
+          if (existing) {
+            createdId = existing.id;
+            createdTitle = existing.title;
+            setRealtimeActive(existing);
+            setIsBroadcastOwner(existing.created_by === userData.user.id);
+          }
+        } else if (data) {
+          createdId = data.id;
+          createdTitle = data.title;
+          setRealtimeActive(data);
+          setIsBroadcastOwner(true);
+        }
+
+        setBroadcastId(createdId);
+      } else {
+        const existing = await fetchExistingBroadcast(room);
+        if (existing) {
+          createdId = existing.id;
+          createdTitle = existing.title;
+          setRealtimeActive(existing);
+        }
+        setBroadcastId(createdId);
+        setIsBroadcastOwner(false);
       }
 
       setInCall(true);
       toast({ title: 'Подключено', description: 'Видеоконференция запущена' });
-
+      onJoin?.(room, { url, id: createdId ?? undefined, title: createdTitle });
     } catch (error) {
       console.error('Error joining call:', error);
       toast({
@@ -68,11 +124,21 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
         variant: 'destructive'
       });
     }
+    setJoining(false);
   };
 
-  // Покинуть звонок
-  const leaveCall = () => {
+  const leaveCall = async () => {
     setInCall(false);
+    if (isBroadcastOwner && broadcastId) {
+      const { error } = await (supabase as any)
+        .from('video_quick_calls')
+        .update({ status: 'ended', ended_at: new Date().toISOString() })
+        .eq('id', broadcastId);
+      if (error) {
+        console.error('Error ending quick call:', error);
+      }
+      setRealtimeActive(null);
+    }
     onLeave?.();
     toast({ title: 'Звонок завершён', description: 'Вы покинули видеоконференцию' });
   };
@@ -85,13 +151,32 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
     }
   };
 
-  // Генерируем ссылку при изменении inputRoomName
   useEffect(() => {
-    if (inputRoomName) {
-      const url = `https://meet.jit.si/${inputRoomName}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
-      setRoomUrl(url);
+    if (initialRoomUrl) {
+      setRoomUrl(initialRoomUrl);
     }
-  }, [inputRoomName]);
+  }, [initialRoomUrl]);
+
+  useEffect(() => {
+    if (roomName) {
+      setInputRoomName(roomName);
+      if (!initialRoomUrl) {
+        setRoomUrl(buildJitsiUrl(roomName));
+      }
+    }
+  }, [roomName, initialRoomUrl]);
+
+  useEffect(() => {
+    if (!roomName && inputRoomName) {
+      setRoomUrl(buildJitsiUrl(inputRoomName));
+    }
+  }, [inputRoomName, roomName]);
+
+  useEffect(() => {
+    if (autoJoin && roomName) {
+      joinCall({ auto: true });
+    }
+  }, [autoJoin, roomName]);
 
   if (inCall) {
     return (
@@ -155,7 +240,7 @@ export function JitsiVideoCall({ roomName, onLeave }: VideoCallProps) {
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={joinCall} className="flex-1">
+          <Button onClick={() => joinCall()} className="flex-1" disabled={joining}>
             <Video className="h-4 w-4 mr-2" />
             Создать и присоединиться
           </Button>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, User, LogOut, Command } from "lucide-react";
+import { Search, User, LogOut, Command, Video } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -23,11 +23,23 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationPopover } from "@/components/notifications/NotificationPopover";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { SmartSearch } from "@/components/modern/SmartSearch";
+import { useVideoCallRealtime } from "@/providers/VideoCallRealtimeProvider";
+import { useNavigate } from "react-router-dom";
 
 export function AppHeader() {
   const { user, signOut } = useApp();
   const userInitials = user?.name?.charAt(0).toUpperCase() || user?.email?.substring(0, 2).toUpperCase() || "U";
   const [searchOpen, setSearchOpen] = useState(false);
+  const { activeCall } = useVideoCallRealtime();
+  const navigate = useNavigate();
+
+  const handleJoinQuickCall = () => {
+    if (!activeCall) return;
+    const url = new URL(window.location.origin + "/video-calls");
+    url.searchParams.set("room", activeCall.room_name);
+    url.searchParams.set("autoJoin", "1");
+    navigate({ pathname: "/video-calls", search: url.search });
+  };
 
   return (
     <>
@@ -49,6 +61,16 @@ export function AppHeader() {
       </div>
       
       <div className="flex items-center gap-2">
+        {activeCall && (
+          <Button
+            variant="secondary"
+            className="flex items-center gap-2"
+            onClick={handleJoinQuickCall}
+          >
+            <Video className="h-4 w-4" />
+            {activeCall.title}
+          </Button>
+        )}
         <ThemeToggle />
         <div data-tour="notifications">
           <NotificationDropdown />

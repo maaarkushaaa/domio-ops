@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useSearchParams } from "react-router-dom";
+import { useVideoCallRealtime } from '@/providers/VideoCallRealtimeProvider';
 
 interface Meeting {
   id: string;
@@ -53,6 +55,10 @@ export default function VideoCalls() {
     scheduled_at: '',
     duration_minutes: 60,
   });
+  const [quickCallAutoJoin, setQuickCallAutoJoin] = useState(false);
+  const [pendingQuickRoom, setPendingQuickRoom] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { activeCall: realtimeQuickCall, setActiveCall: setRealtimeActiveCall } = useVideoCallRealtime();
 
   useEffect(() => {
     loadMeetings();
@@ -69,6 +75,39 @@ export default function VideoCalls() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    const roomParam = searchParams.get('room');
+    const autoJoinParam = searchParams.get('autoJoin');
+    if (roomParam && autoJoinParam === '1') {
+      setPendingQuickRoom(roomParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!pendingQuickRoom) return;
+    if (realtimeQuickCall && realtimeQuickCall.room_name === pendingQuickRoom) {
+      setActiveCall(realtimeQuickCall.room_name);
+      setQuickCallAutoJoin(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('autoJoin');
+      setSearchParams(next, { replace: true });
+      setPendingQuickRoom(null);
+    }
+  }, [pendingQuickRoom, realtimeQuickCall, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!realtimeQuickCall) {
+      if (activeCall && activeCall === pendingQuickRoom) {
+        setActiveCall(null);
+      }
+      return;
+    }
+
+    if (!pendingQuickRoom && realtimeQuickCall && activeCall === null) {
+      setActiveCall(realtimeQuickCall.room_name);
+    }
+  }, [realtimeQuickCall, pendingQuickRoom, activeCall]);
 
   const loadMeetings = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -205,29 +244,34 @@ export default function VideoCalls() {
 
   if (activeCall) {
     const activeMeeting = meetings.find(m => m.room_name === activeCall);
+    const activeQuick = realtimeQuickCall && realtimeQuickCall.room_name === activeCall ? realtimeQuickCall : null;
     return (
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
               <Video className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-              {activeMeeting?.title || 'Видеозвонок'}
+              {activeMeeting?.title || activeQuick?.title || 'Видеозвонок'}
             </h1>
-            {activeMeeting?.description && (
+            {(activeMeeting?.description || activeQuick?.room_name) && (
               <p className="text-sm text-muted-foreground mt-1">
-                {activeMeeting.description}
+                {activeMeeting?.description || `Комната: ${activeQuick?.room_name}`}
               </p>
             )}
           </div>
         </div>
 
         <JitsiVideoCall 
-          roomName={activeCall}
+          roomName={activeQuick?.room_name || activeCall}
+          roomUrl={activeQuick?.room_url}
+          title={activeMeeting?.title || activeQuick?.title}
+          autoJoin={quickCallAutoJoin && !!activeQuick}
           onLeave={() => {
             if (activeMeeting) {
               endMeeting(activeMeeting.id);
             } else {
               setActiveCall(null);
+              setQuickCallAutoJoin(false);
             }
           }}
         />
@@ -392,7 +436,21 @@ export default function VideoCalls() {
         </TabsContent>
 
         <TabsContent value="quick" className="space-y-4">
-          <JitsiVideoCall />
+          <JitsiVideoCall
+            roomName={realtimeQuickCall?.room_name}
+            roomUrl={realtimeQuickCall?.room_url}
+            title={realtimeQuickCall?.title}
+            autoJoin={quickCallAutoJoin && !!realtimeQuickCall}
+            onJoin={(room) => {
+              setActiveCall(room);
+              setQuickCallAutoJoin(false);
+            }}
+            onLeave={() => {
+              setActiveCall(null);
+              setQuickCallAutoJoin(false);
+              setRealtimeActiveCall(null);
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">

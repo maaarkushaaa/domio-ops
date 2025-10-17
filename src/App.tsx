@@ -14,6 +14,7 @@ import { TaskHotkeys } from "./components/common/TaskHotkeys";
 import { NotificationContainer } from "./components/ui/NotificationContainer";
 import { NotificationIntegration } from "./components/NotificationIntegration";
 import { FinanceRealtimeProvider } from "./providers/FinanceRealtimeProvider";
+import { VideoCallRealtimeProvider } from "./providers/VideoCallRealtimeProvider";
 import { NotificationSettingsPage } from "./pages/NotificationSettings";
 import { useAppNotifications } from "./hooks/use-app-notifications";
 import Dashboard from "./pages/Dashboard";
@@ -83,18 +84,19 @@ const App = () => {
         <ThemeProvider defaultTheme="light">
         <AppProvider>
           <NotificationProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <NotificationContainer />
-              <NotificationIntegration />
-              <AppNotifications />
-              <BrowserRouter>
-              <CommandPalette />
-              <GlobalSearch />
-              <KeyboardShortcuts />
-              <TaskHotkeys />
-              <Routes>
+            <VideoCallRealtimeProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <NotificationContainer />
+                <NotificationIntegration />
+                <AppNotifications />
+                <BrowserRouter>
+                  <CommandPalette />
+                  <GlobalSearch />
+                  <KeyboardShortcuts />
+                  <TaskHotkeys />
+                  <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/" element={
                   <ProtectedRoute>
@@ -252,13 +254,6 @@ const App = () => {
                     </AppLayout>
                   </ProtectedRoute>
                 } />
-                <Route path="/notifications-test" element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <NotificationTestPage />
-                    </AppLayout>
-                  </ProtectedRoute>
-                } />
                 <Route path="/notification-settings" element={
                   <ProtectedRoute>
                     <AppLayout>
@@ -270,8 +265,9 @@ const App = () => {
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
-          </NotificationProvider>
-        </AppProvider>
+        </VideoCallRealtimeProvider>
+      </NotificationProvider>
+    </AppProvider>
         </ThemeProvider>
       </FeatureFlagsProvider>
     </QueryClientProvider>
