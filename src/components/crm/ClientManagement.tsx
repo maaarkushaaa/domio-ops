@@ -185,6 +185,14 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
         ));
       } else {
         // Создание нового клиента
+        const {
+          data: { user }
+        } = await supabase.auth.getUser();
+
+        if (!user?.id) {
+          throw new Error('User is not authenticated');
+        }
+
         const { data, error } = await (supabase as any)
           .from('clients')
           .insert({
@@ -194,7 +202,8 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
             phone: formData.phone || null,
             status: formData.status,
             contact_person: formData.contact_person || null,
-            notes: formData.notes || null
+            notes: formData.notes || null,
+            user_id: user.id
           })
           .select()
           .single();
