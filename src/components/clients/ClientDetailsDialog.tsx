@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,34 +30,33 @@ export function ClientDetailsDialog({ client, trigger }: ClientDetailsDialogProp
     totalAmount: 0,
   });
 
-  const fetchStats = async () => {
-    setIsLoadingStats(true);
-    try {
-      const { data, error } = await (supabase as any)
-        .from('deals')
-        .select('amount')
-        .eq('client_id', client.id);
+  useEffect(() => {
+    const fetchStats = async () => {
+      setIsLoadingStats(true);
+      try {
+        const { data, error } = await (supabase as any)
+          .from('deals')
+          .select('amount')
+          .eq('client_id', client.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const totalDeals = data?.length ?? 0;
-      const totalAmount = (data ?? []).reduce((sum: number, deal: any) => sum + Number(deal.amount || 0), 0);
+        const totalDeals = data?.length ?? 0;
+        const totalAmount = (data ?? []).reduce((sum: number, deal: any) => sum + Number(deal.amount || 0), 0);
 
-      setDealsStats({ totalDeals, totalAmount });
-    } catch (error) {
-      console.error('Error loading client deals stats:', error);
-      setDealsStats({ totalDeals: 0, totalAmount: 0 });
-    } finally {
-      setIsLoadingStats(false);
-    }
-  };
+        setDealsStats({ totalDeals, totalAmount });
+      } catch (error) {
+        console.error('Error loading client deals stats:', error);
+        setDealsStats({ totalDeals: 0, totalAmount: 0 });
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (nextOpen) {
+    if (open) {
       fetchStats();
     }
-  };
+  }, [open, client.id]);
 
   const getStatusBadge = () => {
     switch (client.status) {
@@ -75,7 +74,7 @@ export function ClientDetailsDialog({ client, trigger }: ClientDetailsDialogProp
   const formattedAmount = `${dealsStats.totalAmount.toLocaleString('ru-RU')} ₽`;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || <Button>Открыть</Button>}
       </DialogTrigger>

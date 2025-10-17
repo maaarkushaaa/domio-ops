@@ -356,6 +356,24 @@ export default function CRM() {
     if (!dealToDelete) return;
     setIsDeletingDeal(true);
     try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+      if (!user?.id) throw new Error('User is not authenticated');
+
+      if (dealToDelete.owner_id && dealToDelete.owner_id !== user.id) {
+        toast({
+          title: 'Ошибка',
+          description: 'Можно удалять только свои сделки.',
+          variant: 'destructive',
+        });
+        setDealToDelete(null);
+        return;
+      }
+
       const { error } = await (supabase as any)
         .from('deals')
         .delete()
@@ -882,16 +900,27 @@ export default function CRM() {
                 </Card>
               </div>
 
-              {viewDeal.description && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Описание</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{viewDeal.description}</p>
-                  </CardContent>
-                </Card>
-              )}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Ответственный</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-muted-foreground">
+                    {viewDeal.owner?.full_name || '—'}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Описание</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {viewDeal.description?.trim() ? viewDeal.description : '—'}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           )}
         </DialogContent>
