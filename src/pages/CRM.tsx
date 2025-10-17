@@ -8,7 +8,12 @@ import { Users, TrendingUp, DollarSign, Target, Plus, Phone, Mail, Calendar, Use
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ClientManagement } from '@/components/crm/ClientManagement';
-import { TaskDialog } from '@/components/tasks/TaskDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Deal {
   id: string;
@@ -37,11 +42,26 @@ export default function CRM() {
   const [stages, setStages] = useState<SalesStage[]>([]);
   const [draggedDeal, setDraggedDeal] = useState<Deal | null>(null);
   const [isDealDialogOpen, setDealDialogOpen] = useState(false);
+  const [newDealData, setNewDealData] = useState({
+    title: '',
+    amount: '',
+    probability: 50,
+    clientId: '',
+    stageId: '',
+    ownerId: '',
+    expectedCloseDate: '',
+    description: '',
+    status: 'open'
+  });
+  const [isSavingDeal, setIsSavingDeal] = useState(false);
+  const [clientsOptions, setClientsOptions] = useState<Array<{ id: string; name: string; company?: string }>>([]);
+  const [ownersOptions, setOwnersOptions] = useState<Array<{ id: string; name: string }>>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     loadStages();
     loadDeals();
+    loadSupportLists();
 
     // Realtime подписка
     const dealsChannel = supabase
@@ -68,6 +88,16 @@ export default function CRM() {
       return;
     }
     setStages(data || []);
+  };
+
+  const loadSupportLists = async () => {
+    const [{ data: clientsData }, { data: ownersData }] = await Promise.all([
+      (supabase as any).from('clients').select('id, name, company').order('name'),
+      (supabase as any).from('profiles').select('id, full_name').order('full_name')
+    ]);
+
+    setClientsOptions((clientsData || []).map((client: any) => ({ id: client.id, name: client.name, company: client.company || undefined })));
+    setOwnersOptions((ownersData || []).map((owner: any) => ({ id: owner.id, name: owner.full_name || 'Без имени' })));
   };
 
   const loadDeals = async () => {
@@ -157,6 +187,57 @@ export default function CRM() {
   const weightedValue = deals.reduce((sum, deal) => sum + (deal.amount * deal.probability / 100), 0);
   const avgDealSize = deals.length > 0 ? totalDealsValue / deals.length : 0;
 
+  const resetDealForm = () => {
+    setNewDealData({
+      title: '',
+      amount: '',
+      probability: 50,
+      clientId: '',
+      stageId: stages[0]?.id || '',
+      ownerId: '',
+      expectedCloseDate: '',
+      description: '',
+      status: 'open'
+    });
+  };
+
+  const handleCreateDeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDealData.title.trim() || !newDealData.clientId || !newDealData.stageId || !newDealData.amount) {
+      toast({ title: 'Ошибка', description: 'Заполните обязательные поля: название, клиент, стадия, сумма', variant: 'destructive' });
+      return;
+    }
+
+    setIsSavingDeal(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('deals')
+        .insert({
+          title: newDealData.title.trim(),
+          amount: parseFloat(newDealData.amount),
+          probability: newDealData.probability,
+          status: newDealData.status,
+          client_id: newDealData.clientId,
+          stage_id: newDealData.stageId,
+          owner_id: newDealData.ownerId || null,
+          expected_close_date: newDealData.expectedCloseDate || null,
+          description: newDealData.description || null
+        });
+
+      if (error) throw error;
+
+      toast({ title: 'Сделка создана', description: 'Новая сделка успешно добавлена' });
+      setDealDialogOpen(false);
+      resetDealForm();
+      loadDeals();
+    } catch (err) {
+      console.error('Error creating deal:', err);
+      toast({ title: 'Ошибка', description: 'Не удалось создать сделку', variant: 'destructive' });
+    } finally {
+      setIsSavingDeal(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -170,18 +251,10 @@ export default function CRM() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setDealDialogOpen(true)}>
+          <Button onClick={() => { resetDealForm(); setDealDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             Новая сделка
           </Button>
-          <TaskDialog
-            trigger={
-              <Button variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Новая задача
-              </Button>
-            }
-          />
         </div>
       </div>
 
@@ -397,6 +470,163 @@ export default function CRM() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isDealDialogOpen} onOpenChange={setDealDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Новая сделка</DialogTitle>
+            <DialogDescription>Заполните данные сделки, чтобы добавить её в CRM.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateDeal} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="deal-title">Название *</Label>
+                <Input
+                  id="deal-title"
+                  value={newDealData.title}
+                  onChange={(e) => setNewDealData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Например, VIP поставка мебели"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="deal-amount">Сумма *</Label>
+                <Input
+                  id="deal-amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newDealData.amount}
+                  onChange={(e) => setNewDealData((prev) => ({ ...prev, amount: e.target.value }))}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Клиент *</Label>
+                <Select
+                  value={newDealData.clientId}
+                  onValueChange={(value) => setNewDealData((prev) => ({ ...prev, clientId: value }))}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите клиента" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientsOptions.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}{client.company ? ` • ${client.company}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Стадия *</Label>
+                <Select
+                  value={newDealData.stageId}
+                  onValueChange={(value) => setNewDealData((prev) => ({ ...prev, stageId: value }))}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите стадию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stages.map((stage) => (
+                      <SelectItem key={stage.id} value={stage.id}>
+                        {stage.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Вероятность (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={newDealData.probability}
+                  onChange={(e) => setNewDealData((prev) => ({ ...prev, probability: Math.min(100, Math.max(0, Number(e.target.value))) }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Ответственный</Label>
+                <Select
+                  value={newDealData.ownerId}
+                  onValueChange={(value) => setNewDealData((prev) => ({ ...prev, ownerId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите сотрудника" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Без ответственного</SelectItem>
+                    {ownersOptions.map((owner) => (
+                      <SelectItem key={owner.id} value={owner.id}>
+                        {owner.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="deal-date">Ожидаемая дата закрытия</Label>
+                <Input
+                  id="deal-date"
+                  type="date"
+                  value={newDealData.expectedCloseDate}
+                  onChange={(e) => setNewDealData((prev) => ({ ...prev, expectedCloseDate: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Статус</Label>
+                <Select
+                  value={newDealData.status}
+                  onValueChange={(value) => setNewDealData((prev) => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Открыта</SelectItem>
+                    <SelectItem value="won">Успешно закрыта</SelectItem>
+                    <SelectItem value="lost">Проиграна</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deal-description">Описание</Label>
+              <Textarea
+                id="deal-description"
+                value={newDealData.description}
+                onChange={(e) => setNewDealData((prev) => ({ ...prev, description: e.target.value }))}
+                rows={3}
+                placeholder="Дополнительные детали сделки"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setDealDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button type="submit" disabled={isSavingDeal}>
+                {isSavingDeal ? 'Сохранение...' : 'Сохранить сделку'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
