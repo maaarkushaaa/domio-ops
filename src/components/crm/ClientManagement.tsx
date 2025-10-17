@@ -370,7 +370,7 @@ export function ClientManagement({ clients: initialClients = [], onRefresh }: Cl
                       </p>
                     )}
 
-                    <div className="flex gap-2 pt-2 border-t">
+                    <div className="flex flex-wrap gap-2 pt-3 border-t">
                       <ClientDetailsDialog
                         client={client as any}
                         trigger={
