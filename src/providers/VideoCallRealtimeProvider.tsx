@@ -24,8 +24,59 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
   const [notifiedCallId, setNotifiedCallId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const notifiedCallIdRef = useRef<string | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
+
+  const vapidPublicKey = (import.meta as any)?.env?.VITE_VAPID_PUBLIC_KEY as string | undefined;
+
+  const base64ToUint8Array = useCallback((base64: string) => {
+    const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+    const base64Safe = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64Safe);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }, []);
+
+  const ensurePushSubscription = useCallback(async () => {
+    if (!notificationsEnabled) return;
+    if (!('serviceWorker' in navigator)) return;
+    if (!vapidPublicKey) {
+      console.warn('VITE_VAPID_PUBLIC_KEY is not configured');
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: base64ToUint8Array(vapidPublicKey),
+        });
+      }
+
+      if (!subscription) return;
+
+      const payload = {
+        subscription: subscription.toJSON(),
+        platform: navigator.userAgent,
+      };
+
+      await supabase.functions.invoke('webpush-save', {
+        body: payload,
+      });
+
+      setHasActiveSubscription(true);
+    } catch (error) {
+      console.error('Failed to ensure push subscription:', error);
+    }
+  }, [notificationsEnabled, vapidPublicKey, base64ToUint8Array]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -81,6 +132,12 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (!notificationsEnabled) return;
+    if (hasActiveSubscription) return;
+    ensurePushSubscription();
+  }, [notificationsEnabled, hasActiveSubscription, ensurePushSubscription]);
 
   const fetchLatestCall = useCallback(async () => {
     const { data, error } = await (supabase as any)

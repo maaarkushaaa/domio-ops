@@ -9,3 +9,6 @@ verify_jwt = false
 [functions.ai-assistant]
 verify_jwt = false
 import_map = "./import_map.json"
+
+[functions.webpush-save]
+verify_jwt = true

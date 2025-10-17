@@ -148,6 +148,8 @@ export default function VideoCalls() {
       }
       if (!pendingQuickRoom) {
         setActiveCall(null);
+        setQuickCallAutoJoin(false);
+        setPendingQuickData(null);
       }
       return;
     }
@@ -295,6 +297,14 @@ export default function VideoCalls() {
     const activeQuickSource = realtimeQuickCall && realtimeQuickCall.room_name === activeCall
       ? realtimeQuickCall
       : (pendingQuickData && pendingQuickData.room_name === activeCall ? pendingQuickData : null);
+    const shouldReset = !activeMeeting && !activeQuickSource;
+    if (shouldReset) {
+      setActiveCall(null);
+      setQuickCallAutoJoin(false);
+      setPendingQuickRoom(null);
+      setPendingQuickData(null);
+      return null;
+    }
     return (
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">

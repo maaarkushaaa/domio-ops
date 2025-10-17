@@ -1,0 +1,8 @@
+{
+  "tasks": {
+    "start": "deno run -A --watch main.ts"
+  },
+  "imports": {
+    "web-push": "npm:web-push@3.5.2"
+  }
+}
