@@ -353,7 +353,7 @@ export default function Admin() {
                     className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover-lift cursor-pointer transition-colors"
                     onClick={() => {
                       if (info.label === 'Задачи') window.location.href = '/tasks';
-                      if (info.label === 'Клиенты') window.location.href = '/clients';
+                      if (info.label === 'Клиенты') window.location.href = '/crm';
                       if (info.label === 'Поставщики') window.location.href = '/procurement';
                     }}
                   >

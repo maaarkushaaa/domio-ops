@@ -96,13 +96,6 @@ export function CommandPalette() {
       keywords: ['procurement', 'закупки', 'suppliers'],
     },
     {
-      id: 'nav-clients',
-      label: 'Перейти к Клиентам',
-      icon: <Users className="h-4 w-4" />,
-      action: () => navigate('/clients'),
-      keywords: ['clients', 'клиенты', 'crm'],
-    },
-    {
       id: 'nav-documents',
       label: 'Перейти к Документам',
       icon: <FileText className="h-4 w-4" />,

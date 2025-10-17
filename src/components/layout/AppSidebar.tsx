@@ -48,7 +48,6 @@ const menuItems = [
   { title: "Материалы", url: "/materials", icon: Package },
   { title: "Финансы", url: "/finance", icon: DollarSign },
   { title: "Закупки", url: "/procurement", icon: ShoppingCart },
-  { title: "Клиенты", url: "/clients", icon: Users },
   { title: "CRM", url: "/crm", icon: Users },
   { title: "Аналитика", url: "/analytics", icon: BarChart },
   { title: "Отчеты", url: "/reports", icon: FileBarChart },

@@ -1,4 +1,4 @@
-﻿import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,7 +23,6 @@ import Production from "./pages/Production";
 import Materials from "./pages/Materials";
 import Finance from "./pages/Finance";
 import Procurement from "./pages/Procurement";
-import Clients from "./pages/Clients";
 import Documents from "./pages/Documents";
 import Email from "./pages/Email";
 import Knowledge from "./pages/Knowledge";
@@ -159,13 +158,6 @@ const App = () => {
                   <ProtectedRoute>
                     <AppLayout>
                       <Procurement />
-                    </AppLayout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/clients" element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Clients />
                     </AppLayout>
                   </ProtectedRoute>
                 } />
