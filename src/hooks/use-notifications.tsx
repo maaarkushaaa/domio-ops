@@ -35,7 +35,7 @@ export interface NotificationSettings {
 interface NotificationContextType {
   notifications: Notification[];
   settings: NotificationSettings;
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => string;
   removeNotification: (id: string) => void;
   clearAllNotifications: () => void;
   updateSettings: (settings: Partial<NotificationSettings>) => void;
@@ -206,7 +206,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         removeNotification(newNotification.id);
       }, notification.duration || settings.duration);
     }
-  }, [settings, playSound]);
+
+    return newNotification.id;
+  }, [settings, playSound, removeNotification]);
 
   // Удаление уведомления
   const removeNotification = useCallback((id: string) => {

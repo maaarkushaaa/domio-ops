@@ -20,13 +20,14 @@ const VideoCallRealtimeContext = createContext<VideoCallRealtimeContextValue | u
 
 export function VideoCallRealtimeProvider({ children }: { children: ReactNode }) {
   const [activeCall, setActiveCallState] = useState<ActiveQuickCall | null>(null);
-  const { addNotification } = useNotifications();
+  const { addNotification, removeNotification } = useNotifications();
   const [notifiedCallId, setNotifiedCallId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const notifiedCallIdRef = useRef<string | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
+  const notificationRef = useRef<string | null>(null);
 
   const vapidPublicKey = (import.meta as any)?.env?.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
@@ -183,7 +184,11 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
           if (newCall.status === 'active') {
             setActiveCallState(newCall);
             if (notifiedCallIdRef.current !== newCall.id && newCall.created_by !== currentUserIdRef.current) {
-              addNotification({
+              if (notificationRef.current) {
+                removeNotification(notificationRef.current);
+                notificationRef.current = null;
+              }
+              const id = addNotification({
                 type: 'info',
                 title: 'Новый видеозвонок',
                 message: newCall.title,
@@ -200,12 +205,17 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
                   },
                 ],
               });
+              notificationRef.current = id;
             }
             setNotifiedCallId(newCall.id);
           } else if (newCall.status === 'ended') {
             setActiveCallState((prev) => (prev && prev.id === newCall.id ? null : prev));
             if (notifiedCallIdRef.current === newCall.id) {
               setNotifiedCallId(null);
+            }
+            if (notificationRef.current) {
+              removeNotification(notificationRef.current);
+              notificationRef.current = null;
             }
           }
         }
@@ -214,8 +224,12 @@ export function VideoCallRealtimeProvider({ children }: { children: ReactNode })
 
     return () => {
       supabase.removeChannel(channel);
+      if (notificationRef.current) {
+        removeNotification(notificationRef.current);
+        notificationRef.current = null;
+      }
     };
-  }, [fetchLatestCall, addNotification]);
+  }, [fetchLatestCall, addNotification, removeNotification]);
 
   const setActiveCall = useCallback((call: ActiveQuickCall | null) => {
     setActiveCallState(call);
