@@ -141,8 +141,7 @@ export default function CRM() {
       .select(`
         *,
         client:clients(name, company),
-        stage:sales_stages(name, color, order_index),
-        owner:profiles(full_name)
+        stage:sales_stages(name, color, order_index)
       `)
       .eq('status', 'open')
       .order('created_at', { ascending: false });
@@ -152,12 +151,40 @@ export default function CRM() {
       return;
     }
 
-    const dealsData = (data || []).map((deal: any) => ({
+    const dealsData = (data || []) as any[];
+    const ownerIds = Array.from(
+      new Set(
+        dealsData
+          .map((deal) => deal.owner_id as string | null)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+
+    let ownerMap = new Map<string, string>();
+
+    if (ownerIds.length > 0) {
+      const { data: ownersData, error: ownersError } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', ownerIds);
+
+      if (ownersError) {
+        console.warn('Error loading deal owners:', ownersError);
+      } else {
+        ownersData?.forEach((owner: any) => {
+          ownerMap.set(owner.id, owner.full_name);
+        });
+      }
+    }
+
+    const dealsWithOwners = dealsData.map((deal) => ({
       ...deal,
-      owner: deal.owner ? { full_name: deal.owner.full_name } : null,
+      owner: ownerMap.has(deal.owner_id)
+        ? { full_name: ownerMap.get(deal.owner_id)! }
+        : null,
     }));
 
-    setDeals(dealsData as Deal[]);
+    setDeals(dealsWithOwners as Deal[]);
   };
 
   const handleDragStart = (deal: Deal) => {
