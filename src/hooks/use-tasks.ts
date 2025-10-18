@@ -126,6 +126,24 @@ export const useTasks = () => {
   const loadCallIdRef = useRef(0);
   const lastAppliedLoadIdRef = useRef(0);
 
+  // Активные операции блокировки подписок на обновления
+  const operationsLockRef = useRef<Set<string>>(new Set());
+
+  // Блокировка обновлений для указанной операции
+  const lockUpdates = useCallback((operationId: string) => {
+    operationsLockRef.current.add(operationId);
+  }, []);
+
+  // Разблокировка обновлений для указанной операции
+  const unlockUpdates = useCallback((operationId: string) => {
+    operationsLockRef.current.delete(operationId);
+  }, []);
+
+  // Проверка, заблокированы ли обновления
+  const isUpdateLocked = useCallback(() => {
+    return operationsLockRef.current.size > 0;
+  }, []);
+
   const loadTasks = useCallback(async (): Promise<Task[]> => {
     const callId = ++loadCallIdRef.current;
     if (isLoadingRef.current) {
@@ -251,6 +269,10 @@ export const useTasks = () => {
     const dependenciesChannel = supabase
       .channel('task_dependencies_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_dependencies' }, async () => {
+        if (isUpdateLocked()) {
+          console.log('[TASKS] Skipping dependencies update due to active operation lock');
+          return;
+        }
         await loadTasks();
       })
       .subscribe();
@@ -401,6 +423,10 @@ export const useTasks = () => {
   ) => {
     if (!dependencyId) return;
     try {
+      // Блокируем обновления во время удаления зависимости
+      const operationId = `delete_dependency_${dependencyId}`;
+      lockUpdates(operationId);
+      console.log('[DEPENDENCY-DELETE] Locking updates for:', operationId);
       let predecessorId = meta?.predecessorId;
       let successorId = meta?.successorId;
 
@@ -450,15 +476,21 @@ export const useTasks = () => {
           break;
         }
         if (!checkData) {
+          console.log('[DEPENDENCY-DELETE] Dependency successfully removed, refreshing task dependencies');
           await refreshTaskDependencies(predecessorId);
           await refreshTaskDependencies(successorId);
+          unlockUpdates(operationId);
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, baseDelay * (attempt + 1)));
       }
 
+      console.log('[DEPENDENCY-DELETE] Verification timed out, full reload required');
       await loadTasks();
+      unlockUpdates(operationId);
     } catch (err) {
+      // Обязательно снимаем блокировку даже при ошибке
+      unlockUpdates(`delete_dependency_${dependencyId}`);
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
       throw err;
     }
