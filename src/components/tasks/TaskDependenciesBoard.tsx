@@ -90,8 +90,8 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     return edges;
   };
 
-  const initialNodes = useMemo(() => buildNodes(tasks), [tasks, buildNodes]);
-  const initialEdges = useMemo(() => buildEdges(tasks), [tasks]);
+  const initialNodes = useMemo(() => buildNodes(nodesSource), [nodesSource, buildNodes]);
+  const initialEdges = useMemo(() => buildEdges(nodesSource), [nodesSource]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -174,6 +174,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   }, [onEdgesChange]);
 
   useEffect(() => {
+    if (!nodesSource.length) {
+      return;
+    }
     setNodes(buildNodes(nodesSource));
     setEdges(buildEdges(nodesSource));
   }, [nodesSource, buildNodes, buildEdges, setNodes, setEdges]);
