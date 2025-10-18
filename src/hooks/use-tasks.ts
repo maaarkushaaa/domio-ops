@@ -122,10 +122,12 @@ export const useTasks = () => {
   const isLoadingRef = useRef(false);
   const pendingReloadRef = useRef(false);
 
-  const loadTasks = useCallback(async () => {
+  const lastLoadedTasksRef = useRef<Task[]>([]);
+
+  const loadTasks = useCallback(async (): Promise<Task[]> => {
     if (isLoadingRef.current) {
       pendingReloadRef.current = true;
-      return;
+      return lastLoadedTasksRef.current;
     }
     isLoadingRef.current = true;
     try {
@@ -138,11 +140,15 @@ export const useTasks = () => {
       const profilesById = await fetchAssigneeProfiles(data || []);
       const depsByTaskId = await fetchDependencies((data || []).map((row: any) => row.id));
 
-      (data || []).forEach((row: any) => {
-        addTask(mapTaskRow(row, profilesById, depsByTaskId.get(row.id)));
+      const transformed = (data || []).map((row: any) => mapTaskRow(row, profilesById, depsByTaskId.get(row.id)));
+      lastLoadedTasksRef.current = transformed;
+      transformed.forEach((task) => {
+        addTask(task);
       });
+      return transformed;
     } catch (e) {
       console.error('load tasks error', e);
+      return lastLoadedTasksRef.current;
     } finally {
       isLoadingRef.current = false;
       if (pendingReloadRef.current) {
@@ -377,41 +383,6 @@ export const useTasks = () => {
         .delete()
         .eq('id', dependencyId);
       if (error) throw error;
-
-      if (predecessorId) {
-        const predecessorTask = tasks.find((t) => t.id === predecessorId);
-        if (predecessorTask) {
-          const nextOut = (predecessorTask.dependencies_out ?? []).filter((dep) => dep.id !== dependencyId);
-          addTask({ ...predecessorTask, dependencies_out: nextOut } as Task);
-        }
-      }
-
-      if (successorId) {
-        const successorTask = tasks.find((t) => t.id === successorId);
-        if (successorTask) {
-          const nextIn = (successorTask.dependencies_in ?? []).filter((dep) => dep.id !== dependencyId);
-          addTask({ ...successorTask, dependencies_in: nextIn } as Task);
-        }
-      }
-
-      const maxAttempts = 6;
-      const baseDelay = 150;
-      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        const { data: checkData, error: checkError } = await (supabase as any)
-          .from('task_dependencies')
-          .select('id')
-          .eq('id', dependencyId)
-          .maybeSingle();
-        if (checkError && checkError.code !== 'PGRST116') {
-          console.warn('[DEPENDENCY-DELETE] Verify deletion error:', checkError);
-          break;
-        }
-        if (!checkData) {
-          await loadTasks();
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, baseDelay * (attempt + 1)));
-      }
 
       await loadTasks();
     } catch (err) {
