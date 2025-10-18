@@ -17,9 +17,7 @@ type AssigneeProfile = {
 const TASK_SELECT = `*,
   comment_count:task_comments(count),
   checklist_count:task_checklists(count),
-  project:projects(id,name),
-  dependencies_in:task_dependencies!task_dependencies_successor_id_fkey(id, predecessor_id),
-  dependencies_out:task_dependencies!task_dependencies_predecessor_id_fkey(id, successor_id)
+  project:projects(id,name)
 `;
 
 type TaskDependenciesPayload = {
@@ -76,27 +74,39 @@ export const useTasks = () => {
   const fetchDependencies = useCallback(async (taskIds: string[]) => {
     if (!taskIds.length) return new Map<string, TaskDependenciesPayload>();
     try {
-      const { data, error } = await (supabase as any)
-        .from('task_dependencies')
-        .select('id, predecessor_id, successor_id')
-        .in('predecessor_id', taskIds);
-      if (error) throw error;
+      const chunkSize = 50;
+      const chunks: string[][] = [];
+      for (let i = 0; i < taskIds.length; i += chunkSize) {
+        chunks.push(taskIds.slice(i, i + chunkSize));
+      }
 
-      const { data: incoming, error: incomingError } = await (supabase as any)
-        .from('task_dependencies')
-        .select('id, predecessor_id, successor_id')
-        .in('successor_id', taskIds);
-      if (incomingError) throw incomingError;
+      const collect = async (column: 'predecessor_id' | 'successor_id') => {
+        const collected: any[] = [];
+        for (const chunk of chunks) {
+          const { data, error } = await (supabase as any)
+            .from('task_dependencies')
+            .select('id, predecessor_id, successor_id')
+            .in(column, chunk);
+          if (error) throw error;
+          collected.push(...(data || []));
+        }
+        return collected;
+      };
+
+      const [outgoing, incoming] = await Promise.all([
+        collect('predecessor_id'),
+        collect('successor_id'),
+      ]);
 
       const depsMap = new Map<string, TaskDependenciesPayload>();
 
-      (data || []).forEach((dep: any) => {
+      outgoing.forEach((dep: any) => {
         const list = depsMap.get(dep.predecessor_id) || { dependencies_in: [], dependencies_out: [] };
         list.dependencies_out.push({ id: dep.id, to_id: dep.successor_id });
         depsMap.set(dep.predecessor_id, list);
       });
 
-      (incoming || []).forEach((dep: any) => {
+      incoming.forEach((dep: any) => {
         const list = depsMap.get(dep.successor_id) || { dependencies_in: [], dependencies_out: [] };
         list.dependencies_in.push({ id: dep.id, from_id: dep.predecessor_id });
         depsMap.set(dep.successor_id, list);
