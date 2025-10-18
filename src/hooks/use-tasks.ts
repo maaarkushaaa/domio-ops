@@ -345,7 +345,6 @@ export const useTasks = () => {
         }
       }
 
-      await loadTasks();
       return data;
     } catch (err) {
       console.error('[DEPENDENCY-CREATE] Failed to create dependency:', err);
@@ -395,7 +394,6 @@ export const useTasks = () => {
         }
       }
 
-      await loadTasks();
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
       throw err;

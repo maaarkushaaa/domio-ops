@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -65,6 +65,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   const positionsRef = useRef(new Map<string, { x: number; y: number }>());
   const positionsLoadedRef = useRef(false);
   const storageKey = 'task-dependency-positions';
+  const [showOnlyLinked, setShowOnlyLinked] = useState(false);
 
   const loadStoredPositions = useCallback(() => {
     if (positionsLoadedRef.current) return false;
@@ -200,8 +201,13 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     return edges;
   }, []);
 
-  const initialNodes = useMemo(() => buildNodes(nodesSource), [nodesSource, buildNodes]);
-  const initialEdges = useMemo(() => buildEdges(nodesSource), [nodesSource]);
+  const visibleTasks = useMemo(() => {
+    if (!showOnlyLinked) return nodesSource;
+    return nodesSource.filter((task) => (task.dependencies_in?.length ?? 0) > 0 || (task.dependencies_out?.length ?? 0) > 0);
+  }, [nodesSource, showOnlyLinked]);
+
+  const initialNodes = useMemo(() => buildNodes(visibleTasks), [visibleTasks, buildNodes]);
+  const initialEdges = useMemo(() => buildEdges(visibleTasks), [visibleTasks, buildEdges]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -295,8 +301,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
 
   const handleEdgesDelete = useCallback(async (deleted: Edge[]) => {
     if (!deleted.length) return;
-    setEdges((eds) => eds.filter((edge) => !deleted.some((item) => item.id === edge.id)));
-
+    const deletedIds = new Set<string>();
     for (const edge of deleted) {
       if (!edge?.id) continue;
       try {
@@ -305,6 +310,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           successorId: edge.target,
         });
         toast({ title: 'Связь удалена', description: 'Зависимость удалена из задачи.' });
+        deletedIds.add(edge.id);
       } catch (error: any) {
         toast({
           title: 'Ошибка при удалении зависимости',
@@ -313,6 +319,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         });
       }
     }
+    if (deletedIds.size) {
+      setEdges((eds) => eds.filter((edge) => !deletedIds.has(edge.id)));
+    }
   }, [deleteDependency, setEdges, toast]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -320,20 +329,32 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   }, [onEdgesChange]);
 
   useEffect(() => {
-    if (!nodesSource.length) {
+    if (!visibleTasks.length) {
       setNodes([]);
       setEdges([]);
       return;
     }
-    const nextNodes = buildNodes(nodesSource);
-    const nextEdges = buildEdges(nodesSource);
+    const nextNodes = buildNodes(visibleTasks);
+    const nextEdges = buildEdges(visibleTasks);
 
     setNodes(nextNodes);
     setEdges(nextEdges);
-  }, [nodesSource, buildNodes, buildEdges, setNodes, setEdges]);
+  }, [visibleTasks, buildNodes, buildEdges, setNodes, setEdges]);
 
   return (
-    <div className="h-[70vh] rounded-lg border bg-card">
+    <div className="flex h-[70vh] flex-col gap-3 rounded-lg border bg-card p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-muted-foreground">
+          {showOnlyLinked ? 'Показаны только связанные задачи' : 'Показаны все задачи'}
+        </span>
+        <button
+          type="button"
+          onClick={() => setShowOnlyLinked((prev) => !prev)}
+          className="inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-accent"
+        >
+          {showOnlyLinked ? 'Показать все задачи' : 'Скрыть задачи без зависимостей'}
+        </button>
+      </div>
       <ReactFlow
         nodes={nodes}
         edges={edges}
