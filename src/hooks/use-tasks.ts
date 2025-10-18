@@ -22,7 +22,16 @@ const TASK_SELECT = `*,
   dependencies_out:task_dependencies!task_dependencies_predecessor_id_fkey(id, successor_id)
 `;
 
-const mapTaskRow = (row: any, profilesById?: Map<string, AssigneeProfile>): Task => ({
+type TaskDependenciesPayload = {
+  dependencies_in: { id: string; from_id: string }[];
+  dependencies_out: { id: string; to_id: string }[];
+};
+
+const mapTaskRow = (
+  row: any,
+  profilesById?: Map<string, AssigneeProfile>,
+  deps?: TaskDependenciesPayload,
+): Task => ({
   id: row.id,
   title: row.title,
   description: row.description || undefined,
@@ -41,12 +50,8 @@ const mapTaskRow = (row: any, profilesById?: Map<string, AssigneeProfile>): Task
   updated_at: row.updated_at,
   _comment_count: row.comment_count?.[0]?.count || 0,
   _checklist_count: row.checklist_count?.[0]?.count || 0,
-  dependencies_in: Array.isArray(row.dependencies_in)
-    ? row.dependencies_in.map((dep: any) => ({ id: dep.id, from_id: dep.predecessor_id }))
-    : [],
-  dependencies_out: Array.isArray(row.dependencies_out)
-    ? row.dependencies_out.map((dep: any) => ({ id: dep.id, to_id: dep.successor_id }))
-    : [],
+  dependencies_in: deps?.dependencies_in || [],
+  dependencies_out: deps?.dependencies_out || [],
 });
 
 export const useTasks = () => {
@@ -68,6 +73,42 @@ export const useTasks = () => {
     }
   }, []);
 
+  const fetchDependencies = useCallback(async (taskIds: string[]) => {
+    if (!taskIds.length) return new Map<string, TaskDependenciesPayload>();
+    try {
+      const { data, error } = await (supabase as any)
+        .from('task_dependencies')
+        .select('id, predecessor_id, successor_id')
+        .in('predecessor_id', taskIds);
+      if (error) throw error;
+
+      const { data: incoming, error: incomingError } = await (supabase as any)
+        .from('task_dependencies')
+        .select('id, predecessor_id, successor_id')
+        .in('successor_id', taskIds);
+      if (incomingError) throw incomingError;
+
+      const depsMap = new Map<string, TaskDependenciesPayload>();
+
+      (data || []).forEach((dep: any) => {
+        const list = depsMap.get(dep.predecessor_id) || { dependencies_in: [], dependencies_out: [] };
+        list.dependencies_out.push({ id: dep.id, to_id: dep.successor_id });
+        depsMap.set(dep.predecessor_id, list);
+      });
+
+      (incoming || []).forEach((dep: any) => {
+        const list = depsMap.get(dep.successor_id) || { dependencies_in: [], dependencies_out: [] };
+        list.dependencies_in.push({ id: dep.id, from_id: dep.predecessor_id });
+        depsMap.set(dep.successor_id, list);
+      });
+
+      return depsMap;
+    } catch (err) {
+      console.error('[TASKS] Failed to load dependencies', err);
+      return new Map<string, TaskDependenciesPayload>();
+    }
+  }, []);
+
   const loadTasks = useCallback(async () => {
     try {
       const { data, error } = await (supabase as any)
@@ -77,14 +118,15 @@ export const useTasks = () => {
       if (error) throw error;
 
       const profilesById = await fetchAssigneeProfiles(data || []);
+      const depsByTaskId = await fetchDependencies((data || []).map((row: any) => row.id));
 
       (data || []).forEach((row: any) => {
-        addTask(mapTaskRow(row, profilesById));
+        addTask(mapTaskRow(row, profilesById, depsByTaskId.get(row.id)));
       });
     } catch (e) {
       console.error('load tasks error', e);
     }
-  }, [addTask]);
+  }, [addTask, fetchAssigneeProfiles, fetchDependencies]);
 
   const fetchTaskDetails = useCallback(async (taskId: string) => {
     const { data, error } = await (supabase as any)
@@ -102,9 +144,10 @@ export const useTasks = () => {
     }
 
     const profilesById = await fetchAssigneeProfiles([data]);
+    const depsByTaskId = await fetchDependencies([data.id]);
 
-    return mapTaskRow(data, profilesById);
-  }, [fetchAssigneeProfiles]);
+    return mapTaskRow(data, profilesById, depsByTaskId.get(data.id));
+  }, [fetchAssigneeProfiles, fetchDependencies]);
 
   // Initial load + realtime
   useEffect(() => {
@@ -171,7 +214,8 @@ export const useTasks = () => {
       .single();
     if (error) throw error;
     const profilesById = await fetchAssigneeProfiles([data]);
-    addTask(mapTaskRow(data, profilesById));
+    const depsByTaskId = await fetchDependencies([data.id]);
+    addTask(mapTaskRow(data, profilesById, depsByTaskId.get(data.id)));
     sendTelegramNotification({ title: 'Новая задача', message: `Создана задача: "${task.title}"`, type: 'info' });
     
     // Добавляем уведомление в систему
@@ -199,7 +243,8 @@ export const useTasks = () => {
       
       // Transform data to match expected format
       const profilesById = await fetchAssigneeProfiles([data]);
-      const transformedData = mapTaskRow(data, profilesById);
+      const depsByTaskId = await fetchDependencies([data.id]);
+      const transformedData = mapTaskRow(data, profilesById, depsByTaskId.get(data.id));
       updateTask(updates.id, transformedData);
       console.log('[TASK-UPDATE] Local state updated');
 
