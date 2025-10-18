@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Task } from '@/contexts/AppContext';
 import { sendTelegramNotification } from '@/services/telegram';
@@ -74,7 +74,7 @@ export const useTasks = () => {
   const fetchDependencies = useCallback(async (taskIds: string[]) => {
     if (!taskIds.length) return new Map<string, TaskDependenciesPayload>();
     try {
-      const chunkSize = 50;
+      const chunkSize = 20;
       const chunks: string[][] = [];
       for (let i = 0; i < taskIds.length; i += chunkSize) {
         chunks.push(taskIds.slice(i, i + chunkSize));
@@ -119,7 +119,15 @@ export const useTasks = () => {
     }
   }, []);
 
+  const isLoadingRef = useRef(false);
+  const pendingReloadRef = useRef(false);
+
   const loadTasks = useCallback(async () => {
+    if (isLoadingRef.current) {
+      pendingReloadRef.current = true;
+      return;
+    }
+    isLoadingRef.current = true;
     try {
       const { data, error } = await (supabase as any)
         .from('tasks')
@@ -135,6 +143,12 @@ export const useTasks = () => {
       });
     } catch (e) {
       console.error('load tasks error', e);
+    } finally {
+      isLoadingRef.current = false;
+      if (pendingReloadRef.current) {
+        pendingReloadRef.current = false;
+        void loadTasks();
+      }
     }
   }, [addTask, fetchAssigneeProfiles, fetchDependencies]);
 
