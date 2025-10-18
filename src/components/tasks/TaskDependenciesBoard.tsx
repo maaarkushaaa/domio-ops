@@ -23,23 +23,32 @@ interface TaskDependenciesBoardProps {
 }
 
 export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
-  const { createDependency, deleteDependency } = useTasks();
+  const { tasks: allTasks, createDependency, deleteDependency, updateTask } = useTasks();
   const { toast } = useToast();
   const positionsRef = useRef(new Map<string, { x: number; y: number }>());
 
+  const nodesSource = useMemo(() => {
+    if (!allTasks.length) return [] as Task[];
+    if (!tasks.length) return allTasks;
+    const map = new Map<string, Task>();
+    tasks.forEach((task) => map.set(task.id, task));
+    allTasks.forEach((task) => {
+      if (!map.has(task.id)) {
+        map.set(task.id, task);
+      }
+    });
+    return Array.from(map.values());
+  }, [allTasks, tasks]);
+
   const buildNodes = useCallback((source: Task[]): Node[] => {
     const nextNodes: Node[] = [];
-    const seen = new Set<string>();
-
     source.forEach((task, index) => {
-      const fallbackPosition = {
+      const fallback = {
         x: (index % 5) * 240,
         y: Math.floor(index / 5) * 180,
       };
-      const stored = positionsRef.current.get(task.id) ?? fallbackPosition;
+      const stored = positionsRef.current.get(task.id) || (task as any).position || fallback;
       positionsRef.current.set(task.id, stored);
-      seen.add(task.id);
-
       nextNodes.push({
         id: task.id,
         data: {
@@ -58,12 +67,6 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           whiteSpace: 'pre-line',
         },
       });
-    });
-
-    positionsRef.current.forEach((_, key) => {
-      if (!seen.has(key)) {
-        positionsRef.current.delete(key);
-      }
     });
 
     return nextNodes;
@@ -97,10 +100,13 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     changes.forEach((change) => {
       if (change.type === 'position' && change.position) {
         positionsRef.current.set(change.id, change.position);
+        updateTask(change.id, {
+          position: change.position,
+        } as any);
       }
     });
     onNodesChange(changes);
-  }, [onNodesChange]);
+  }, [onNodesChange, updateTask]);
 
   const handleConnect = useCallback(async (connection: Connection) => {
     const { source, target } = connection;
@@ -122,7 +128,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
 
     try {
       const created = await createDependency(source, target);
-      setEdges((eds) => [...eds, {
+      setEdges((eds) => addEdge({
         id: created.id,
         source,
         target,
@@ -130,7 +136,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--primary)' },
         style: { stroke: 'var(--primary)', strokeWidth: 2 },
         type: 'smoothstep',
-      }]);
+      }, eds));
       toast({ title: 'Связь создана', description: 'Новая зависимость сохранена.' });
     } catch (error: any) {
       toast({
@@ -168,15 +174,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   }, [onEdgesChange]);
 
   useEffect(() => {
-    setNodes(buildNodes(tasks));
-    setEdges((current) => {
-      const incoming = buildEdges(tasks);
-      if (current.length === incoming.length && current.every((edge, idx) => edge.id === incoming[idx].id)) {
-        return current;
-      }
-      return incoming;
-    });
-  }, [tasks, buildNodes, setNodes, buildEdges]);
+    setNodes(buildNodes(nodesSource));
+    setEdges(buildEdges(nodesSource));
+  }, [nodesSource, buildNodes, buildEdges, setNodes, setEdges]);
 
   return (
     <div className="h-[70vh] rounded-lg border bg-card">
