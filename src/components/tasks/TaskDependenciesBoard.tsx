@@ -177,8 +177,40 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     if (!nodesSource.length) {
       return;
     }
-    setNodes(buildNodes(nodesSource));
-    setEdges(buildEdges(nodesSource));
+    const nextNodes = buildNodes(nodesSource);
+    const nextEdges = buildEdges(nodesSource);
+
+    setNodes((prev) => {
+      if (
+        prev.length === nextNodes.length &&
+        prev.every((node, index) => {
+          const candidate = nextNodes[index];
+          return (
+            candidate &&
+            node.id === candidate.id &&
+            node.data?.label === candidate.data?.label &&
+            node.position.x === candidate.position.x &&
+            node.position.y === candidate.position.y
+          );
+        })
+      ) {
+        return prev;
+      }
+      return nextNodes;
+    });
+
+    setEdges((prev) => {
+      if (
+        prev.length === nextEdges.length &&
+        prev.every((edge, index) => {
+          const candidate = nextEdges[index];
+          return candidate && edge.id === candidate.id && edge.source === candidate.source && edge.target === candidate.target;
+        })
+      ) {
+        return prev;
+      }
+      return nextEdges;
+    });
   }, [nodesSource, buildNodes, buildEdges, setNodes, setEdges]);
 
   return (
