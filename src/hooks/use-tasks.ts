@@ -7,16 +7,22 @@ import { supabase } from '@/integrations/supabase/client';
 export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
 
+type AssigneeProfile = {
+  id: string;
+  full_name: string;
+  email?: string;
+  avatar_url?: string | null;
+};
+
 const TASK_SELECT = `*,
   comment_count:task_comments(count),
   checklist_count:task_checklists(count),
   project:projects(id,name),
-  assignee:profiles!tasks_assignee_id_fkey(id, full_name, email, avatar_url),
   dependencies_in:task_dependencies!task_dependencies_successor_id_fkey(id, predecessor_id),
   dependencies_out:task_dependencies!task_dependencies_predecessor_id_fkey(id, successor_id)
 `;
 
-const mapTaskRow = (row: any): Task => ({
+const mapTaskRow = (row: any, profilesById?: Map<string, AssigneeProfile>): Task => ({
   id: row.id,
   title: row.title,
   description: row.description || undefined,
@@ -25,14 +31,7 @@ const mapTaskRow = (row: any): Task => ({
   project_id: row.project_id || undefined,
   project: row.project ?? null,
   assignee_id: row.assignee_id || undefined,
-  assignee: row.assignee
-    ? {
-        id: row.assignee.id,
-        full_name: row.assignee.full_name,
-        email: row.assignee.email ?? undefined,
-        avatar_url: row.assignee.avatar_url ?? null,
-      }
-    : null,
+  assignee: profilesById?.get(row.assignee_id) ?? (row.assignee ?? null) ?? null,
   due_date: row.due_date || undefined,
   due_end: row.due_end || undefined,
   tags: row.tags ?? undefined,
@@ -53,6 +52,22 @@ const mapTaskRow = (row: any): Task => ({
 export const useTasks = () => {
   const { tasks, addTask, updateTask, deleteTask } = useApp();
 
+  const fetchAssigneeProfiles = useCallback(async (rows: any[]) => {
+    const ids = Array.from(new Set((rows || []).map((r) => r.assignee_id).filter(Boolean))) as string[];
+    if (!ids.length) return new Map<string, AssigneeProfile>();
+    try {
+      const { data, error } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name, email, avatar_url')
+        .in('id', ids);
+      if (error) throw error;
+      return new Map<string, AssigneeProfile>((data || []).map((profile: AssigneeProfile) => [profile.id, profile]));
+    } catch (err) {
+      console.warn('[TASKS] Failed to load assignee profiles', err);
+      return new Map<string, AssigneeProfile>();
+    }
+  }, []);
+
   const loadTasks = useCallback(async () => {
     try {
       const { data, error } = await (supabase as any)
@@ -61,8 +76,10 @@ export const useTasks = () => {
         .order('order', { ascending: true });
       if (error) throw error;
 
+      const profilesById = await fetchAssigneeProfiles(data || []);
+
       (data || []).forEach((row: any) => {
-        addTask(mapTaskRow(row));
+        addTask(mapTaskRow(row, profilesById));
       });
     } catch (e) {
       console.error('load tasks error', e);
@@ -84,8 +101,10 @@ export const useTasks = () => {
       throw new Error('Task not found');
     }
 
-    return mapTaskRow(data);
-  }, []);
+    const profilesById = await fetchAssigneeProfiles([data]);
+
+    return mapTaskRow(data, profilesById);
+  }, [fetchAssigneeProfiles]);
 
   // Initial load + realtime
   useEffect(() => {
@@ -151,7 +170,8 @@ export const useTasks = () => {
       .select(TASK_SELECT)
       .single();
     if (error) throw error;
-    addTask(mapTaskRow(data));
+    const profilesById = await fetchAssigneeProfiles([data]);
+    addTask(mapTaskRow(data, profilesById));
     sendTelegramNotification({ title: 'Новая задача', message: `Создана задача: "${task.title}"`, type: 'info' });
     
     // Добавляем уведомление в систему
@@ -178,7 +198,8 @@ export const useTasks = () => {
       console.log('[TASK-UPDATE] Task updated successfully, received data:', data);
       
       // Transform data to match expected format
-      const transformedData = mapTaskRow(data);
+      const profilesById = await fetchAssigneeProfiles([data]);
+      const transformedData = mapTaskRow(data, profilesById);
       updateTask(updates.id, transformedData);
       console.log('[TASK-UPDATE] Local state updated');
 
