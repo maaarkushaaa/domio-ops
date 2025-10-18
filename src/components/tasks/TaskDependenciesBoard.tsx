@@ -26,6 +26,55 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   const { tasks: allTasks, createDependency, deleteDependency } = useTasks();
   const { toast } = useToast();
   const positionsRef = useRef(new Map<string, { x: number; y: number }>());
+  const positionsLoadedRef = useRef(false);
+  const storageKey = 'task-dependency-positions';
+
+  const loadStoredPositions = useCallback(() => {
+    if (positionsLoadedRef.current) return false;
+    if (typeof window === 'undefined') return false;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        positionsLoadedRef.current = true;
+        return false;
+      }
+      const parsed = JSON.parse(raw) as Record<string, { x: number; y: number }>;
+      Object.entries(parsed).forEach(([taskId, position]) => {
+        if (typeof position?.x === 'number' && typeof position?.y === 'number') {
+          positionsRef.current.set(taskId, position);
+        }
+      });
+      positionsLoadedRef.current = true;
+      return positionsRef.current.size > 0;
+    } catch (error) {
+      positionsLoadedRef.current = true;
+      console.warn('[TaskDependenciesBoard] Failed to load stored positions', error);
+      return false;
+    }
+  }, [storageKey]);
+
+  const persistPositions = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const entries = Array.from(positionsRef.current.entries()).reduce<Record<string, { x: number; y: number }>>(
+        (acc, [taskId, position]) => {
+          acc[taskId] = position;
+          return acc;
+        },
+        {},
+      );
+      window.localStorage.setItem(storageKey, JSON.stringify(entries));
+    } catch (error) {
+      console.warn('[TaskDependenciesBoard] Failed to persist positions', error);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    const hasLoaded = loadStoredPositions();
+    if (hasLoaded && nodesSource.length) {
+      setNodes(buildNodes(nodesSource));
+    }
+  }, [loadStoredPositions, nodesSource, buildNodes, setNodes]);
 
   const nodesSource = useMemo(() => {
     if (!allTasks.length) return [] as Task[];
@@ -42,6 +91,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
 
   const buildNodes = useCallback((source: Task[]): Node[] => {
     const nextNodes: Node[] = [];
+    const seen = new Set<string>();
     source.forEach((task, index) => {
       const fallback = {
         x: (index % 5) * 240,
@@ -49,6 +99,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
       };
       const stored = positionsRef.current.get(task.id) || (task as any).position || fallback;
       positionsRef.current.set(task.id, stored);
+      seen.add(task.id);
       nextNodes.push({
         id: task.id,
         data: {
@@ -69,6 +120,12 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
       });
     });
 
+    positionsRef.current.forEach((_, key) => {
+      if (!seen.has(key)) {
+        positionsRef.current.delete(key);
+      }
+    });
+
     return nextNodes;
   }, []);
 
@@ -80,9 +137,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           id: dep.id,
           source: task.id,
           target: dep.to_id,
-          animated: true,
-          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--primary)' },
-          style: { stroke: 'var(--primary)', strokeWidth: 2 },
+          animated: false,
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#6366f1' },
+          style: { stroke: '#6366f1', strokeWidth: 2 },
           type: 'smoothstep',
         } as Edge);
       });
@@ -104,6 +161,22 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     });
     onNodesChange(changes);
   }, [onNodesChange]);
+
+  const handleNodeDragStop = useCallback((_: any, node: Node) => {
+    if (!node?.id) return;
+    positionsRef.current.set(node.id, node.position);
+    persistPositions();
+    setNodes((prev) =>
+      prev.map((item) =>
+        item.id === node.id
+          ? {
+              ...item,
+              position: node.position,
+            }
+          : item,
+      ),
+    );
+  }, [persistPositions, setNodes]);
 
   const handleConnect = useCallback(async (connection: Connection) => {
     const { source, target } = connection;
@@ -129,9 +202,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         id: created.id,
         source,
         target,
-        animated: true,
-        markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--primary)' },
-        style: { stroke: 'var(--primary)', strokeWidth: 2 },
+        animated: false,
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#6366f1' },
+        style: { stroke: '#6366f1', strokeWidth: 2 },
         type: 'smoothstep',
       }, eds));
       toast({ title: 'Связь создана', description: 'Новая зависимость сохранена.' });
@@ -219,14 +292,11 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         onEdgesChange={handleEdgesChange}
         onEdgesDelete={handleEdgesDelete}
         onConnect={handleConnect}
+        onNodeDragStop={handleNodeDragStop}
         onEdgeDoubleClick={(_, edge) => {
           void handleEdgesDelete([edge]);
         }}
         fitView
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        proOptions={{ hideAttribution: true }}
-        nodesDraggable
         panOnScroll
         zoomOnScroll
       >
