@@ -125,24 +125,7 @@ export const useTasks = () => {
   const lastLoadedTasksRef = useRef<Task[]>([]);
   const loadCallIdRef = useRef(0);
   const lastAppliedLoadIdRef = useRef(0);
-
-  // Активные операции блокировки подписок на обновления
-  const operationsLockRef = useRef<Set<string>>(new Set());
-
-  // Блокировка обновлений для указанной операции
-  const lockUpdates = useCallback((operationId: string) => {
-    operationsLockRef.current.add(operationId);
-  }, []);
-
-  // Разблокировка обновлений для указанной операции
-  const unlockUpdates = useCallback((operationId: string) => {
-    operationsLockRef.current.delete(operationId);
-  }, []);
-
-  // Проверка, заблокированы ли обновления
-  const isUpdateLocked = useCallback(() => {
-    return operationsLockRef.current.size > 0;
-  }, []);
+  const dependencyRefreshMapRef = useRef(new Map<string, { updatedAt: number }>());
 
   const loadTasks = useCallback(async (): Promise<Task[]> => {
     const callId = ++loadCallIdRef.current;
@@ -185,32 +168,54 @@ export const useTasks = () => {
     }
   }, [addTask, fetchAssigneeProfiles, fetchDependencies]);
 
-  const refreshTaskDependencies = useCallback(
-    async (taskId?: string) => {
-      if (!taskId) return;
-      try {
-        const [{ data: outgoing, error: outError }, { data: incoming, error: inError }] = await Promise.all([
-          (supabase as any)
-            .from('task_dependencies')
-            .select('id, successor_id')
-            .eq('predecessor_id', taskId),
-          (supabase as any)
-            .from('task_dependencies')
-            .select('id, predecessor_id')
-            .eq('successor_id', taskId),
-        ]);
-        if (outError || inError) {
-          throw outError || inError;
-        }
-        updateTask(taskId, {
-          dependencies_out: (outgoing || []).map((dep: any) => ({ id: dep.id, to_id: dep.successor_id })),
-          dependencies_in: (incoming || []).map((dep: any) => ({ id: dep.id, from_id: dep.predecessor_id })),
-        });
-      } catch (err) {
-        console.warn('[TASKS] Failed to refresh task dependencies', taskId, err);
+  const appendDependency = useCallback(
+    (predecessorId: string, successorId: string, depId: string) => {
+      if (!predecessorId || !successorId || !depId) return;
+      const now = Date.now();
+      dependencyRefreshMapRef.current.set(depId, { updatedAt: now });
+
+      const predecessorTask = tasks.find((task) => task.id === predecessorId);
+      if (predecessorTask) {
+        const nextOut = (predecessorTask.dependencies_out || []).some((dep) => dep.id === depId)
+          ? predecessorTask.dependencies_out || []
+          : [...(predecessorTask.dependencies_out || []), { id: depId, to_id: successorId }];
+        updateTask(predecessorId, { dependencies_out: nextOut });
+      }
+
+      const successorTask = tasks.find((task) => task.id === successorId);
+      if (successorTask) {
+        const nextIn = (successorTask.dependencies_in || []).some((dep) => dep.id === depId)
+          ? successorTask.dependencies_in || []
+          : [...(successorTask.dependencies_in || []), { id: depId, from_id: predecessorId }];
+        updateTask(successorId, { dependencies_in: nextIn });
       }
     },
-    [updateTask],
+    [tasks, updateTask],
+  );
+
+  const removeDependencyFromState = useCallback(
+    (predecessorId?: string | null, successorId?: string | null, depId?: string | null) => {
+      if (!depId) return;
+      const now = Date.now();
+      dependencyRefreshMapRef.current.set(depId, { updatedAt: now });
+
+      if (predecessorId) {
+        const predecessorTask = tasks.find((task) => task.id === predecessorId);
+        if (predecessorTask) {
+          const nextOut = (predecessorTask.dependencies_out || []).filter((dep) => dep.id !== depId);
+          updateTask(predecessorId, { dependencies_out: nextOut });
+        }
+      }
+
+      if (successorId) {
+        const successorTask = tasks.find((task) => task.id === successorId);
+        if (successorTask) {
+          const nextIn = (successorTask.dependencies_in || []).filter((dep) => dep.id !== depId);
+          updateTask(successorId, { dependencies_in: nextIn });
+        }
+      }
+    },
+    [tasks, updateTask],
   );
 
   const fetchTaskDetails = useCallback(async (taskId: string) => {
@@ -268,13 +273,44 @@ export const useTasks = () => {
 
     const dependenciesChannel = supabase
       .channel('task_dependencies_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_dependencies' }, async () => {
-        if (isUpdateLocked()) {
-          console.log('[TASKS] Skipping dependencies update due to active operation lock');
-          return;
-        }
-        await loadTasks();
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'task_dependencies' },
+        (payload: any) => {
+          const depId: string | undefined = payload.new?.id ?? payload.old?.id;
+          const predecessorId: string | undefined = payload.new?.predecessor_id ?? payload.old?.predecessor_id;
+          const successorId: string | undefined = payload.new?.successor_id ?? payload.old?.successor_id;
+
+          if (!depId || !predecessorId || !successorId) {
+            return;
+          }
+
+          const lastUpdated = dependencyRefreshMapRef.current.get(depId)?.updatedAt ?? 0;
+          const isRecent = Date.now() - lastUpdated < 1000;
+
+          switch (payload.eventType) {
+            case 'INSERT':
+              if (!isRecent) {
+                appendDependency(predecessorId, successorId, depId);
+              }
+              break;
+            case 'DELETE':
+              if (!isRecent) {
+                removeDependencyFromState(predecessorId, successorId, depId);
+              }
+              dependencyRefreshMapRef.current.delete(depId);
+              break;
+            case 'UPDATE':
+              if (!isRecent) {
+                removeDependencyFromState(payload.old?.predecessor_id, payload.old?.successor_id, depId);
+                appendDependency(predecessorId, successorId, depId);
+              }
+              break;
+            default:
+              break;
+          }
+        },
+      )
       .subscribe();
 
     return () => {
@@ -423,80 +459,27 @@ export const useTasks = () => {
   ) => {
     if (!dependencyId) return;
     try {
-      // Блокируем обновления во время удаления зависимости
-      const operationId = `delete_dependency_${dependencyId}`;
-      lockUpdates(operationId);
-      console.log('[DEPENDENCY-DELETE] Locking updates for:', operationId);
       let predecessorId = meta?.predecessorId;
       let successorId = meta?.successorId;
 
-      if (!predecessorId || !successorId) {
-        const { data: depRow, error: fetchError } = await (supabase as any)
-          .from('task_dependencies')
-          .select('predecessor_id, successor_id')
-          .eq('id', dependencyId)
-          .maybeSingle();
-        if (fetchError) throw fetchError;
-        predecessorId = predecessorId ?? depRow?.predecessor_id;
-        successorId = successorId ?? depRow?.successor_id;
-      }
-
-      const { error } = await (supabase as any)
+      const { data: deletedRow, error } = await (supabase as any)
         .from('task_dependencies')
         .delete()
-        .eq('id', dependencyId);
+        .eq('id', dependencyId)
+        .select('id, predecessor_id, successor_id')
+        .maybeSingle();
       if (error) throw error;
 
-      if (predecessorId) {
-        const predecessorTask = tasks.find((t) => t.id === predecessorId);
-        if (predecessorTask) {
-          const nextOut = (predecessorTask.dependencies_out ?? []).filter((dep) => dep.id !== dependencyId);
-          updateTask(predecessorId, { dependencies_out: nextOut });
-        }
-      }
+      predecessorId = predecessorId ?? deletedRow?.predecessor_id;
+      successorId = successorId ?? deletedRow?.successor_id;
 
-      if (successorId) {
-        const successorTask = tasks.find((t) => t.id === successorId);
-        if (successorTask) {
-          const nextIn = (successorTask.dependencies_in ?? []).filter((dep) => dep.id !== dependencyId);
-          updateTask(successorId, { dependencies_in: nextIn });
-        }
-      }
-
-      const maxAttempts = 6;
-      const baseDelay = 200;
-      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        const { data: checkData, error: checkError } = await (supabase as any)
-          .from('task_dependencies')
-          .select('id')
-          .eq('id', dependencyId)
-          .maybeSingle();
-        if (checkError && checkError.code !== 'PGRST116') {
-          console.warn('[DEPENDENCY-DELETE] Verify deletion error:', checkError);
-          break;
-        }
-        if (!checkData) {
-          console.log('[DEPENDENCY-DELETE] Dependency successfully removed, refreshing task dependencies');
-          await refreshTaskDependencies(predecessorId);
-          await refreshTaskDependencies(successorId);
-          unlockUpdates(operationId);
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, baseDelay * (attempt + 1)));
-      }
-
-      console.log('[DEPENDENCY-DELETE] Verification timed out, full reload required');
-      await loadTasks();
-      unlockUpdates(operationId);
+      removeDependencyFromState(predecessorId, successorId, dependencyId);
     } catch (err) {
-      // Обязательно снимаем блокировку даже при ошибке
-      unlockUpdates(`delete_dependency_${dependencyId}`);
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
       throw err;
     }
   };
 
-  // Comments API
   const createComment = async (taskId: string, authorId: string, content: string) => {
     try {
       console.log('[COMMENT-CREATE] Creating comment for task', taskId, 'by', authorId, 'content:', content);
