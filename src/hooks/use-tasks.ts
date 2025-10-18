@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Task } from '@/contexts/AppContext';
 import { sendTelegramNotification } from '@/services/telegram';
@@ -125,7 +125,8 @@ export const useTasks = () => {
   const lastLoadedTasksRef = useRef<Task[]>([]);
   const loadCallIdRef = useRef(0);
   const lastAppliedLoadIdRef = useRef(0);
-  const dependencyRefreshMapRef = useRef(new Map<string, { updatedAt: number }>());
+  const [dependencyCache, setDependencyCache] = useState(new Map<string, TaskDependenciesPayload>());
+  const dependencyUpdatesRef = useRef<{ [taskId: string]: number }>({});
 
   const loadTasks = useCallback(async (): Promise<Task[]> => {
     const callId = ++loadCallIdRef.current;
@@ -168,54 +169,100 @@ export const useTasks = () => {
     }
   }, [addTask, fetchAssigneeProfiles, fetchDependencies]);
 
-  const appendDependency = useCallback(
-    (predecessorId: string, successorId: string, depId: string) => {
-      if (!predecessorId || !successorId || !depId) return;
-      const now = Date.now();
-      dependencyRefreshMapRef.current.set(depId, { updatedAt: now });
+  const markDependencyDirty = useCallback((taskId: string) => {
+    dependencyUpdatesRef.current[taskId] = Date.now();
+  }, []);
 
-      const predecessorTask = tasks.find((task) => task.id === predecessorId);
-      if (predecessorTask) {
-        const nextOut = (predecessorTask.dependencies_out || []).some((dep) => dep.id === depId)
-          ? predecessorTask.dependencies_out || []
-          : [...(predecessorTask.dependencies_out || []), { id: depId, to_id: successorId }];
-        updateTask(predecessorId, { dependencies_out: nextOut });
-      }
+  const refreshDependencyTasks = useCallback(
+    async (taskIds: string[]) => {
+      if (!taskIds.length) return;
+      const uniqueIds = Array.from(new Set(taskIds.filter(Boolean)));
+      if (!uniqueIds.length) return;
 
-      const successorTask = tasks.find((task) => task.id === successorId);
-      if (successorTask) {
-        const nextIn = (successorTask.dependencies_in || []).some((dep) => dep.id === depId)
-          ? successorTask.dependencies_in || []
-          : [...(successorTask.dependencies_in || []), { id: depId, from_id: predecessorId }];
-        updateTask(successorId, { dependencies_in: nextIn });
+      try {
+        const depsMap = await fetchDependencies(uniqueIds);
+        setDependencyCache((prev) => {
+          const next = new Map(prev);
+          uniqueIds.forEach((taskId) => {
+            next.set(taskId, depsMap.get(taskId) || { dependencies_in: [], dependencies_out: [] });
+          });
+          return next;
+        });
+
+        uniqueIds.forEach((taskId) => {
+          const data = depsMap.get(taskId) || { dependencies_in: [], dependencies_out: [] };
+          updateTask(taskId, {
+            dependencies_in: data.dependencies_in,
+            dependencies_out: data.dependencies_out,
+          });
+        });
+      } catch (err) {
+        console.warn('[TASKS] Failed to refresh dependency tasks', uniqueIds, err);
       }
     },
-    [tasks, updateTask],
+    [fetchDependencies, updateTask],
   );
 
-  const removeDependencyFromState = useCallback(
-    (predecessorId?: string | null, successorId?: string | null, depId?: string | null) => {
-      if (!depId) return;
-      const now = Date.now();
-      dependencyRefreshMapRef.current.set(depId, { updatedAt: now });
+  const applyRealtimeDependencyChange = useCallback(
+    async (payload: any) => {
+      const depId: string | undefined = payload.new?.id ?? payload.old?.id;
+      const predecessorId: string | undefined = payload.new?.predecessor_id ?? payload.old?.predecessor_id;
+      const successorId: string | undefined = payload.new?.successor_id ?? payload.old?.successor_id;
 
-      if (predecessorId) {
-        const predecessorTask = tasks.find((task) => task.id === predecessorId);
-        if (predecessorTask) {
-          const nextOut = (predecessorTask.dependencies_out || []).filter((dep) => dep.id !== depId);
-          updateTask(predecessorId, { dependencies_out: nextOut });
-        }
+      if (!depId || !predecessorId || !successorId) {
+        return;
       }
 
-      if (successorId) {
-        const successorTask = tasks.find((task) => task.id === successorId);
-        if (successorTask) {
-          const nextIn = (successorTask.dependencies_in || []).filter((dep) => dep.id !== depId);
-          updateTask(successorId, { dependencies_in: nextIn });
-        }
+      markDependencyDirty(predecessorId);
+      markDependencyDirty(successorId);
+
+      switch (payload.eventType) {
+        case 'INSERT':
+          setDependencyCache((prev) => {
+            const next = new Map(prev);
+            const sourceOut = next.get(predecessorId)?.dependencies_out || [];
+            const sourceIn = next.get(successorId)?.dependencies_in || [];
+            next.set(predecessorId, {
+              dependencies_out: sourceOut.some((dep) => dep.id === depId)
+                ? sourceOut
+                : [...sourceOut, { id: depId, to_id: successorId }],
+              dependencies_in: next.get(predecessorId)?.dependencies_in || [],
+            });
+            next.set(successorId, {
+              dependencies_in: sourceIn.some((dep) => dep.id === depId)
+                ? sourceIn
+                : [...sourceIn, { id: depId, from_id: predecessorId }],
+              dependencies_out: next.get(successorId)?.dependencies_out || [],
+            });
+            return next;
+          });
+          break;
+        case 'DELETE':
+          setDependencyCache((prev) => {
+            const next = new Map(prev);
+            const currentPredecessor = next.get(predecessorId) || { dependencies_in: [], dependencies_out: [] };
+            const currentSuccessor = next.get(successorId) || { dependencies_in: [], dependencies_out: [] };
+            next.set(predecessorId, {
+              dependencies_out: currentPredecessor.dependencies_out.filter((dep) => dep.id !== depId),
+              dependencies_in: currentPredecessor.dependencies_in,
+            });
+            next.set(successorId, {
+              dependencies_in: currentSuccessor.dependencies_in.filter((dep) => dep.id !== depId),
+              dependencies_out: currentSuccessor.dependencies_out,
+            });
+            return next;
+          });
+          break;
+        case 'UPDATE':
+          await refreshDependencyTasks([predecessorId, successorId, payload.old?.predecessor_id, payload.old?.successor_id].filter(Boolean) as string[]);
+          break;
+        default:
+          break;
       }
+
+      await refreshDependencyTasks([predecessorId, successorId]);
     },
-    [tasks, updateTask],
+    [markDependencyDirty, refreshDependencyTasks],
   );
 
   const fetchTaskDetails = useCallback(async (taskId: string) => {
@@ -273,44 +320,7 @@ export const useTasks = () => {
 
     const dependenciesChannel = supabase
       .channel('task_dependencies_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'task_dependencies' },
-        (payload: any) => {
-          const depId: string | undefined = payload.new?.id ?? payload.old?.id;
-          const predecessorId: string | undefined = payload.new?.predecessor_id ?? payload.old?.predecessor_id;
-          const successorId: string | undefined = payload.new?.successor_id ?? payload.old?.successor_id;
-
-          if (!depId || !predecessorId || !successorId) {
-            return;
-          }
-
-          const lastUpdated = dependencyRefreshMapRef.current.get(depId)?.updatedAt ?? 0;
-          const isRecent = Date.now() - lastUpdated < 1000;
-
-          switch (payload.eventType) {
-            case 'INSERT':
-              if (!isRecent) {
-                appendDependency(predecessorId, successorId, depId);
-              }
-              break;
-            case 'DELETE':
-              if (!isRecent) {
-                removeDependencyFromState(predecessorId, successorId, depId);
-              }
-              dependencyRefreshMapRef.current.delete(depId);
-              break;
-            case 'UPDATE':
-              if (!isRecent) {
-                removeDependencyFromState(payload.old?.predecessor_id, payload.old?.successor_id, depId);
-                appendDependency(predecessorId, successorId, depId);
-              }
-              break;
-            default:
-              break;
-          }
-        },
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_dependencies' }, applyRealtimeDependencyChange)
       .subscribe();
 
     return () => {
@@ -473,7 +483,7 @@ export const useTasks = () => {
       predecessorId = predecessorId ?? deletedRow?.predecessor_id;
       successorId = successorId ?? deletedRow?.successor_id;
 
-      removeDependencyFromState(predecessorId, successorId, dependencyId);
+      await refreshDependencyTasks([predecessorId, successorId].filter(Boolean) as string[]);
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
       throw err;
