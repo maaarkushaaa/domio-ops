@@ -36,7 +36,9 @@ interface TaskDependenciesBoardProps {
 }
 
 const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
+  const [showPreview, setShowPreview] = useState(false);
   const assignee = data.task.assignee?.full_name || data.task.assignee?.email;
+  const hasDescription = Boolean(data.task.description);
 
   return (
     <div className="relative flex min-w-[200px] max-w-[240px] flex-col gap-2 text-left">
@@ -54,7 +56,18 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
         </button>
       ) : null}
       <div className="flex items-start justify-between gap-3 pr-5">
-        <span className="text-sm font-medium leading-snug text-foreground">{data.task.title}</span>
+        <button
+          type="button"
+          className="flex-1 text-left text-sm font-medium leading-snug text-foreground hover:underline"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!hasDescription) return;
+            setShowPreview((prev) => !prev);
+          }}
+          disabled={!hasDescription}
+        >
+          {data.task.title}
+        </button>
         <span
           className="whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
           style={{ backgroundColor: data.statusBadgeBg, color: data.statusBadgeColor }}
@@ -64,6 +77,22 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
       </div>
       {assignee ? (
         <span className="truncate text-xs font-medium text-muted-foreground">{assignee}</span>
+      ) : null}
+      {showPreview && hasDescription ? (
+        <div className="rounded-lg border bg-background p-2 text-xs text-muted-foreground shadow-lg">
+          <div className="mb-2 font-semibold text-foreground">Описание</div>
+          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap leading-relaxed">{data.task.description}</p>
+          <button
+            type="button"
+            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowPreview(false);
+            }}
+          >
+            Закрыть
+          </button>
+        </div>
       ) : null}
       <Handle type="target" position={Position.Top} className="bg-primary" />
       <Handle type="source" position={Position.Bottom} className="bg-primary" />
@@ -127,7 +156,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     () =>
       ({
         backlog: {
-          label: 'Backlog',
+          label: 'Бэклог',
           badgeBg: 'rgba(107, 114, 128, 0.18)',
           badgeColor: '#374151',
           border: 'rgba(107, 114, 128, 0.4)',
@@ -135,7 +164,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           textColor: '#1f2937',
         },
         todo: {
-          label: 'Todo',
+          label: 'К выполнению',
           badgeBg: 'rgba(59, 130, 246, 0.18)',
           badgeColor: '#1d4ed8',
           border: 'rgba(59, 130, 246, 0.45)',
@@ -143,7 +172,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           textColor: '#1e3a8a',
         },
         in_progress: {
-          label: 'In Progress',
+          label: 'В работе',
           badgeBg: 'rgba(234, 179, 8, 0.2)',
           badgeColor: '#b45309',
           border: 'rgba(234, 179, 8, 0.45)',
@@ -151,7 +180,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           textColor: '#92400e',
         },
         review: {
-          label: 'Review',
+          label: 'На ревью',
           badgeBg: 'rgba(217, 70, 239, 0.18)',
           badgeColor: '#a21caf',
           border: 'rgba(217, 70, 239, 0.45)',
@@ -159,7 +188,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           textColor: '#86198f',
         },
         done: {
-          label: 'Done',
+          label: 'Готово',
           badgeBg: 'rgba(34, 197, 94, 0.2)',
           badgeColor: '#047857',
           border: 'rgba(34, 197, 94, 0.45)',
@@ -196,8 +225,18 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   const hiddenIdsSet = useMemo(() => new Set(hiddenTaskIds), [hiddenTaskIds]);
 
   const hideTask = useCallback((taskId: string) => {
+    const task = nodesSource.find((item) => item.id === taskId);
+    const hasDeps = (task?.dependencies_in?.length ?? 0) > 0 || (task?.dependencies_out?.length ?? 0) > 0;
+    if (hasDeps) {
+      toast({
+        title: 'Нельзя скрыть задачу',
+        description: 'Сначала удалите зависимости этой задачи.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setHiddenTaskIds((prev) => (prev.includes(taskId) ? prev : [...prev, taskId]));
-  }, []);
+  }, [nodesSource, toast]);
 
   const unhideTask = useCallback((taskId: string) => {
     setHiddenTaskIds((prev) => prev.filter((id) => id !== taskId));
