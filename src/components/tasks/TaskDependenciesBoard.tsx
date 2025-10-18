@@ -66,29 +66,6 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     return Array.from(map.values());
   }, [allTasks, tasks]);
 
-  const persistPositions = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const entries = Array.from(positionsRef.current.entries()).reduce<Record<string, { x: number; y: number }>>(
-        (acc, [taskId, position]) => {
-          acc[taskId] = position;
-          return acc;
-        },
-        {},
-      );
-      window.localStorage.setItem(storageKey, JSON.stringify(entries));
-    } catch (error) {
-      console.warn('[TaskDependenciesBoard] Failed to persist positions', error);
-    }
-  }, [storageKey]);
-
-  useEffect(() => {
-    const hasLoaded = loadStoredPositions();
-    if (hasLoaded && nodesSource.length) {
-      setNodes(buildNodes(nodesSource));
-    }
-  }, [loadStoredPositions, nodesSource, buildNodes, setNodes]);
-
   const buildNodes = useCallback((source: Task[]): Node[] => {
     const nextNodes: Node[] = [];
     const seen = new Set<string>();
@@ -152,6 +129,29 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  const persistPositions = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const entries = Array.from(positionsRef.current.entries()).reduce<Record<string, { x: number; y: number }>>(
+        (acc, [taskId, position]) => {
+          acc[taskId] = position;
+          return acc;
+        },
+        {},
+      );
+      window.localStorage.setItem(storageKey, JSON.stringify(entries));
+    } catch (error) {
+      console.warn('[TaskDependenciesBoard] Failed to persist positions', error);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    const hasLoaded = loadStoredPositions();
+    if (hasLoaded && nodesSource.length) {
+      setNodes(buildNodes(nodesSource));
+    }
+  }, [loadStoredPositions, nodesSource, buildNodes, setNodes]);
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     changes.forEach((change) => {
