@@ -23,7 +23,7 @@ interface TaskDependenciesBoardProps {
 }
 
 export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
-  const { tasks: allTasks, createDependency, deleteDependency, updateTask } = useTasks();
+  const { tasks: allTasks, createDependency, deleteDependency } = useTasks();
   const { toast } = useToast();
   const positionsRef = useRef(new Map<string, { x: number; y: number }>());
 
@@ -100,13 +100,10 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     changes.forEach((change) => {
       if (change.type === 'position' && change.position) {
         positionsRef.current.set(change.id, change.position);
-        updateTask(change.id, {
-          position: change.position,
-        } as any);
       }
     });
     onNodesChange(changes);
-  }, [onNodesChange, updateTask]);
+  }, [onNodesChange]);
 
   const handleConnect = useCallback(async (connection: Connection) => {
     const { source, target } = connection;
