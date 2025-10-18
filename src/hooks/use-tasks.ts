@@ -158,6 +158,34 @@ export const useTasks = () => {
     }
   }, [addTask, fetchAssigneeProfiles, fetchDependencies]);
 
+  const refreshTaskDependencies = useCallback(
+    async (taskId?: string) => {
+      if (!taskId) return;
+      try {
+        const [{ data: outgoing, error: outError }, { data: incoming, error: inError }] = await Promise.all([
+          (supabase as any)
+            .from('task_dependencies')
+            .select('id, successor_id')
+            .eq('predecessor_id', taskId),
+          (supabase as any)
+            .from('task_dependencies')
+            .select('id, predecessor_id')
+            .eq('successor_id', taskId),
+        ]);
+        if (outError || inError) {
+          throw outError || inError;
+        }
+        updateTask(taskId, {
+          dependencies_out: (outgoing || []).map((dep: any) => ({ id: dep.id, to_id: dep.successor_id })),
+          dependencies_in: (incoming || []).map((dep: any) => ({ id: dep.id, from_id: dep.predecessor_id })),
+        });
+      } catch (err) {
+        console.warn('[TASKS] Failed to refresh task dependencies', taskId, err);
+      }
+    },
+    [updateTask],
+  );
+
   const fetchTaskDetails = useCallback(async (taskId: string) => {
     const { data, error } = await (supabase as any)
       .from('tasks')
@@ -413,7 +441,8 @@ export const useTasks = () => {
           break;
         }
         if (!checkData) {
-          await loadTasks();
+          await refreshTaskDependencies(predecessorId);
+          await refreshTaskDependencies(successorId);
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, baseDelay * (attempt + 1)));
