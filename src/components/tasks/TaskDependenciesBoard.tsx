@@ -53,6 +53,19 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     }
   }, [storageKey]);
 
+  const nodesSource = useMemo(() => {
+    if (!allTasks.length) return [] as Task[];
+    if (!tasks.length) return allTasks;
+    const map = new Map<string, Task>();
+    tasks.forEach((task) => map.set(task.id, task));
+    allTasks.forEach((task) => {
+      if (!map.has(task.id)) {
+        map.set(task.id, task);
+      }
+    });
+    return Array.from(map.values());
+  }, [allTasks, tasks]);
+
   const persistPositions = useCallback(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -75,19 +88,6 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
       setNodes(buildNodes(nodesSource));
     }
   }, [loadStoredPositions, nodesSource, buildNodes, setNodes]);
-
-  const nodesSource = useMemo(() => {
-    if (!allTasks.length) return [] as Task[];
-    if (!tasks.length) return allTasks;
-    const map = new Map<string, Task>();
-    tasks.forEach((task) => map.set(task.id, task));
-    allTasks.forEach((task) => {
-      if (!map.has(task.id)) {
-        map.set(task.id, task);
-      }
-    });
-    return Array.from(map.values());
-  }, [allTasks, tasks]);
 
   const buildNodes = useCallback((source: Task[]): Node[] => {
     const nextNodes: Node[] = [];
