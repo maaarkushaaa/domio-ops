@@ -9,6 +9,7 @@ import ReactFlow, {
   Edge,
   Node,
   Connection,
+  addEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '@/contexts/AppContext';
@@ -94,7 +95,21 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     }
 
     try {
-      await createDependency(source, target);
+      const created = await createDependency(source, target);
+      setEdges((eds) => addEdge({
+        id: created.id,
+        source,
+        target,
+        animated: true,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: 'var(--primary)',
+        },
+        style: {
+          stroke: 'var(--primary)',
+          strokeWidth: 2,
+        },
+      }, eds));
       toast({ title: 'Связь создана', description: 'Новая зависимость сохранена.' });
     } catch (error: any) {
       toast({
@@ -103,7 +118,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         variant: 'destructive',
       });
     }
-  }, [createDependency, tasks, toast]);
+  }, [createDependency, setEdges, tasks, toast]);
 
   const handleEdgesDelete = useCallback(async (deleted: Edge[]) => {
     for (const edge of deleted) {
@@ -135,6 +150,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         onEdgesChange={onEdgesChange}
         onEdgesDelete={handleEdgesDelete}
         onConnect={handleConnect}
+        onEdgeDoubleClick={(_, edge) => {
+          void handleEdgesDelete([edge]);
+        }}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         proOptions={{ hideAttribution: true }}

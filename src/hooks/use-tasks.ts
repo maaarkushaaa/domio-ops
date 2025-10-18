@@ -321,11 +321,14 @@ export const useTasks = () => {
     }
 
     try {
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('task_dependencies')
-        .insert({ predecessor_id: predecessorId, successor_id: successorId });
+        .insert({ predecessor_id: predecessorId, successor_id: successorId })
+        .select('id, predecessor_id, successor_id')
+        .single();
       if (error) throw error;
       await loadTasks();
+      return data;
     } catch (err) {
       console.error('[DEPENDENCY-CREATE] Failed to create dependency:', err);
       throw err;

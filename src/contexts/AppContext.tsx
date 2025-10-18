@@ -146,11 +146,9 @@ const getInitialState = (): AppState => {
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const hasLoggedInit = useRef(false);
-  if (!hasLoggedInit.current) {
+  useEffect(() => {
     console.log('🏗️ AppProvider initializing - Supabase Auth Only');
-    hasLoggedInit.current = true;
-  }
+  }, []);
   
   const [state, setState] = useState<AppState>(getInitialState);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
