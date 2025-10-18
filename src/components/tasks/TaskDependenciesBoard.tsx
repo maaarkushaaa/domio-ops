@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -66,6 +66,39 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     return Array.from(map.values());
   }, [allTasks, tasks]);
 
+  const statusStyles: Record<string, { label: string; badgeBg: string; badgeColor: string; border: string }> = {
+    backlog: {
+      label: 'Backlog',
+      badgeBg: 'rgba(79, 70, 229, 0.12)',
+      badgeColor: '#4f46e5',
+      border: 'rgba(79, 70, 229, 0.35)',
+    },
+    todo: {
+      label: 'Todo',
+      badgeBg: 'rgba(14, 116, 144, 0.12)',
+      badgeColor: '#0e7490',
+      border: 'rgba(14, 116, 144, 0.35)',
+    },
+    in_progress: {
+      label: 'In Progress',
+      badgeBg: 'rgba(234, 179, 8, 0.16)',
+      badgeColor: '#b45309',
+      border: 'rgba(234, 179, 8, 0.35)',
+    },
+    review: {
+      label: 'Review',
+      badgeBg: 'rgba(219, 39, 119, 0.12)',
+      badgeColor: '#be123c',
+      border: 'rgba(219, 39, 119, 0.35)',
+    },
+    done: {
+      label: 'Done',
+      badgeBg: 'rgba(34, 197, 94, 0.12)',
+      badgeColor: '#15803d',
+      border: 'rgba(34, 197, 94, 0.35)',
+    },
+  };
+
   const buildNodes = useCallback((source: Task[]): Node[] => {
     const nextNodes: Node[] = [];
     const seen = new Set<string>();
@@ -77,22 +110,40 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
       const stored = positionsRef.current.get(task.id) || (task as any).position || fallback;
       positionsRef.current.set(task.id, stored);
       seen.add(task.id);
+      const status = statusStyles[task.status] ?? statusStyles.backlog;
+      const assignee = task.assignee?.full_name || task.assignee?.email;
       nextNodes.push({
         id: task.id,
         data: {
-          label: `${task.title}${task.status ? `\n(${task.status})` : ''}`,
+          label: (
+            <div className="flex min-w-[200px] max-w-[240px] flex-col gap-2 text-left">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-sm font-medium leading-snug text-foreground">{task.title}</span>
+                <span
+                  className="whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ backgroundColor: status.badgeBg, color: status.badgeColor }}
+                >
+                  {status.label}
+                </span>
+              </div>
+              {assignee ? (
+                <span className="truncate text-xs font-medium text-muted-foreground">{assignee}</span>
+              ) : null}
+            </div>
+          ),
         },
         position: stored,
         draggable: true,
         style: {
-          padding: 12,
-          borderRadius: 8,
-          border: '1px solid var(--border)',
+          padding: 16,
+          borderRadius: 16,
+          border: `1px solid ${status.border}`,
           background: 'var(--card)',
+          boxShadow: '0 18px 45px -20px rgba(15, 23, 42, 0.45)',
           color: 'var(--foreground)',
           fontSize: 12,
-          lineHeight: 1.25,
-          whiteSpace: 'pre-line',
+          lineHeight: 1.4,
+          width: 240,
         },
       });
     });
@@ -294,14 +345,17 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         onConnect={handleConnect}
         onNodeDragStop={handleNodeDragStop}
         onEdgeDoubleClick={(_, edge) => {
-          void handleEdgesDelete([edge]);
+          if (!edge) return;
+          void handleEdgesDelete([{ id: edge.id, source: edge.source, target: edge.target } as Edge]);
         }}
         fitView
-        panOnScroll
+        panOnScroll={false}
         zoomOnScroll
+        zoomOnPinch
+        zoomOnDoubleClick={false}
       >
         <MiniMap pannable zoomable />
-        <Controls showInteractive={false} />
+        <Controls showInteractive={false} position="bottom-left" />
         <Background gap={24} color="var(--muted-foreground)" />
       </ReactFlow>
     </div>
