@@ -123,8 +123,11 @@ export const useTasks = () => {
   const pendingReloadRef = useRef(false);
 
   const lastLoadedTasksRef = useRef<Task[]>([]);
+  const loadCallIdRef = useRef(0);
+  const lastAppliedLoadIdRef = useRef(0);
 
   const loadTasks = useCallback(async (): Promise<Task[]> => {
+    const callId = ++loadCallIdRef.current;
     if (isLoadingRef.current) {
       pendingReloadRef.current = true;
       return lastLoadedTasksRef.current;
@@ -141,7 +144,13 @@ export const useTasks = () => {
       const depsByTaskId = await fetchDependencies((data || []).map((row: any) => row.id));
 
       const transformed = (data || []).map((row: any) => mapTaskRow(row, profilesById, depsByTaskId.get(row.id)));
+
+      if (callId < lastAppliedLoadIdRef.current) {
+        return lastLoadedTasksRef.current;
+      }
+
       lastLoadedTasksRef.current = transformed;
+      lastAppliedLoadIdRef.current = callId;
       transformed.forEach((task) => {
         addTask(task);
       });
