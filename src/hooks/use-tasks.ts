@@ -394,6 +394,25 @@ export const useTasks = () => {
         }
       }
 
+      const maxAttempts = 6;
+      const baseDelay = 150;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const { data: checkData, error: checkError } = await (supabase as any)
+          .from('task_dependencies')
+          .select('id')
+          .eq('id', dependencyId)
+          .maybeSingle();
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.warn('[DEPENDENCY-DELETE] Verify deletion error:', checkError);
+          break;
+        }
+        if (!checkData) {
+          await loadTasks();
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, baseDelay * (attempt + 1)));
+      }
+
       await loadTasks();
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);

@@ -226,6 +226,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   const [showOnlyLinked, setShowOnlyLinked] = useState(false);
   const [hiddenTaskIds, setHiddenTaskIds] = useState<string[]>([]);
   const [isHiddenListOpen, setIsHiddenListOpen] = useState(false);
+  const [pendingDeletionIds, setPendingDeletionIds] = useState<string[]>([]);
 
   const loadStoredPositions = useCallback(() => {
     if (positionsLoadedRef.current) return false;
@@ -417,6 +418,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     const edges: Edge[] = [];
     source.forEach((task) => {
       (task.dependencies_out || []).forEach((dep) => {
+        if (pendingDeletionIds.includes(dep.id)) {
+          return;
+        }
         const targetTask = taskById.get(dep.to_id);
         const completedChain = task.status === 'done' && targetTask?.status === 'done';
         const strokeColor = completedChain ? '#d4af37' : '#6366f1';
@@ -433,7 +437,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
       });
     });
     return edges;
-  }, [taskById]);
+  }, [taskById, pendingDeletionIds]);
 
   const visibleTasks = useMemo(() => {
     const base = showOnlyLinked
@@ -545,9 +549,23 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     }
   }, [createDependency, setEdges, nodesSource, toast]);
 
+  const markPendingDeletion = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    setPendingDeletionIds((prev) => Array.from(new Set([...prev, ...ids])));
+  }, []);
+
+  const unmarkPendingDeletion = useCallback((ids: Iterable<string>) => {
+    const removeSet = new Set(ids);
+    if (!removeSet.size) return;
+    setPendingDeletionIds((prev) => prev.filter((id) => !removeSet.has(id)));
+  }, []);
+
   const handleEdgesDelete = useCallback(async (deleted: Edge[]) => {
     if (!deleted.length) return;
-    const deletedIds = new Set<string>();
+    const deletedIds = deleted.map((edge) => edge.id).filter((id): id is string => Boolean(id));
+    markPendingDeletion(deletedIds);
+    const successfullyDeleted = new Set<string>();
+
     for (const edge of deleted) {
       if (!edge?.id) continue;
       try {
@@ -555,8 +573,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           predecessorId: edge.source,
           successorId: edge.target,
         });
-        toast({ title: 'Связь удалена', description: 'Зависимость удалена из задачи.' });
-        deletedIds.add(edge.id);
+        successfullyDeleted.add(edge.id);
       } catch (error: any) {
         toast({
           title: 'Ошибка при удалении зависимости',
@@ -565,10 +582,15 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         });
       }
     }
-    if (deletedIds.size) {
-      setEdges((eds) => eds.filter((edge) => !deletedIds.has(edge.id)));
+
+    if (successfullyDeleted.size) {
+      setEdges((eds) => eds.filter((edge) => !successfullyDeleted.has(edge.id)));
+      toast({ title: 'Связь удалена', description: 'Зависимость удалена из задачи.' });
+      unmarkPendingDeletion(successfullyDeleted);
+    } else {
+      unmarkPendingDeletion(deletedIds);
     }
-  }, [deleteDependency, setEdges, toast]);
+  }, [deleteDependency, markPendingDeletion, setEdges, toast, unmarkPendingDeletion]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChange(changes);
