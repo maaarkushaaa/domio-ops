@@ -30,14 +30,13 @@ export function AppHeader() {
   const { user, signOut } = useApp();
   const userInitials = user?.name?.charAt(0).toUpperCase() || user?.email?.substring(0, 2).toUpperCase() || "U";
   const [searchOpen, setSearchOpen] = useState(false);
-  const { activeCall } = useVideoCallRealtime();
+  const { session } = useVideoCallRealtime();
   const navigate = useNavigate();
 
-  const handleJoinQuickCall = () => {
-    if (!activeCall) return;
+  const handleOpenVideoCall = () => {
+    if (!session) return;
     const url = new URL(window.location.origin + "/video-calls");
-    url.searchParams.set("room", activeCall.room_name);
-    url.searchParams.set("autoJoin", "1");
+    url.searchParams.set("session", session.id);
     navigate({ pathname: "/video-calls", search: url.search });
   };
 
@@ -61,14 +60,14 @@ export function AppHeader() {
       </div>
       
       <div className="flex items-center gap-2">
-        {activeCall && (
+        {session && (
           <Button
             variant="secondary"
             className="flex items-center gap-2"
-            onClick={handleJoinQuickCall}
+            onClick={handleOpenVideoCall}
           >
             <Video className="h-4 w-4" />
-            {activeCall.title}
+            {session.title}
           </Button>
         )}
         <ThemeToggle />

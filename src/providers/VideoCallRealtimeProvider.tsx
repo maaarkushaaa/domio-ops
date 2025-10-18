@@ -1,263 +1,635 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNotifications } from '@/hooks/use-notifications';
+import { useToast } from '@/hooks/use-toast';
 
-export interface ActiveQuickCall {
+type SignalType = 'offer' | 'answer' | 'candidate' | 'bye';
+
+type ConnectionState = 'connecting' | 'connected' | 'disconnected';
+
+interface VideoCallSession {
   id: string;
   title: string;
-  room_name: string;
-  room_url: string;
-  created_by: string;
+  host_id: string;
+  status: string;
   created_at: string;
+  ended_at: string | null;
+}
+
+interface VideoCallParticipant {
+  user_id: string;
+  role: 'host' | 'guest';
+  connection_state: ConnectionState;
+  joined_at: string | null;
+  left_at: string | null;
+}
+
+interface VideoCallSignal {
+  session_id: string;
+  sender_id: string;
+  receiver_id: string | null;
+  type: SignalType;
+  payload: Record<string, any>;
+}
+
+interface RemoteStream {
+  id: string;
+  stream: MediaStream;
 }
 
 interface VideoCallRealtimeContextValue {
-  activeCall: ActiveQuickCall | null;
-  setActiveCall: (call: ActiveQuickCall | null) => void;
-  clearNotification: () => void;
+  session: VideoCallSession | null;
+  participants: VideoCallParticipant[];
+  localStream: MediaStream | null;
+  remoteStreams: RemoteStream[];
+  connectionState: RTCPeerConnectionState;
+  isAudioEnabled: boolean;
+  isVideoEnabled: boolean;
+  createSession: (title: string, invitees: string[]) => Promise<string | null>;
+  joinSession: (sessionId: string) => Promise<void>;
+  leaveSession: () => Promise<void>;
+  setAudioEnabled: (enabled: boolean) => void;
+  setVideoEnabled: (enabled: boolean) => void;
 }
+
+const peerConnectionConfig: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+};
 
 const VideoCallRealtimeContext = createContext<VideoCallRealtimeContextValue | undefined>(undefined);
 
 export function VideoCallRealtimeProvider({ children }: { children: ReactNode }) {
-  const [activeCall, setActiveCallState] = useState<ActiveQuickCall | null>(null);
-  const { addNotification, removeNotification } = useNotifications();
-  const [notifiedCallId, setNotifiedCallId] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const notifiedCallIdRef = useRef<string | null>(null);
+  const { toast } = useToast();
+  const [session, setSession] = useState<VideoCallSession | null>(null);
+  const [participants, setParticipants] = useState<VideoCallParticipant[]>([]);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
+  const [connectionState, setConnectionState] = useState<RTCPeerConnectionState>('new');
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+
   const currentUserIdRef = useRef<string | null>(null);
-  const notificationRef = useRef<Map<string, string>>(new Map());
+  const sessionIdRef = useRef<string | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
+  const signalsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const participantsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const isHostRef = useRef(false);
 
-  const vapidPublicKey = (import.meta as any)?.env?.VITE_VAPID_PUBLIC_KEY as string | undefined;
-
-  const base64ToUint8Array = useCallback((base64: string) => {
-    const padding = '='.repeat((4 - (base64.length % 4)) % 4);
-    const base64Safe = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64Safe);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
+  const fetchCurrentUser = useCallback(async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error('Не удалось получить пользователя для видеозвонка', error);
+      return;
     }
-    return outputArray;
+    currentUserIdRef.current = data.user?.id ?? null;
   }, []);
 
-  const ensurePushSubscription = useCallback(async () => {
-    if (!notificationsEnabled) return;
-    if (!('serviceWorker' in navigator)) return;
-    if (!vapidPublicKey) {
-      console.warn('VITE_VAPID_PUBLIC_KEY is not configured');
+  useEffect(() => {
+    fetchCurrentUser();
+  }, [fetchCurrentUser]);
+
+  const ensureLocalStream = useCallback(async () => {
+    if (localStreamRef.current) {
+      return localStreamRef.current;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Браузер не поддерживает доступ к камере и микрофону');
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    stream.getAudioTracks().forEach((track) => {
+      track.enabled = isAudioEnabled;
+    });
+    stream.getVideoTracks().forEach((track) => {
+      track.enabled = isVideoEnabled;
+    });
+
+    localStreamRef.current = stream;
+    setLocalStream(stream);
+    return stream;
+  }, [isAudioEnabled, isVideoEnabled]);
+
+  const updateRemoteStreamsState = useCallback(() => {
+    setRemoteStreams(Array.from(remoteStreamsRef.current.entries()).map(([id, stream]) => ({ id, stream })));
+  }, []);
+
+  const flushPendingIceCandidates = useCallback(async () => {
+    if (!sessionIdRef.current || pendingIceCandidatesRef.current.length === 0) {
+      return;
+    }
+
+    const toSend = [...pendingIceCandidatesRef.current];
+    pendingIceCandidatesRef.current = [];
+
+    await Promise.all(
+      toSend.map((candidate) =>
+        supabase.functions.invoke('video-call-signal', {
+          body: {
+            session_id: sessionIdRef.current,
+            type: 'candidate',
+            payload: candidate,
+          },
+        })
+      )
+    );
+  }, []);
+
+  const cleanupPeerConnection = useCallback(() => {
+    const pc = peerConnectionRef.current;
+    if (!pc) return;
+
+    pc.onicecandidate = null;
+    pc.ontrack = null;
+    pc.onconnectionstatechange = null;
+
+    pc.getSenders().forEach((sender) => {
+      try {
+        pc.removeTrack(sender);
+      } catch (error) {
+        console.warn('Ошибка удаления отправителя из peer connection', error);
+      }
+    });
+
+    pc.close();
+    peerConnectionRef.current = null;
+    setConnectionState('new');
+    remoteStreamsRef.current.clear();
+    updateRemoteStreamsState();
+  }, [updateRemoteStreamsState]);
+
+  const cleanupLocalStream = useCallback(() => {
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null;
+    setLocalStream(null);
+  }, []);
+
+  const unsubscribeRealtime = useCallback(() => {
+    if (signalsChannelRef.current) {
+      supabase.removeChannel(signalsChannelRef.current);
+      signalsChannelRef.current = null;
+    }
+
+    if (participantsChannelRef.current) {
+      supabase.removeChannel(participantsChannelRef.current);
+      participantsChannelRef.current = null;
+    }
+  }, []);
+
+  const resetState = useCallback(() => {
+    sessionIdRef.current = null;
+    isHostRef.current = false;
+    pendingIceCandidatesRef.current = [];
+    setSession(null);
+    setParticipants([]);
+    cleanupPeerConnection();
+    cleanupLocalStream();
+  }, [cleanupLocalStream, cleanupPeerConnection]);
+
+  const leaveSession = useCallback(async () => {
+    const sessionId = sessionIdRef.current;
+    const userId = currentUserIdRef.current;
+
+    if (!sessionId || !userId) {
+      unsubscribeRealtime();
+      resetState();
       return;
     }
 
     try {
-      const registration = await navigator.serviceWorker.ready;
-      let subscription = await registration.pushManager.getSubscription();
+      await supabase.functions.invoke('video-call-signal', {
+        body: {
+          session_id: sessionId,
+          type: 'bye',
+          payload: { user_id: userId },
+        },
+      });
 
-      if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: base64ToUint8Array(vapidPublicKey),
+      await supabase
+        .from('video_call_participants')
+        .update({
+          connection_state: 'disconnected',
+          left_at: new Date().toISOString(),
+        })
+        .eq('session_id', sessionId)
+        .eq('user_id', userId);
+
+      if (isHostRef.current) {
+        await supabase
+          .from('video_call_sessions')
+          .update({ status: 'ended', ended_at: new Date().toISOString() })
+          .eq('id', sessionId)
+          .eq('host_id', userId);
+      }
+    } catch (error) {
+      console.error('Ошибка при завершении звонка', error);
+    } finally {
+      unsubscribeRealtime();
+      resetState();
+      toast({ title: 'Звонок завершён', description: 'Вы покинули видеоконференцию' });
+    }
+  }, [resetState, toast, unsubscribeRealtime]);
+
+  const sendSignal = useCallback(
+    async (type: SignalType, payload: Record<string, any>, receiverId: string | null = null) => {
+      if (!sessionIdRef.current) {
+        if (type === 'candidate') {
+          pendingIceCandidatesRef.current.push(payload as RTCIceCandidateInit);
+        }
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke('video-call-signal', {
+        body: {
+          session_id: sessionIdRef.current,
+          receiver_id: receiverId,
+          type,
+          payload,
+        },
+      });
+
+      if (error) {
+        console.error('Не удалось отправить сигнал WebRTC', error);
+      }
+    },
+    []
+  );
+
+  const createPeerConnection = useCallback(async () => {
+    if (peerConnectionRef.current) {
+      return peerConnectionRef.current;
+    }
+
+    const pc = new RTCPeerConnection(peerConnectionConfig);
+
+    pc.onicecandidate = async (event) => {
+      if (event.candidate) {
+        await sendSignal('candidate', event.candidate.toJSON());
+      }
+    };
+
+    pc.ontrack = (event) => {
+      const [stream] = event.streams;
+      if (!stream) return;
+      const participantId = event.track.id || stream.id;
+      remoteStreamsRef.current.set(participantId, stream);
+      updateRemoteStreamsState();
+    };
+
+    pc.onconnectionstatechange = () => {
+      setConnectionState(pc.connectionState);
+    };
+
+    const stream = await ensureLocalStream();
+    stream.getTracks().forEach((track) => {
+      pc.addTrack(track, stream);
+    });
+
+    peerConnectionRef.current = pc;
+    return pc;
+  }, [ensureLocalStream, sendSignal, updateRemoteStreamsState]);
+
+  const fetchSession = useCallback(async (sessionId: string) => {
+    const { data, error } = await supabase
+      .from<VideoCallSession>('video_call_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Не удалось загрузить сессию', error);
+      return null;
+    }
+
+    return data;
+  }, []);
+
+  const fetchParticipants = useCallback(async (sessionId: string) => {
+    const { data, error } = await supabase
+      .from<VideoCallParticipant>('video_call_participants')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('joined_at', { ascending: true });
+
+    if (error) {
+      console.error('Не удалось загрузить участников', error);
+      return [];
+    }
+
+    return data ?? [];
+  }, []);
+
+  const subscribeToParticipants = useCallback((sessionId: string) => {
+    participantsChannelRef.current = supabase
+      .channel(`video_call_participants:${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'video_call_participants', filter: `session_id=eq.${sessionId}` },
+        async () => {
+          const updated = await fetchParticipants(sessionId);
+          setParticipants(updated);
+        }
+      )
+      .subscribe();
+  }, [fetchParticipants]);
+
+  const handleSignal = useCallback(
+    async (signal: VideoCallSignal) => {
+      const pc = await createPeerConnection();
+
+      switch (signal.type) {
+        case 'offer': {
+          if (isHostRef.current) return;
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          await sendSignal('answer', answer);
+          await flushPendingIceCandidates();
+          break;
+        }
+        case 'answer': {
+          if (!isHostRef.current) return;
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+          await flushPendingIceCandidates();
+          break;
+        }
+        case 'candidate': {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(signal.payload));
+          } catch (error) {
+            console.error('Не удалось добавить ICE-кандидата', error);
+          }
+          break;
+        }
+        case 'bye': {
+          const userId = signal.payload?.user_id;
+          if (userId) {
+            remoteStreamsRef.current.delete(userId);
+            updateRemoteStreamsState();
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [createPeerConnection, flushPendingIceCandidates, sendSignal, updateRemoteStreamsState]
+  );
+
+  const subscribeToSignals = useCallback((sessionId: string) => {
+    signalsChannelRef.current = supabase
+      .channel(`video_call_signals:${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'video_call_signals', filter: `session_id=eq.${sessionId}` },
+        async (payload) => {
+          const signal = payload.new as VideoCallSignal;
+          if (signal.sender_id === currentUserIdRef.current) {
+            return;
+          }
+          await handleSignal(signal);
+        }
+      )
+      .subscribe();
+  }, [handleSignal]);
+
+  const replayRecentSignals = useCallback(
+    async (sessionId: string) => {
+      const since = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+
+      const { data, error } = await supabase
+        .from<VideoCallSignal>('video_call_signals')
+        .select('*')
+        .eq('session_id', sessionId)
+        .gte('created_at', since)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Не удалось получить сигналы для повторения', error);
+        return;
+      }
+
+      for (const signal of data ?? []) {
+        if (signal.sender_id === currentUserIdRef.current) continue;
+        await handleSignal(signal);
+      }
+    },
+    [handleSignal]
+  );
+
+  const startSessionSubscriptions = useCallback(
+    async (sessionId: string) => {
+      subscribeToParticipants(sessionId);
+      subscribeToSignals(sessionId);
+      await replayRecentSignals(sessionId);
+    },
+    [replayRecentSignals, subscribeToParticipants, subscribeToSignals]
+  );
+
+  const createSession = useCallback(
+    async (title: string, invitees: string[]) => {
+      await fetchCurrentUser();
+      if (!currentUserIdRef.current) {
+        toast({ title: 'Ошибка', description: 'Необходима авторизация', variant: 'destructive' });
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('video_call_sessions')
+        .insert({ title, host_id: currentUserIdRef.current })
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('Не удалось создать сессию', error);
+        toast({ title: 'Ошибка', description: 'Не удалось создать звонок', variant: 'destructive' });
+        return null;
+      }
+
+      sessionIdRef.current = data.id;
+      isHostRef.current = true;
+      setSession(data);
+
+      const { error: participantError } = await supabase
+        .from('video_call_participants')
+        .insert({
+          session_id: data.id,
+          user_id: currentUserIdRef.current,
+          role: 'host',
+          connection_state: 'connected',
+          joined_at: new Date().toISOString(),
+        });
+
+      if (participantError) {
+        console.error('Не удалось добавить участника', participantError);
+      }
+
+      if (invitees.length > 0) {
+        await supabase.functions.invoke('webpush-send', {
+          body: {
+            session_id: data.id,
+            title,
+            invitees,
+          },
         });
       }
 
-      if (!subscription) return;
+      const updatedParticipants = await fetchParticipants(data.id);
+      setParticipants(updatedParticipants);
+      await startSessionSubscriptions(data.id);
 
-      const payload = {
-        subscription: subscription.toJSON(),
-        platform: navigator.userAgent,
-      };
+      const pc = await createPeerConnection();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await sendSignal('offer', offer);
 
-      await supabase.functions.invoke('webpush-save', {
-        body: payload,
-      });
+      return data.id;
+    },
+    [
+      createPeerConnection,
+      fetchCurrentUser,
+      fetchParticipants,
+      sendSignal,
+      startSessionSubscriptions,
+      toast,
+    ]
+  );
 
-      setHasActiveSubscription(true);
-    } catch (error) {
-      console.error('Failed to ensure push subscription:', error);
-    }
-  }, [notificationsEnabled, vapidPublicKey, base64ToUint8Array]);
+  const joinSession = useCallback(
+    async (sessionId: string) => {
+      await fetchCurrentUser();
+      if (!currentUserIdRef.current) {
+        toast({ title: 'Ошибка', description: 'Необходима авторизация', variant: 'destructive' });
+        return;
+      }
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      const uid = data.user?.id || null;
-      setCurrentUserId(uid);
-      currentUserIdRef.current = uid;
-    }).catch((error) => {
-      console.error('Error fetching user for quick call provider:', error);
+      const existingSession = await fetchSession(sessionId);
+      if (!existingSession) {
+        toast({ title: 'Ошибка', description: 'Сессия не найдена', variant: 'destructive' });
+        return;
+      }
+
+      sessionIdRef.current = sessionId;
+      isHostRef.current = existingSession.host_id === currentUserIdRef.current;
+      setSession(existingSession);
+
+      const { error } = await supabase
+        .from('video_call_participants')
+        .upsert(
+          {
+            session_id: sessionId,
+            user_id: currentUserIdRef.current,
+            role: isHostRef.current ? 'host' : 'guest',
+            connection_state: 'connected',
+            joined_at: new Date().toISOString(),
+            left_at: null,
+          },
+          { onConflict: 'session_id,user_id' }
+        );
+
+      if (error) {
+        console.error('Не удалось обновить участника', error);
+      }
+
+      const updatedParticipants = await fetchParticipants(sessionId);
+      setParticipants(updatedParticipants);
+      await startSessionSubscriptions(sessionId);
+
+      await createPeerConnection();
+
+      if (isHostRef.current) {
+        const pc = peerConnectionRef.current;
+        if (!pc) return;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await sendSignal('offer', offer);
+      }
+    },
+    [
+      createPeerConnection,
+      fetchCurrentUser,
+      fetchParticipants,
+      fetchSession,
+      sendSignal,
+      startSessionSubscriptions,
+      toast,
+    ]
+  );
+
+  const setAudioEnabled = useCallback((enabled: boolean) => {
+    setIsAudioEnabled(enabled);
+    localStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = enabled;
+    });
+  }, []);
+
+  const setVideoEnabled = useCallback((enabled: boolean) => {
+    setIsVideoEnabled(enabled);
+    localStreamRef.current?.getVideoTracks().forEach((track) => {
+      track.enabled = enabled;
     });
   }, []);
 
   useEffect(() => {
-    notifiedCallIdRef.current = notifiedCallId;
-  }, [notifiedCallId]);
-
-  useEffect(() => {
-    currentUserIdRef.current = currentUserId;
-  }, [currentUserId]);
-
-  useEffect(() => {
-    if (!('Notification' in window)) return;
-
-    const permission = Notification.permission;
-    setNotificationsEnabled(permission === 'granted');
-
-    if (permission === 'default') {
-      Notification.requestPermission().then(result => {
-        const granted = result === 'granted';
-        setNotificationsEnabled(granted);
-        if (granted && 'serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistration().then(registration => {
-            if (!registration) {
-              navigator.serviceWorker.register('/service-worker.js').catch(error => {
-                console.error('Service worker registration failed after permission grant:', error);
-              });
-            }
-          }).catch(error => {
-            console.error('Service worker getRegistration failed:', error);
-          });
-        }
-      }).catch(error => {
-        console.error('Notification permission request failed:', error);
-      });
-    } else if (permission === 'granted' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then(registration => {
-        if (!registration) {
-          navigator.serviceWorker.register('/service-worker.js').catch(error => {
-            console.error('Service worker registration failed after existing permission:', error);
-          });
-        }
-      }).catch(error => {
-        console.error('Service worker getRegistration failed:', error);
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!notificationsEnabled) return;
-    if (hasActiveSubscription) return;
-    ensurePushSubscription();
-  }, [notificationsEnabled, hasActiveSubscription, ensurePushSubscription]);
-
-  const fetchLatestCall = useCallback(async () => {
-    const { data, error } = await (supabase as any)
-      .from('video_quick_calls')
-      .select('*')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error loading quick call:', error);
-      return;
-    }
-
-    if (data) {
-      const call = data as ActiveQuickCall;
-      setActiveCallState(call);
-      setNotifiedCallId((prev) => prev || call.id);
-    } else {
-      setActiveCallState(null);
-      setNotifiedCallId(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchLatestCall();
-
-    const channel = supabase
-      .channel('video_quick_calls_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'video_quick_calls' }, (payload) => {
-        if (payload.eventType === 'DELETE') {
-          const deletedId = (payload.old as any)?.id;
-          setActiveCallState((prev) => (prev && prev.id === deletedId ? null : prev));
-          if (deletedId && notifiedCallIdRef.current === deletedId) {
-            setNotifiedCallId(null);
-          }
-          return;
-        }
-
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          const newCall = payload.new as ActiveQuickCall & { status: string };
-          if (newCall.status === 'active') {
-            setActiveCallState(newCall);
-            if (notifiedCallIdRef.current !== newCall.id && newCall.created_by !== currentUserIdRef.current) {
-              const existing = notificationRef.current.get(newCall.id);
-              if (existing) {
-                removeNotification(existing);
-                notificationRef.current.delete(newCall.id);
-              }
-              const id = addNotification({
-                type: 'info',
-                title: 'Новый видеозвонок',
-                message: newCall.title,
-                persistent: true,
-                actions: [
-                  {
-                    label: 'Присоединиться',
-                    action: () => {
-                      const url = new URL(window.location.origin + '/video-calls');
-                      url.searchParams.set('room', newCall.room_name);
-                      url.searchParams.set('autoJoin', '1');
-                      window.location.href = url.toString();
-                    },
-                  },
-                ],
-              });
-              notificationRef.current.set(newCall.id, id);
-            }
-            setNotifiedCallId(newCall.id);
-          } else if (newCall.status === 'ended') {
-            setActiveCallState((prev) => (prev && prev.id === newCall.id ? null : prev));
-            if (notifiedCallIdRef.current === newCall.id) {
-              setNotifiedCallId(null);
-            }
-            const existing = notificationRef.current.get(newCall.id);
-            if (existing) {
-              removeNotification(existing);
-              notificationRef.current.delete(newCall.id);
-            }
-          }
-        }
-      })
-      .subscribe();
-
     return () => {
-      supabase.removeChannel(channel);
-      notificationRef.current.forEach((notificationId) => {
-        removeNotification(notificationId);
-      });
-      notificationRef.current.clear();
-      notifiedCallIdRef.current = null;
+      unsubscribeRealtime();
+      cleanupPeerConnection();
+      cleanupLocalStream();
     };
-  }, [fetchLatestCall, addNotification, removeNotification]);
+  }, [cleanupLocalStream, cleanupPeerConnection, unsubscribeRealtime]);
 
-  const setActiveCall = useCallback((call: ActiveQuickCall | null) => {
-    setActiveCallState(call);
-  }, []);
-
-  const clearNotification = useCallback(() => {
-    notificationRef.current.forEach((notificationId) => removeNotification(notificationId));
-    notificationRef.current.clear();
-    notifiedCallIdRef.current = null;
-    setNotifiedCallId(null);
-    setActiveCallState(null);
-  }, [removeNotification]);
-
-  return (
-    <VideoCallRealtimeContext.Provider value={{ activeCall, setActiveCall, clearNotification }}>
-      {children}
-    </VideoCallRealtimeContext.Provider>
+  const value = useMemo<VideoCallRealtimeContextValue>(
+    () => ({
+      session,
+      participants,
+      localStream,
+      remoteStreams,
+      connectionState,
+      isAudioEnabled,
+      isVideoEnabled,
+      createSession,
+      joinSession,
+      leaveSession,
+      setAudioEnabled,
+      setVideoEnabled,
+    }),
+    [
+      connectionState,
+      createSession,
+      isAudioEnabled,
+      isVideoEnabled,
+      joinSession,
+      leaveSession,
+      localStream,
+      participants,
+      remoteStreams,
+      session,
+      setAudioEnabled,
+      setVideoEnabled,
+    ]
   );
+
+  return <VideoCallRealtimeContext.Provider value={value}>{children}</VideoCallRealtimeContext.Provider>;
 }
 
 export function useVideoCallRealtime() {
   const context = useContext(VideoCallRealtimeContext);
-  if (context === undefined) {
-    throw new Error('useVideoCallRealtime must be used within a VideoCallRealtimeProvider');
+  if (!context) {
+    throw new Error('useVideoCallRealtime должен использоваться внутри VideoCallRealtimeProvider');
   }
   return context;
 }

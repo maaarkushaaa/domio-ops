@@ -1,23 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Video, 
-  Users, 
-  Calendar, 
-  Clock, 
-  Plus,
-  Play,
-  CheckCircle2,
-  XCircle,
-  Trash2,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { JitsiVideoCall } from "@/components/video/JitsiVideoCall";
-import { supabase } from '@/integrations/supabase/client';
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -28,48 +16,72 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useSearchParams } from "react-router-dom";
-import { useVideoCallRealtime, ActiveQuickCall } from '@/providers/VideoCallRealtimeProvider';
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { WebRTCVideoCall } from "@/components/video/WebRTCVideoCall";
+import { useVideoCallRealtime } from "@/providers/VideoCallRealtimeProvider";
+import { format } from "date-fns";
+import {
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Loader2,
+  Play,
+  Plus,
+  UserPlus,
+  Users,
+  Video,
+  XCircle,
+} from "lucide-react";
 
 interface Meeting {
   id: string;
   title: string;
-  description?: string;
-  room_name: string;
+  description: string | null;
   scheduled_at: string;
   duration_minutes: number;
-  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+  status: "scheduled" | "in-progress" | "completed" | "cancelled";
   created_by: string;
-  created_at: string;
+  session_id: string | null;
 }
+
+const STATUS_LABELS: Record<Meeting["status"], string> = {
+  scheduled: "Запланирована",
+  "in-progress": "В процессе",
+  completed: "Завершена",
+  cancelled: "Отменена",
+};
 
 export default function VideoCalls() {
   const { toast } = useToast();
+  const { session, createSession, joinSession, leaveSession, participants } = useVideoCallRealtime();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [activeCall, setActiveCall] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState({
-    title: '',
-    description: '',
-    scheduled_at: '',
+    title: "",
+    description: "",
+    scheduled_at: "",
     duration_minutes: 60,
   });
-  const [quickCallAutoJoin, setQuickCallAutoJoin] = useState(false);
-  const [pendingQuickRoom, setPendingQuickRoom] = useState<string | null>(null);
-  const [pendingQuickData, setPendingQuickData] = useState<ActiveQuickCall | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeCall: realtimeQuickCall, setActiveCall: setRealtimeActiveCall } = useVideoCallRealtime();
+  const [inviteDialogMeeting, setInviteDialogMeeting] = useState<Meeting | null>(null);
+  const [inviteeEmail, setInviteeEmail] = useState("");
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     loadMeetings();
 
-    // Realtime подписка
     const channel = supabase
-      .channel('video_meetings_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'video_meetings' }, () => {
-        loadMeetings();
-      })
+      .channel("video_meetings_sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "video_meetings" },
+        () => {
+          loadMeetings();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -78,280 +90,242 @@ export default function VideoCalls() {
   }, []);
 
   useEffect(() => {
-    const roomParam = searchParams.get('room');
-    const autoJoinParam = searchParams.get('autoJoin');
-    if (roomParam) {
-      setPendingQuickRoom(roomParam);
-      setActiveCall(roomParam);
-      setQuickCallAutoJoin(autoJoinParam === '1');
-    } else {
-      setPendingQuickRoom(null);
-      setQuickCallAutoJoin(false);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (!pendingQuickRoom) {
-      setPendingQuickData(null);
+    const sessionParam = searchParams.get("session");
+    if (!sessionParam || session?.id === sessionParam) {
       return;
     }
 
-    let isCancelled = false;
-
-    const fetchQuickCall = async () => {
-      const { data, error } = await (supabase as any)
-        .from('video_quick_calls')
-        .select('*')
-        .eq('room_name', pendingQuickRoom)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (isCancelled) return;
-
-      if (error) {
-        console.error('Error loading quick call by room:', error);
-        setPendingQuickData(null);
-        return;
+    (async () => {
+      setJoining(true);
+      try {
+        await joinSession(sessionParam);
+      } catch (error) {
+        console.error("Не удалось подключиться по ссылке", error);
+        toast({ title: "Ошибка", description: "Не удалось подключиться к звонку", variant: "destructive" });
+      } finally {
+        setJoining(false);
+        setSearchParams((params) => {
+          const next = new URLSearchParams(params);
+          next.delete("session");
+          return next;
+        }, { replace: true });
       }
-
-      if (data) {
-        setPendingQuickData(data as ActiveQuickCall);
-        setRealtimeActiveCall(data as ActiveQuickCall);
-      } else {
-        setPendingQuickData(null);
-      }
-    };
-
-    fetchQuickCall();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [pendingQuickRoom, setRealtimeActiveCall]);
-
-  useEffect(() => {
-    if (!pendingQuickRoom) return;
-    if (realtimeQuickCall && realtimeQuickCall.room_name === pendingQuickRoom) {
-      setActiveCall(realtimeQuickCall.room_name);
-      setQuickCallAutoJoin(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete('autoJoin');
-      setSearchParams(next, { replace: true });
-      setPendingQuickRoom(null);
-    }
-  }, [pendingQuickRoom, realtimeQuickCall, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (!realtimeQuickCall) {
-      if (activeCall && pendingQuickRoom && activeCall === pendingQuickRoom) {
-        return;
-      }
-      if (!pendingQuickRoom) {
-        setActiveCall(null);
-        setQuickCallAutoJoin(false);
-        setPendingQuickData(null);
-      }
-      return;
-    }
-
-    if (!pendingQuickRoom && realtimeQuickCall && activeCall === null) {
-      setActiveCall(realtimeQuickCall.room_name);
-    }
-  }, [realtimeQuickCall, pendingQuickRoom, activeCall]);
+    })();
+  }, [joinSession, searchParams, session, setSearchParams, toast]);
 
   const loadMeetings = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    setLoading(true);
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
 
     const { data, error } = await (supabase as any)
-      .from('video_meetings')
-      .select('*')
-      .eq('created_by', user.id)
-      .order('scheduled_at', { ascending: false })
-      .limit(20);
-    
+      .from("video_meetings")
+      .select("id, title, description, scheduled_at, duration_minutes, status, created_by, session_id")
+      .order("scheduled_at", { ascending: false })
+      .limit(50);
+
     if (error) {
-      console.error('Error loading meetings:', error);
+      console.error("Ошибка загрузки встреч", error);
+      toast({ title: "Ошибка", description: "Не удалось загрузить список встреч", variant: "destructive" });
+      setLoading(false);
       return;
     }
-    setMeetings(data || []);
+
+    const filtered = (data ?? []).filter((meeting: Meeting) => {
+      if (!userId) return true;
+      return meeting.created_by === userId;
+    });
+
+    setMeetings(filtered);
+    setLoading(false);
   };
 
-  const createMeeting = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({ title: 'Ошибка', description: 'Необходимо авторизоваться', variant: 'destructive' });
+  const handleCreateMeeting = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      toast({ title: "Ошибка", description: "Необходимо авторизоваться", variant: "destructive" });
       return;
     }
 
     if (!newMeeting.title.trim()) {
-      toast({ title: 'Ошибка', description: 'Введите название встречи', variant: 'destructive' });
+      toast({ title: "Ошибка", description: "Введите название встречи", variant: "destructive" });
       return;
     }
 
-    const roomName = `meeting-${Date.now()}`;
-    
     const { error } = await (supabase as any)
-      .from('video_meetings')
+      .from("video_meetings")
       .insert({
-        title: newMeeting.title,
-        description: newMeeting.description,
-        room_name: roomName,
+        title: newMeeting.title.trim(),
+        description: newMeeting.description || null,
         scheduled_at: newMeeting.scheduled_at || new Date().toISOString(),
         duration_minutes: newMeeting.duration_minutes,
-        status: 'scheduled',
-        created_by: user.id,
+        status: "scheduled",
+        created_by: auth.user.id,
+        session_id: null,
       });
 
     if (error) {
-      console.error('Error creating meeting:', error);
-      toast({ title: 'Ошибка', description: 'Не удалось создать встречу', variant: 'destructive' });
+      console.error("Ошибка создания встречи", error);
+      toast({ title: "Ошибка", description: "Не удалось создать встречу", variant: "destructive" });
       return;
     }
 
-    toast({ title: 'Успешно', description: 'Встреча создана' });
+    toast({ title: "Встреча создана" });
     setCreateDialogOpen(false);
-    setNewMeeting({ title: '', description: '', scheduled_at: '', duration_minutes: 60 });
+    setNewMeeting({ title: "", description: "", scheduled_at: "", duration_minutes: 60 });
     loadMeetings();
   };
 
-  const startMeeting = async (meeting: Meeting) => {
+  const handleStartMeeting = async (meeting: Meeting) => {
+    const sessionId = await createSession(meeting.title, []);
+    if (!sessionId) return;
+
     const { error } = await (supabase as any)
-      .from('video_meetings')
-      .update({ status: 'in-progress' })
-      .eq('id', meeting.id);
+      .from("video_meetings")
+      .update({ status: "in-progress", session_id: sessionId })
+      .eq("id", meeting.id);
 
     if (error) {
-      console.error('Error starting meeting:', error);
+      console.error("Ошибка обновления встречи", error);
     }
 
-    setActiveCall(meeting.room_name);
+    await joinSession(sessionId);
   };
 
-  const endMeeting = async (meetingId: string) => {
-    const { error } = await (supabase as any)
-      .from('video_meetings')
-      .update({ status: 'completed' })
-      .eq('id', meetingId);
-
-    if (error) {
-      console.error('Error ending meeting:', error);
+  const handleJoinMeeting = async (meeting: Meeting) => {
+    if (!meeting.session_id) {
+      await handleStartMeeting(meeting);
+      return;
     }
-
-    setActiveCall(null);
-    loadMeetings();
+    await joinSession(meeting.session_id);
   };
 
-  const deleteMeeting = async (meetingId: string) => {
+  const handleCompleteMeeting = async (meeting: Meeting) => {
     const { error } = await (supabase as any)
-      .from('video_meetings')
-      .delete()
-      .eq('id', meetingId);
+      .from("video_meetings")
+      .update({ status: "completed" })
+      .eq("id", meeting.id);
 
     if (error) {
-      toast({ title: 'Ошибка', description: 'Не удалось удалить встречу', variant: 'destructive' });
+      console.error("Ошибка завершения встречи", error);
+      toast({ title: "Ошибка", description: "Не удалось обновить статус", variant: "destructive" });
       return;
     }
 
-    toast({ title: 'Успешно', description: 'Встреча удалена' });
+    toast({ title: "Встреча завершена" });
     loadMeetings();
   };
 
-  const getStatusBadge = (status: Meeting['status']) => {
-    switch (status) {
-      case 'scheduled':
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Запланирована</Badge>;
-      case 'in-progress':
-        return <Badge variant="default" className="bg-green-500"><Play className="h-3 w-3 mr-1" />В процессе</Badge>;
-      case 'completed':
-        return <Badge variant="outline"><CheckCircle2 className="h-3 w-3 mr-1" />Завершена</Badge>;
-      case 'cancelled':
-        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Отменена</Badge>;
-      default:
-        return null;
+  const handleDeleteMeeting = async (meeting: Meeting) => {
+    const { error } = await (supabase as any)
+      .from("video_meetings")
+      .delete()
+      .eq("id", meeting.id);
+
+    if (error) {
+      console.error("Ошибка удаления встречи", error);
+      toast({ title: "Ошибка", description: "Не удалось удалить встречу", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Встреча удалена" });
+    loadMeetings();
+  };
+
+  const handleLeaveSession = async () => {
+    try {
+      await leaveSession();
+    } catch (error) {
+      console.error("Ошибка выхода из звонка", error);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    const isTomorrow = date.toDateString() === new Date(now.getTime() + 86400000).toDateString();
-
-    if (isToday) {
-      return `Сегодня ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
-    } else if (isTomorrow) {
-      return `Завтра ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
-    } else {
-      return date.toLocaleString('ru-RU', { 
-        day: 'numeric', 
-        month: 'short', 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+  const handleCopyInviteLink = async (sessionId: string) => {
+    const url = new URL(window.location.origin + "/video-calls");
+    url.searchParams.set("session", sessionId);
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      toast({ title: "Ссылка скопирована" });
+    } catch (error) {
+      console.error("Ошибка копирования ссылки", error);
+      toast({ title: "Ошибка", description: "Не удалось скопировать ссылку", variant: "destructive" });
     }
   };
 
-  if (activeCall) {
-    const activeMeeting = meetings.find(m => m.room_name === activeCall);
-    const activeQuickSource = realtimeQuickCall && realtimeQuickCall.room_name === activeCall
-      ? realtimeQuickCall
-      : (pendingQuickData && pendingQuickData.room_name === activeCall ? pendingQuickData : null);
-    const shouldReset = !activeMeeting && !activeQuickSource;
-    if (shouldReset) {
-      setActiveCall(null);
-      setQuickCallAutoJoin(false);
-      setPendingQuickRoom(null);
-      setPendingQuickData(null);
-      return null;
+  const handleSendInvite = async () => {
+    if (!inviteDialogMeeting?.session_id) {
+      toast({ title: "Недоступно", description: "Сначала запустите встречу", variant: "secondary" });
+      return;
     }
-    return (
-      <div className="p-4 md:p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-              <Video className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-              {activeMeeting?.title || activeQuickSource?.title || 'Видеозвонок'}
-            </h1>
-            {(activeMeeting?.description || activeQuickSource?.room_name) && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {activeMeeting?.description || `Комната: ${activeQuickSource?.room_name}`}
-              </p>
-            )}
-          </div>
-        </div>
 
-        <JitsiVideoCall 
-          roomName={activeQuickSource?.room_name || activeCall}
-          roomUrl={activeQuickSource?.room_url}
-          title={activeMeeting?.title || activeQuickSource?.title}
-          autoJoin={quickCallAutoJoin && !!activeQuickSource}
-          onLeave={() => {
-            if (activeMeeting) {
-              endMeeting(activeMeeting.id);
-            } else {
-              setActiveCall(null);
-              setQuickCallAutoJoin(false);
-              setPendingQuickRoom(null);
-              setPendingQuickData(null);
-            }
-          }}
-        />
-      </div>
-    );
-  }
+    if (!inviteeEmail.trim()) {
+      toast({ title: "Ошибка", description: "Введите email приглашённого", variant: "destructive" });
+      return;
+    }
+
+    await supabase.functions.invoke("webpush-send", {
+      body: {
+        session_id: inviteDialogMeeting.session_id,
+        invitees: [inviteeEmail.trim()],
+        title: inviteDialogMeeting.title,
+      },
+    });
+
+    toast({ title: "Приглашение отправлено" });
+    setInviteeEmail("");
+    setInviteDialogMeeting(null);
+  };
+
+  const activeMeeting = useMemo(() => {
+    if (!session) return null;
+    return meetings.find((meeting) => meeting.session_id === session.id) ?? null;
+  }, [meetings, session]);
+
+  const quickStart = async () => {
+    const sessionId = await createSession("Мгновенный звонок", []);
+    if (!sessionId) return;
+    await joinSession(sessionId);
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {session && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Video className="h-5 w-5 text-primary" />
+                  {session.title}
+                </CardTitle>
+                <CardDescription>
+                  Участников в звонке: {participants.length}
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" className="gap-2" onClick={() => handleCopyInviteLink(session.id)}>
+                  <Copy className="h-4 w-4" />
+                  Скопировать ссылку
+                </Button>
+                <Button variant="destructive" onClick={handleLeaveSession}>
+                  Выйти из звонка
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <WebRTCVideoCall />
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Video className="h-6 w-6 md:h-8 md:w-8" />
+          <h1 className="text-2xl font-bold sm:text-3xl flex items-center gap-2">
+            <Video className="h-6 w-6 sm:h-8 sm:w-8" />
             Видеозвонки
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Создавайте и управляйте видеоконференциями
-          </p>
+          <p className="text-sm text-muted-foreground">Планируйте встречи, запускайте мгновенные звонки и управляйте приглашениями</p>
         </div>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -363,210 +337,194 @@ export default function VideoCalls() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Новая видеовстреча</DialogTitle>
-              <DialogDescription>
-                Создайте видеоконференцию и пригласите участников
-              </DialogDescription>
+              <DialogDescription>Заполните параметры встречи. Видеосессия создаётся при старте.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Название встречи *</Label>
+                <Label htmlFor="meeting-title">Название встречи*</Label>
                 <Input
-                  id="title"
-                  placeholder="Обсуждение проекта"
+                  id="meeting-title"
                   value={newMeeting.title}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, title: e.target.value })}
+                  onChange={(e) => setNewMeeting((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Обсуждение проекта"
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Описание</Label>
+                <Label htmlFor="meeting-description">Описание</Label>
                 <Textarea
-                  id="description"
-                  placeholder="Краткое описание встречи..."
+                  id="meeting-description"
                   value={newMeeting.description}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, description: e.target.value })}
+                  onChange={(e) => setNewMeeting((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Краткий контекст встречи"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="scheduled_at">Дата и время</Label>
+                <Label htmlFor="meeting-date">Дата и время</Label>
                 <Input
-                  id="scheduled_at"
+                  id="meeting-date"
                   type="datetime-local"
                   value={newMeeting.scheduled_at}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, scheduled_at: e.target.value })}
+                  onChange={(e) => setNewMeeting((prev) => ({ ...prev, scheduled_at: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="duration">Длительность (минут)</Label>
+                <Label htmlFor="meeting-duration">Длительность (минут)</Label>
                 <Input
-                  id="duration"
+                  id="meeting-duration"
                   type="number"
-                  min="15"
-                  max="480"
+                  min={5}
+                  max={480}
                   value={newMeeting.duration_minutes}
-                  onChange={(e) => setNewMeeting({ ...newMeeting, duration_minutes: parseInt(e.target.value) })}
+                  onChange={(e) => setNewMeeting((prev) => ({ ...prev, duration_minutes: Number(e.target.value) }))}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              <Button variant="secondary" onClick={() => setCreateDialogOpen(false)}>
                 Отмена
               </Button>
-              <Button onClick={createMeeting}>
-                Создать
-              </Button>
+              <Button onClick={handleCreateMeeting}>Сохранить</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Tabs defaultValue="upcoming" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="upcoming">
-            <Calendar className="h-4 w-4 mr-2 hidden sm:inline" />
-            Предстоящие
-          </TabsTrigger>
-          <TabsTrigger value="quick">
-            <Video className="h-4 w-4 mr-2 hidden sm:inline" />
-            Быстрый звонок
-          </TabsTrigger>
-          <TabsTrigger value="history">
-            <CheckCircle2 className="h-4 w-4 mr-2 hidden sm:inline" />
-            История
-          </TabsTrigger>
+      <Tabs defaultValue="meetings" className="space-y-6">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="meetings" className="flex-1">Мои встречи</TabsTrigger>
+          <TabsTrigger value="quick" className="flex-1">Мгновенный звонок</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="upcoming" className="space-y-4">
-          {meetings.filter(m => m.status === 'scheduled' || m.status === 'in-progress').length === 0 ? (
+        <TabsContent value="meetings" className="space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-10 text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Загрузка встреч
+            </div>
+          ) : meetings.length === 0 ? (
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-12 text-muted-foreground">
-                  <Calendar className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Нет запланированных встреч</p>
-                  <p className="text-sm mt-2">Создайте новую видеоконференцию</p>
-                </div>
+              <CardHeader>
+                <CardTitle>Список пуст</CardTitle>
+                <CardDescription>Создайте первую встречу, чтобы запланировать видеозвонок.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Создать встречу
+                </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {meetings
-                .filter(m => m.status === 'scheduled' || m.status === 'in-progress')
-                .map((meeting) => (
-                  <Card key={meeting.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{meeting.title}</CardTitle>
-                          {meeting.description && (
-                            <CardDescription className="mt-1">
-                              {meeting.description}
-                            </CardDescription>
-                          )}
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {getStatusBadge(meeting.status)}
-                            <Badge variant="outline">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {meeting.duration_minutes} мин
-                            </Badge>
-                            <Badge variant="outline">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {formatDate(meeting.scheduled_at)}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => startMeeting(meeting)}
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            Начать
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteMeeting(meeting.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                ))}
-            </div>
+            meetings.map((meeting) => (
+              <Card key={meeting.id}>
+                <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">{meeting.title}</CardTitle>
+                    <CardDescription className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="flex items-center gap-1">
+                        <CalendarIcon className="h-4 w-4" />
+                        {format(new Date(meeting.scheduled_at), "dd MMMM yyyy, HH:mm")}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {meeting.duration_minutes} мин
+                      </span>
+                    </CardDescription>
+                    {meeting.description && (
+                      <p className="text-sm text-muted-foreground">{meeting.description}</p>
+                    )}
+                  </div>
+                  <Badge variant={meeting.status === "in-progress" ? "default" : meeting.status === "scheduled" ? "secondary" : meeting.status === "completed" ? "outline" : "destructive"}>
+                    {STATUS_LABELS[meeting.status]}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => handleJoinMeeting(meeting)} disabled={joining}>
+                    <Play className="mr-2 h-4 w-4" />
+                    {meeting.session_id ? "Подключиться" : "Начать"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleCopyInviteLink(meeting.session_id ?? "")}
+                    disabled={!meeting.session_id}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Скопировать ссылку
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setInviteDialogMeeting(meeting);
+                      setInviteeEmail("");
+                    }}
+                    disabled={!meeting.session_id}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Пригласить
+                  </Button>
+                  {meeting.status !== "completed" && (
+                    <Button size="sm" variant="outline" onClick={() => handleCompleteMeeting(meeting)}>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Завершить
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDeleteMeeting(meeting)}>
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Удалить
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
           )}
         </TabsContent>
 
-        <TabsContent value="quick" className="space-y-4">
-          <JitsiVideoCall
-            roomName={realtimeQuickCall?.room_name || pendingQuickData?.room_name}
-            roomUrl={realtimeQuickCall?.room_url || pendingQuickData?.room_url}
-            title={realtimeQuickCall?.title || pendingQuickData?.title}
-            autoJoin={quickCallAutoJoin && (!!realtimeQuickCall || !!pendingQuickData)}
-            onJoin={(room) => {
-              setActiveCall(room);
-              setQuickCallAutoJoin(false);
-              setPendingQuickRoom(room);
-            }}
-            onLeave={() => {
-              setActiveCall(null);
-              setQuickCallAutoJoin(false);
-              setRealtimeActiveCall(null);
-              setPendingQuickRoom(null);
-              setPendingQuickData(null);
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-4">
-          {meetings.filter(m => m.status === 'completed' || m.status === 'cancelled').length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-12 text-muted-foreground">
-                  <CheckCircle2 className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">История пуста</p>
-                  <p className="text-sm mt-2">Завершённые встречи появятся здесь</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {meetings
-                .filter(m => m.status === 'completed' || m.status === 'cancelled')
-                .map((meeting) => (
-                  <Card key={meeting.id} className="opacity-75">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{meeting.title}</CardTitle>
-                          {meeting.description && (
-                            <CardDescription className="mt-1">
-                              {meeting.description}
-                            </CardDescription>
-                          )}
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {getStatusBadge(meeting.status)}
-                            <Badge variant="outline">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {formatDate(meeting.scheduled_at)}
-                            </Badge>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteMeeting(meeting.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                ))}
-            </div>
-          )}
+        <TabsContent value="quick">
+          <Card>
+            <CardHeader>
+              <CardTitle>Мгновенный звонок</CardTitle>
+              <CardDescription>Создайте новую видеосессию и сразу поделитесь ссылкой.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <Button className="gap-2" onClick={quickStart} disabled={joining}>
+                <Video className="h-4 w-4" />
+                Запустить звонок
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Ссылка будет доступна после подключения. Используйте панель выше для копирования и приглашения участников.
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!inviteDialogMeeting} onOpenChange={(open) => !open && setInviteDialogMeeting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Пригласить участника</DialogTitle>
+            <DialogDescription>
+              Отправьте приглашение на встречу «{inviteDialogMeeting?.title}». Ссылка будет содержать автоматическое подключение.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Email участника</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="user@example.com"
+                value={inviteeEmail}
+                onChange={(e) => setInviteeEmail(e.target.value)}
+              />
+            </div>
+            <Button type="button" onClick={handleSendInvite} disabled={!inviteDialogMeeting?.session_id}>
+              Отправить приглашение
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
