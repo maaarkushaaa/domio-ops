@@ -26,6 +26,9 @@ type TaskNodeData = {
   statusLabel: string;
   statusBadgeBg: string;
   statusBadgeColor: string;
+  cardBg: string;
+  textColor: string;
+  onHide?: (taskId: string) => void;
 };
 
 interface TaskDependenciesBoardProps {
@@ -36,8 +39,21 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
   const assignee = data.task.assignee?.full_name || data.task.assignee?.email;
 
   return (
-    <div className="flex min-w-[200px] max-w-[240px] flex-col gap-2 text-left">
-      <div className="flex items-start justify-between gap-3">
+    <div className="relative flex min-w-[200px] max-w-[240px] flex-col gap-2 text-left">
+      {data.onHide ? (
+        <button
+          type="button"
+          aria-label="Скрыть задачу"
+          className="absolute right-0 top-0 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/5 text-[11px] font-semibold text-muted-foreground transition hover:bg-black/10"
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onHide?.(data.task.id);
+          }}
+        >
+          ×
+        </button>
+      ) : null}
+      <div className="flex items-start justify-between gap-3 pr-5">
         <span className="text-sm font-medium leading-snug text-foreground">{data.task.title}</span>
         <span
           className="whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
@@ -65,7 +81,10 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   const positionsRef = useRef(new Map<string, { x: number; y: number }>());
   const positionsLoadedRef = useRef(false);
   const storageKey = 'task-dependency-positions';
+  const hiddenStorageKey = 'task-dependency-hidden';
   const [showOnlyLinked, setShowOnlyLinked] = useState(false);
+  const [hiddenTaskIds, setHiddenTaskIds] = useState<string[]>([]);
+  const [isHiddenListOpen, setIsHiddenListOpen] = useState(false);
 
   const loadStoredPositions = useCallback(() => {
     if (positionsLoadedRef.current) return false;
@@ -104,41 +123,98 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     return Array.from(map.values());
   }, [allTasks, tasks]);
 
-  const statusStyles: Record<string, { label: string; badgeBg: string; badgeColor: string; border: string }> = {
-    backlog: {
-      label: 'Backlog',
-      badgeBg: 'rgba(79, 70, 229, 0.12)',
-      badgeColor: '#4f46e5',
-      border: 'rgba(79, 70, 229, 0.35)',
-    },
-    todo: {
-      label: 'Todo',
-      badgeBg: 'rgba(14, 116, 144, 0.12)',
-      badgeColor: '#0e7490',
-      border: 'rgba(14, 116, 144, 0.35)',
-    },
-    in_progress: {
-      label: 'In Progress',
-      badgeBg: 'rgba(234, 179, 8, 0.16)',
-      badgeColor: '#b45309',
-      border: 'rgba(234, 179, 8, 0.35)',
-    },
-    review: {
-      label: 'Review',
-      badgeBg: 'rgba(219, 39, 119, 0.12)',
-      badgeColor: '#be123c',
-      border: 'rgba(219, 39, 119, 0.35)',
-    },
-    done: {
-      label: 'Done',
-      badgeBg: 'rgba(34, 197, 94, 0.12)',
-      badgeColor: '#15803d',
-      border: 'rgba(34, 197, 94, 0.35)',
-    },
-  };
+  const statusStyles = useMemo(
+    () =>
+      ({
+        backlog: {
+          label: 'Backlog',
+          badgeBg: 'rgba(107, 114, 128, 0.18)',
+          badgeColor: '#374151',
+          border: 'rgba(107, 114, 128, 0.4)',
+          cardBg: 'linear-gradient(135deg, rgba(229, 231, 235, 0.95), rgba(209, 213, 219, 0.85))',
+          textColor: '#1f2937',
+        },
+        todo: {
+          label: 'Todo',
+          badgeBg: 'rgba(59, 130, 246, 0.18)',
+          badgeColor: '#1d4ed8',
+          border: 'rgba(59, 130, 246, 0.45)',
+          cardBg: 'linear-gradient(135deg, rgba(191, 219, 254, 0.95), rgba(147, 197, 253, 0.9))',
+          textColor: '#1e3a8a',
+        },
+        in_progress: {
+          label: 'In Progress',
+          badgeBg: 'rgba(234, 179, 8, 0.2)',
+          badgeColor: '#b45309',
+          border: 'rgba(234, 179, 8, 0.45)',
+          cardBg: 'linear-gradient(135deg, rgba(254, 240, 138, 0.95), rgba(253, 224, 71, 0.88))',
+          textColor: '#92400e',
+        },
+        review: {
+          label: 'Review',
+          badgeBg: 'rgba(217, 70, 239, 0.18)',
+          badgeColor: '#a21caf',
+          border: 'rgba(217, 70, 239, 0.45)',
+          cardBg: 'linear-gradient(135deg, rgba(244, 214, 255, 0.95), rgba(232, 121, 249, 0.88))',
+          textColor: '#86198f',
+        },
+        done: {
+          label: 'Done',
+          badgeBg: 'rgba(34, 197, 94, 0.2)',
+          badgeColor: '#047857',
+          border: 'rgba(34, 197, 94, 0.45)',
+          cardBg: 'linear-gradient(135deg, rgba(187, 247, 208, 0.95), rgba(134, 239, 172, 0.88))',
+          textColor: '#065f46',
+        },
+      } as Record<string, { label: string; badgeBg: string; badgeColor: string; border: string; cardBg: string; textColor: string }>),
+    [],
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(hiddenStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setHiddenTaskIds(parsed.filter((item): item is string => typeof item === 'string'));
+      }
+    } catch (error) {
+      console.warn('[TaskDependenciesBoard] Failed to load hidden tasks', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(hiddenStorageKey, JSON.stringify(hiddenTaskIds));
+    } catch (error) {
+      console.warn('[TaskDependenciesBoard] Failed to persist hidden tasks', error);
+    }
+  }, [hiddenTaskIds, hiddenStorageKey]);
+
+  const hiddenIdsSet = useMemo(() => new Set(hiddenTaskIds), [hiddenTaskIds]);
+
+  const hideTask = useCallback((taskId: string) => {
+    setHiddenTaskIds((prev) => (prev.includes(taskId) ? prev : [...prev, taskId]));
+  }, []);
+
+  const unhideTask = useCallback((taskId: string) => {
+    setHiddenTaskIds((prev) => prev.filter((id) => id !== taskId));
+  }, []);
+
+  const nodesSourceIds = useMemo(() => new Set(nodesSource.map((task) => task.id)), [nodesSource]);
+
+  const taskById = useMemo(() => {
+    const map = new Map<string, Task>();
+    nodesSource.forEach((task) => {
+      map.set(task.id, task);
+    });
+    return map;
+  }, [nodesSource]);
 
   const buildNodes = useCallback((source: Task[]): Node<TaskNodeData>[] => {
-    const nextNodes: Node[] = [];
+    const nextNodes: Node<TaskNodeData>[] = [];
     const seen = new Set<string>();
     source.forEach((task, index) => {
       const fallback = {
@@ -157,6 +233,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           statusLabel: status.label,
           statusBadgeBg: status.badgeBg,
           statusBadgeColor: status.badgeColor,
+          cardBg: status.cardBg,
+          textColor: status.textColor,
+          onHide: hideTask,
         },
         position: stored,
         draggable: true,
@@ -164,9 +243,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           padding: 16,
           borderRadius: 16,
           border: `1px solid ${status.border}`,
-          background: 'var(--card)',
+          background: status.cardBg,
           boxShadow: '0 18px 45px -20px rgba(15, 23, 42, 0.45)',
-          color: 'var(--foreground)',
+          color: status.textColor,
           fontSize: 12,
           lineHeight: 1.4,
           width: 240,
@@ -175,36 +254,52 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     });
 
     positionsRef.current.forEach((_, key) => {
-      if (!seen.has(key)) {
+      if (!nodesSourceIds.has(key)) {
         positionsRef.current.delete(key);
       }
     });
 
     return nextNodes;
-  }, []);
+  }, [hideTask, nodesSourceIds, statusStyles]);
 
   const buildEdges = useCallback((source: Task[]): Edge[] => {
     const edges: Edge[] = [];
     source.forEach((task) => {
       (task.dependencies_out || []).forEach((dep) => {
+        const targetTask = taskById.get(dep.to_id);
+        const completedChain = task.status === 'done' && targetTask?.status === 'done';
+        const strokeColor = completedChain ? '#d4af37' : '#6366f1';
+        const strokeWidth = completedChain ? 3.5 : 2;
         edges.push({
           id: dep.id,
           source: task.id,
           target: dep.to_id,
           animated: false,
-          markerEnd: { type: MarkerType.ArrowClosed, color: '#6366f1' },
-          style: { stroke: '#6366f1', strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: strokeColor },
+          style: { stroke: strokeColor, strokeWidth },
           type: 'smoothstep',
         } as Edge);
       });
     });
     return edges;
-  }, []);
+  }, [taskById]);
 
   const visibleTasks = useMemo(() => {
-    if (!showOnlyLinked) return nodesSource;
-    return nodesSource.filter((task) => (task.dependencies_in?.length ?? 0) > 0 || (task.dependencies_out?.length ?? 0) > 0);
-  }, [nodesSource, showOnlyLinked]);
+    const base = showOnlyLinked
+      ? nodesSource.filter((task) => (task.dependencies_in?.length ?? 0) > 0 || (task.dependencies_out?.length ?? 0) > 0)
+      : nodesSource;
+    return base.filter((task) => !hiddenIdsSet.has(task.id));
+  }, [nodesSource, showOnlyLinked, hiddenIdsSet]);
+
+  const hiddenTasks = useMemo(() => nodesSource.filter((task) => hiddenIdsSet.has(task.id)), [nodesSource, hiddenIdsSet]);
+
+  useEffect(() => {
+    positionsRef.current.forEach((position, taskId) => {
+      if (!nodesSourceIds.has(taskId)) {
+        positionsRef.current.delete(taskId);
+      }
+    });
+  }, [nodesSourceIds]);
 
   const initialNodes = useMemo(() => buildNodes(visibleTasks), [visibleTasks, buildNodes]);
   const initialEdges = useMemo(() => buildEdges(visibleTasks), [visibleTasks, buildEdges]);
@@ -347,14 +442,56 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         <span className="text-sm font-medium text-muted-foreground">
           {showOnlyLinked ? 'Показаны только связанные задачи' : 'Показаны все задачи'}
         </span>
-        <button
-          type="button"
-          onClick={() => setShowOnlyLinked((prev) => !prev)}
-          className="inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-accent"
-        >
-          {showOnlyLinked ? 'Показать все задачи' : 'Скрыть задачи без зависимостей'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowOnlyLinked((prev) => !prev)}
+            className="inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-accent"
+          >
+            {showOnlyLinked ? 'Показать все задачи' : 'Скрыть задачи без зависимостей'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsHiddenListOpen((prev) => !prev)}
+            className="inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-accent"
+          >
+            Скрытые задачи ({hiddenTasks.length})
+          </button>
+        </div>
       </div>
+      {isHiddenListOpen ? (
+        <div className="z-20 max-h-60 overflow-y-auto rounded-lg border bg-popover text-popover-foreground shadow-lg">
+          <div className="flex items-center justify-between border-b px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+            <span>Скрытые задачи</span>
+            <button
+              type="button"
+              className="h-6 w-6 rounded-full bg-black/5 text-[11px] font-semibold text-muted-foreground transition hover:bg-black/10"
+              onClick={() => setIsHiddenListOpen(false)}
+              aria-label="Закрыть список скрытых задач"
+            >
+              ×
+            </button>
+          </div>
+          <div className="divide-y text-sm">
+            {hiddenTasks.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-muted-foreground">Нет скрытых задач</div>
+            ) : (
+              hiddenTasks.map((task) => (
+                <div key={task.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span className="truncate text-xs font-medium">{task.title}</span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold text-primary transition hover:bg-primary/10"
+                    onClick={() => unhideTask(task.id)}
+                  >
+                    Показать
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -373,6 +510,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         zoomOnScroll
         zoomOnPinch
         zoomOnDoubleClick={false}
+        minZoom={0.05}
       >
         <MiniMap pannable zoomable />
         <Controls showInteractive={false} position="bottom-left" />

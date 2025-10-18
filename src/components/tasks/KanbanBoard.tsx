@@ -241,11 +241,15 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
         </div>
       )}
       
-      <div ref={containerRef} className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'auto' }}>
+      <div
+        ref={containerRef}
+        className="flex w-full gap-4 overflow-x-auto pb-4 px-2 sm:px-0 custom-scrollbar"
+        style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'auto' }}
+      >
       {columns.map((column) => (
         <div
           key={column.id}
-          className="flex-shrink-0 w-80"
+          className="flex-shrink-0 w-full min-w-[18rem] sm:w-80"
           data-column-id={column.id}
           onDragOver={handleDragOver}
           onDrop={() => handleDrop(column.id)}
