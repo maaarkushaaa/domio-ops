@@ -12,15 +12,52 @@ import ReactFlow, {
   addEdge,
   NodeChange,
   EdgeChange,
+  NodeProps,
+  Handle,
+  Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '@/contexts/AppContext';
 import { useTasks } from '@/hooks/use-tasks';
 import { useToast } from '@/components/ui/use-toast';
 
+type TaskNodeData = {
+  task: Task;
+  statusLabel: string;
+  statusBadgeBg: string;
+  statusBadgeColor: string;
+};
+
 interface TaskDependenciesBoardProps {
   tasks: Task[];
 }
+
+const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
+  const assignee = data.task.assignee?.full_name || data.task.assignee?.email;
+
+  return (
+    <div className="flex min-w-[200px] max-w-[240px] flex-col gap-2 text-left">
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-sm font-medium leading-snug text-foreground">{data.task.title}</span>
+        <span
+          className="whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+          style={{ backgroundColor: data.statusBadgeBg, color: data.statusBadgeColor }}
+        >
+          {data.statusLabel}
+        </span>
+      </div>
+      {assignee ? (
+        <span className="truncate text-xs font-medium text-muted-foreground">{assignee}</span>
+      ) : null}
+      <Handle type="target" position={Position.Top} className="bg-primary" />
+      <Handle type="source" position={Position.Bottom} className="bg-primary" />
+    </div>
+  );
+};
+
+const nodeTypes = {
+  task: TaskNode,
+};
 
 export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   const { tasks: allTasks, createDependency, deleteDependency } = useTasks();
@@ -99,7 +136,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     },
   };
 
-  const buildNodes = useCallback((source: Task[]): Node[] => {
+  const buildNodes = useCallback((source: Task[]): Node<TaskNodeData>[] => {
     const nextNodes: Node[] = [];
     const seen = new Set<string>();
     source.forEach((task, index) => {
@@ -111,26 +148,14 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
       positionsRef.current.set(task.id, stored);
       seen.add(task.id);
       const status = statusStyles[task.status] ?? statusStyles.backlog;
-      const assignee = task.assignee?.full_name || task.assignee?.email;
       nextNodes.push({
         id: task.id,
+        type: 'task',
         data: {
-          label: (
-            <div className="flex min-w-[200px] max-w-[240px] flex-col gap-2 text-left">
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-sm font-medium leading-snug text-foreground">{task.title}</span>
-                <span
-                  className="whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                  style={{ backgroundColor: status.badgeBg, color: status.badgeColor }}
-                >
-                  {status.label}
-                </span>
-              </div>
-              {assignee ? (
-                <span className="truncate text-xs font-medium text-muted-foreground">{assignee}</span>
-              ) : null}
-            </div>
-          ),
+          task,
+          statusLabel: status.label,
+          statusBadgeBg: status.badgeBg,
+          statusBadgeColor: status.badgeColor,
         },
         position: stored,
         draggable: true,
@@ -157,7 +182,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     return nextNodes;
   }, []);
 
-  const buildEdges = (source: Task[]): Edge[] => {
+  const buildEdges = useCallback((source: Task[]): Edge[] => {
     const edges: Edge[] = [];
     source.forEach((task) => {
       (task.dependencies_out || []).forEach((dep) => {
@@ -173,7 +198,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
       });
     });
     return edges;
-  };
+  }, []);
 
   const initialNodes = useMemo(() => buildNodes(nodesSource), [nodesSource, buildNodes]);
   const initialEdges = useMemo(() => buildEdges(nodesSource), [nodesSource]);
@@ -233,7 +258,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     const { source, target } = connection;
     if (!source || !target) return;
 
-    const alreadyExists = tasks.some(
+    const alreadyExists = nodesSource.some(
       (task) =>
         task.id === source &&
         (task.dependencies_out || []).some((dep) => dep.to_id === target),
@@ -266,7 +291,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         variant: 'destructive',
       });
     }
-  }, [createDependency, setEdges, tasks, toast]);
+  }, [createDependency, setEdges, nodesSource, toast]);
 
   const handleEdgesDelete = useCallback(async (deleted: Edge[]) => {
     if (!deleted.length) return;
@@ -296,42 +321,15 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
 
   useEffect(() => {
     if (!nodesSource.length) {
+      setNodes([]);
+      setEdges([]);
       return;
     }
     const nextNodes = buildNodes(nodesSource);
     const nextEdges = buildEdges(nodesSource);
 
-    setNodes((prev) => {
-      if (
-        prev.length === nextNodes.length &&
-        prev.every((node, index) => {
-          const candidate = nextNodes[index];
-          return (
-            candidate &&
-            node.id === candidate.id &&
-            node.data?.label === candidate.data?.label &&
-            node.position.x === candidate.position.x &&
-            node.position.y === candidate.position.y
-          );
-        })
-      ) {
-        return prev;
-      }
-      return nextNodes;
-    });
-
-    setEdges((prev) => {
-      if (
-        prev.length === nextEdges.length &&
-        prev.every((edge, index) => {
-          const candidate = nextEdges[index];
-          return candidate && edge.id === candidate.id && edge.source === candidate.source && edge.target === candidate.target;
-        })
-      ) {
-        return prev;
-      }
-      return nextEdges;
-    });
+    setNodes(nextNodes);
+    setEdges(nextEdges);
   }, [nodesSource, buildNodes, buildEdges, setNodes, setEdges]);
 
   return (
@@ -339,6 +337,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onEdgesDelete={handleEdgesDelete}
