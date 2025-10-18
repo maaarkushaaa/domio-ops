@@ -8,6 +8,7 @@ import { TaskDialog } from '@/components/tasks/TaskDialog';
 import { TaskComments } from '@/components/tasks/TaskComments';
 import { TaskChecklists } from '@/components/tasks/TaskChecklists';
 import { supabase } from '@/integrations/supabase/client';
+import { TaskDependencyManager } from '@/components/tasks/TaskDependencyManager';
 
 function ruStatus(s?: string) {
   switch (s) {
@@ -216,6 +217,8 @@ export function TaskDetailsDialog({ task, trigger }: { task: any; trigger: React
           </div>
 
           <TaskChecklists taskId={task.id} />
+
+          <TaskDependencyManager task={task} />
 
           {/* Родительская/подзадачи */}
           {(parent || subtasks.length > 0) && (

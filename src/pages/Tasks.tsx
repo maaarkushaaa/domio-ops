@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, MoreVertical, User, Kanban, List, Clock } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Plus, MoreVertical, User, Kanban, List, Clock, MessageCircle, CheckSquare, Share2 } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { TaskDialog, ProjectDialog } from "@/components/tasks/TaskDialog";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
@@ -11,6 +12,7 @@ import { TaskActionsMenu } from "@/components/tasks/TaskActionsMenu";
 import { TaskFilters, TaskFiltersType } from "@/components/tasks/TaskFilters";
 import { TimeTracker } from "@/components/modern/TimeTracker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { TaskDependenciesBoard } from "@/components/tasks/TaskDependenciesBoard";
 
 const columns = [
   { id: "backlog", title: "Backlog", color: "bg-muted" },
@@ -22,7 +24,7 @@ const columns = [
 
 export default function Tasks() {
   const { tasks, updateTask } = useTasks();
-  const [view, setView] = useState<'list' | 'kanban'>('kanban');
+  const [view, setView] = useState<'list' | 'kanban' | 'dependencies'>('kanban');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogStatus, setDialogStatus] = useState<any>('backlog');
   const [filters, setFilters] = useState<TaskFiltersType>({
@@ -88,6 +90,14 @@ export default function Tasks() {
               <List className="h-4 w-4 mr-2" />
               Список
             </Button>
+            <Button
+              variant={view === 'dependencies' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setView('dependencies')}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Зависимости
+            </Button>
           </div>
           <Dialog>
             <DialogTrigger asChild>
@@ -122,7 +132,7 @@ export default function Tasks() {
 
       {view === 'kanban' ? (
         <KanbanBoard filteredTasks={filteredTasks} />
-      ) : (
+      ) : view === 'list' ? (
         <div className="space-y-4">
           {columns.map((column) => (
             <Card key={column.id} className={column.color}>
@@ -165,12 +175,32 @@ export default function Tasks() {
                             {getPriorityLabel(task.priority)}
                           </Badge>
                         </div>
-                        {task.assignee && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <User className="h-3 w-3" />
-                            {task.assignee.full_name}
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <MessageCircle className="h-3 w-3" />
+                            <span>{task._comment_count || 0}</span>
                           </div>
-                        )}
+                          <div className="flex items-center gap-1">
+                            <CheckSquare className="h-3 w-3" />
+                            <span>{task._checklist_count || 0}</span>
+                          </div>
+                          {task.assignee ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={task.assignee.avatar_url || undefined} alt={task.assignee.full_name} />
+                                <AvatarFallback>
+                                  {(task.assignee.full_name.split(' ').map((p) => p[0]).join('').slice(0, 2) || '?').toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{task.assignee.full_name}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              <span>Без исполнителя</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -179,6 +209,15 @@ export default function Tasks() {
             </Card>
           ))}
         </div>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Граф зависимостей задач</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TaskDependenciesBoard tasks={filteredTasks} />
+          </CardContent>
+        </Card>
       )}
     </div>
   );

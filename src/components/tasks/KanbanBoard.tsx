@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, User, Calendar, MessageCircle, AlertTriangle, GripVertical } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Plus, MoreVertical, User, Calendar, MessageCircle, CheckSquare, AlertTriangle, GripVertical } from 'lucide-react';
 import { useTasks, TaskStatus } from '@/hooks/use-tasks';
 import { Task } from '@/contexts/AppContext';
 import { TaskDialog } from '@/components/tasks/TaskDialog';
@@ -393,10 +394,14 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                         {task.title}
                       </h4>
                           } />
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <div className="flex items-center text-xs text-muted-foreground">
-                              <MessageCircle className="h-3 w-3 mr-1" />
-                              <span>{(task as any)._comment_count || 0}</span>
+                          <div className="flex items-center gap-3 flex-shrink-0 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <MessageCircle className="h-3 w-3" />
+                              <span>{task._comment_count || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CheckSquare className="h-3 w-3" />
+                              <span>{task._checklist_count || 0}</span>
                             </div>
                             <TaskActionsMenu taskId={task.id} taskTitle={task.title} initialTask={task} />
                           </div>
@@ -418,10 +423,26 @@ export function KanbanBoard({ filteredTasks }: { filteredTasks?: Task[] }) {
                     </div>
 
                         <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
-                      {task.assignee && (
+                      {task.assignee ? (
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={task.assignee.avatar_url || undefined} alt={task.assignee.full_name} />
+                            <AvatarFallback>
+                              {(
+                                task.assignee.full_name
+                                  .split(' ')
+                                  .map((part) => part[0])
+                                  .join('')
+                                  .slice(0, 2) || '?'
+                              ).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{task.assignee.full_name}</span>
+                        </div>
+                      ) : (
                         <div className="flex items-center gap-1">
                           <User className="h-3 w-3" />
-                          <span>{task.assignee.full_name}</span>
+                          <span>Без исполнителя</span>
                         </div>
                       )}
                       {task.due_date && (

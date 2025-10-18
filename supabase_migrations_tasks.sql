@@ -197,4 +197,18 @@ DO $$ BEGIN
 END $$;
 
 -- Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS public.tasks, public.projects, public.task_comments, public.task_checklists, public.task_checklist_items, public.task_activity;
+DO $$
+DECLARE
+  tabname text;
+BEGIN
+  FOR tabname IN SELECT unnest(ARRAY['tasks','projects','task_comments','task_checklists','task_checklist_items','task_activity']) LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = tabname
+    ) THEN
+      EXECUTE format('alter publication supabase_realtime add table public.%I', tabname);
+    END IF;
+  END LOOP;
+END $$;

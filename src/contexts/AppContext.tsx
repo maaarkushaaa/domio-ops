@@ -20,10 +20,18 @@ export interface Task {
   status: 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
   priority: 'low' | 'medium' | 'high';
   due_date?: string;
+  due_end?: string;
   assignee_id?: string;
-  assignee?: { id: string; full_name: string };
+  assignee?: { id: string; full_name: string; email?: string; avatar_url?: string | null } | null;
   project_id?: string;
-  project?: { id: string; name: string };
+  project?: { id: string; name: string } | null;
+  tags?: string[];
+  parent_task_id?: string | null;
+  order?: number | null;
+  _comment_count?: number;
+  _checklist_count?: number;
+  dependencies_in?: { id: string; from_id: string }[];
+  dependencies_out?: { id: string; to_id: string }[];
   created_at: string;
   updated_at: string;
 }
@@ -386,6 +394,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: task.id || Date.now().toString(),
       created_at: task.created_at || now,
       updated_at: task.updated_at || now,
+      dependencies_in: task.dependencies_in || [],
+      dependencies_out: task.dependencies_out || [],
     };
     setState(prev => {
       const exists = prev.tasks.some(t => t.id === newTask.id);

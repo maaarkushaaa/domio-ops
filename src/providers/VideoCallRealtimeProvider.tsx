@@ -43,6 +43,7 @@ interface VideoCallSignal {
 interface RemoteStream {
   id: string;
   stream: MediaStream;
+  type: 'camera' | 'screen' | 'unknown';
 }
 
 interface VideoCallRealtimeContextValue {
@@ -50,12 +51,16 @@ interface VideoCallRealtimeContextValue {
   participants: VideoCallParticipant[];
   localStream: MediaStream | null;
   remoteStreams: RemoteStream[];
+  screenStream: MediaStream | null;
   connectionState: RTCPeerConnectionState;
   isAudioEnabled: boolean;
   isVideoEnabled: boolean;
   createSession: (title: string, invitees: string[]) => Promise<string | null>;
   joinSession: (sessionId: string) => Promise<void>;
   leaveSession: () => Promise<void>;
+  startScreenShare: () => Promise<void>;
+  stopScreenShare: () => Promise<void>;
+  isScreenSharing: boolean;
   setAudioEnabled: (enabled: boolean) => void;
   setVideoEnabled: (enabled: boolean) => void;
 }

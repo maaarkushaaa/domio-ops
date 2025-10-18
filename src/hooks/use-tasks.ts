@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Task } from '@/contexts/AppContext';
 import { sendTelegramNotification } from '@/services/telegram';
@@ -7,71 +7,130 @@ import { supabase } from '@/integrations/supabase/client';
 export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
 
+const TASK_SELECT = `*,
+  comment_count:task_comments(count),
+  checklist_count:task_checklists(count),
+  project:projects(id,name),
+  assignee:profiles!tasks_assignee_id_fkey(id, full_name, email, avatar_url),
+  dependencies_in:task_dependencies!task_dependencies_successor_id_fkey(id, predecessor_id),
+  dependencies_out:task_dependencies!task_dependencies_predecessor_id_fkey(id, successor_id)
+`;
+
+const mapTaskRow = (row: any): Task => ({
+  id: row.id,
+  title: row.title,
+  description: row.description || undefined,
+  status: row.status,
+  priority: row.priority,
+  project_id: row.project_id || undefined,
+  project: row.project ?? null,
+  assignee_id: row.assignee_id || undefined,
+  assignee: row.assignee
+    ? {
+        id: row.assignee.id,
+        full_name: row.assignee.full_name,
+        email: row.assignee.email ?? undefined,
+        avatar_url: row.assignee.avatar_url ?? null,
+      }
+    : null,
+  due_date: row.due_date || undefined,
+  due_end: row.due_end || undefined,
+  tags: row.tags ?? undefined,
+  parent_task_id: row.parent_task_id || null,
+  order: row.order ?? null,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
+  _comment_count: row.comment_count?.[0]?.count || 0,
+  _checklist_count: row.checklist_count?.[0]?.count || 0,
+  dependencies_in: Array.isArray(row.dependencies_in)
+    ? row.dependencies_in.map((dep: any) => ({ id: dep.id, from_id: dep.predecessor_id }))
+    : [],
+  dependencies_out: Array.isArray(row.dependencies_out)
+    ? row.dependencies_out.map((dep: any) => ({ id: dep.id, to_id: dep.successor_id }))
+    : [],
+});
+
 export const useTasks = () => {
   const { tasks, addTask, updateTask, deleteTask } = useApp();
 
+  const loadTasks = useCallback(async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('tasks')
+        .select(TASK_SELECT)
+        .order('order', { ascending: true });
+      if (error) throw error;
+
+      (data || []).forEach((row: any) => {
+        addTask(mapTaskRow(row));
+      });
+    } catch (e) {
+      console.error('load tasks error', e);
+    }
+  }, [addTask]);
+
+  const fetchTaskDetails = useCallback(async (taskId: string) => {
+    const { data, error } = await (supabase as any)
+      .from('tasks')
+      .select(TASK_SELECT)
+      .eq('id', taskId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error('Task not found');
+    }
+
+    return mapTaskRow(data);
+  }, []);
+
   // Initial load + realtime
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    const load = async () => {
-      try {
-        // Подсчёт комментариев через подзапрос + связь с проектом
-        const { data, error } = await (supabase as any)
-          .from('tasks')
-          .select('*, comment_count:task_comments(count), project:projects(id,name)')
-          .order('order', { ascending: true });
-        if (error) throw error;
-        (data || []).forEach((t: any) => {
-          addTask({
-            id: t.id,
-            title: t.title,
-            description: t.description,
-            status: t.status,
-            priority: t.priority,
-            project_id: t.project_id,
-            assignee_id: t.assignee_id,
-            due_date: t.due_date,
-            due_end: t.due_end, // ✅ Добавлено!
-            created_at: t.created_at,
-            updated_at: t.updated_at,
-            _comment_count: t.comment_count?.[0]?.count || 0,
-            project: t.project,
-          } as any);
-        });
-      } catch (e) {
-        console.error('load tasks error', e);
-      }
-      channel = supabase
-        .channel('tasks_changes')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => {
-          const row: any = payload.new;
-          addTask({
-            id: row.id,
-            title: row.title,
-            description: row.description,
-            status: row.status,
-            priority: row.priority,
-            project_id: row.project_id,
-            assignee_id: row.assignee_id,
-            due_date: row.due_date,
-            due_end: row.due_end, // ✅ Добавлено!
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-          } as any);
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, (payload) => {
-          const row: any = payload.new;
+    loadTasks();
+
+    const tasksChannel = supabase
+      .channel('tasks_changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, async (payload) => {
+        const row: any = payload.new;
+        try {
+          const full = await fetchTaskDetails(row.id);
+          addTask(full);
+        } catch (error) {
+          console.error('Failed to fetch inserted task details', error);
+          addTask(row);
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, async (payload) => {
+        const row: any = payload.new;
+        try {
+          const full = await fetchTaskDetails(row.id);
+          addTask(full);
+        } catch (error) {
+          console.error('Failed to fetch updated task details', error);
           updateTask(row.id, row);
-        })
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, (payload) => {
-          const row: any = payload.old;
-          deleteTask(row.id);
-        })
-        .subscribe();
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, (payload) => {
+        const row: any = payload.old;
+        deleteTask(row.id);
+      })
+      .subscribe();
+
+    const dependenciesChannel = supabase
+      .channel('task_dependencies_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_dependencies' }, async () => {
+        await loadTasks();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(dependenciesChannel);
     };
-    load();
-    return () => { if (channel) supabase.removeChannel(channel); };
-  }, []);
+  }, [addTask, deleteTask, fetchTaskDetails, loadTasks, updateTask]);
 
   const createTask = async (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
     const { data, error } = await (supabase as any)
@@ -85,12 +144,14 @@ export const useTasks = () => {
         assignee_id: (task as any).assignee_id || null,
         due_date: (task as any).due_date || null,
         due_end: (task as any).due_end || null,
+        tags: (task as any).tags || null,
+        parent_task_id: (task as any).parent_task_id || null,
+        order: (task as any).order ?? null,
       })
-      .select()
+      .select(TASK_SELECT)
       .single();
     if (error) throw error;
-    // add with DB id (realtime may also insert same id; addTask in context dedupes by id)
-    addTask({ id: data.id, ...data } as any);
+    addTask(mapTaskRow(data));
     sendTelegramNotification({ title: 'Новая задача', message: `Создана задача: "${task.title}"`, type: 'info' });
     
     // Добавляем уведомление в систему
@@ -108,7 +169,7 @@ export const useTasks = () => {
         .from('tasks')
         .update(updates)
         .eq('id', updates.id)
-        .select('*, comment_count:task_comments(count), project:projects(id,name)')
+        .select(TASK_SELECT)
         .single();
       if (error) {
         console.error('[TASK-UPDATE] Update task error:', error);
@@ -117,10 +178,7 @@ export const useTasks = () => {
       console.log('[TASK-UPDATE] Task updated successfully, received data:', data);
       
       // Transform data to match expected format
-      const transformedData = {
-        ...data,
-        _comment_count: data.comment_count?.[0]?.count || 0,
-      };
+      const transformedData = mapTaskRow(data);
       updateTask(updates.id, transformedData);
       console.log('[TASK-UPDATE] Local state updated');
 
@@ -161,6 +219,41 @@ export const useTasks = () => {
     // Добавляем уведомление в систему
     if ((window as any).notifyTaskDeleted) {
       (window as any).notifyTaskDeleted(taskTitle);
+    }
+  };
+
+  const createDependency = async (predecessorId: string, successorId: string) => {
+    if (!predecessorId || !successorId) {
+      throw new Error('Не выбраны задачи для зависимости');
+    }
+    if (predecessorId === successorId) {
+      throw new Error('Задача не может зависеть сама от себя');
+    }
+
+    try {
+      const { error } = await (supabase as any)
+        .from('task_dependencies')
+        .insert({ predecessor_id: predecessorId, successor_id: successorId });
+      if (error) throw error;
+      await loadTasks();
+    } catch (err) {
+      console.error('[DEPENDENCY-CREATE] Failed to create dependency:', err);
+      throw err;
+    }
+  };
+
+  const deleteDependency = async (dependencyId: string) => {
+    if (!dependencyId) return;
+    try {
+      const { error } = await (supabase as any)
+        .from('task_dependencies')
+        .delete()
+        .eq('id', dependencyId);
+      if (error) throw error;
+      await loadTasks();
+    } catch (err) {
+      console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
+      throw err;
     }
   };
 
@@ -239,10 +332,11 @@ export const useTasks = () => {
 
   return {
     tasks,
-    isLoading: false,
     createTask,
     updateTask: updateTaskWithNotification,
     deleteTask: deleteTaskWithSupabase,
+    createDependency,
+    deleteDependency,
     createComment,
     listComments,
   };
