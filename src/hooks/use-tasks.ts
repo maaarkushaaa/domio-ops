@@ -332,7 +332,7 @@ export const useTasks = () => {
         const nextOut = [...(predecessorTask.dependencies_out ?? [])];
         if (!nextOut.some((dep) => dep.to_id === successorId)) {
           nextOut.push({ id: data.id, to_id: successorId });
-          updateTask(predecessorId, { dependencies_out: nextOut });
+          addTask({ ...predecessorTask, dependencies_out: nextOut } as Task);
         }
       }
 
@@ -341,7 +341,7 @@ export const useTasks = () => {
         const nextIn = [...(successorTask.dependencies_in ?? [])];
         if (!nextIn.some((dep) => dep.from_id === predecessorId)) {
           nextIn.push({ id: data.id, from_id: predecessorId });
-          updateTask(successorId, { dependencies_in: nextIn });
+          addTask({ ...successorTask, dependencies_in: nextIn } as Task);
         }
       }
 
@@ -383,7 +383,7 @@ export const useTasks = () => {
         const predecessorTask = tasks.find((t) => t.id === predecessorId);
         if (predecessorTask) {
           const nextOut = (predecessorTask.dependencies_out ?? []).filter((dep) => dep.id !== dependencyId);
-          updateTask(predecessorId, { dependencies_out: nextOut });
+          addTask({ ...predecessorTask, dependencies_out: nextOut } as Task);
         }
       }
 
@@ -391,7 +391,7 @@ export const useTasks = () => {
         const successorTask = tasks.find((t) => t.id === successorId);
         if (successorTask) {
           const nextIn = (successorTask.dependencies_in ?? []).filter((dep) => dep.id !== dependencyId);
-          updateTask(successorId, { dependencies_in: nextIn });
+          addTask({ ...successorTask, dependencies_in: nextIn } as Task);
         }
       }
 
