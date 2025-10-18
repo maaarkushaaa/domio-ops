@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -8,15 +8,21 @@ import ReactFlow, {
   MarkerType,
   Edge,
   Node,
+  Connection,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '@/contexts/AppContext';
+import { useTasks } from '@/hooks/use-tasks';
+import { useToast } from '@/components/ui/use-toast';
 
 interface TaskDependenciesBoardProps {
   tasks: Task[];
 }
 
 export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
+  const { createDependency, deleteDependency } = useTasks();
+  const { toast } = useToast();
+
   const buildNodes = (source: Task[]): Node[] => {
     return source.map((task, index) => ({
       id: task.id,
@@ -69,6 +75,52 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  const handleConnect = useCallback(async (connection: Connection) => {
+    const { source, target } = connection;
+    if (!source || !target) return;
+
+    const alreadyExists = tasks.some(
+      (task) =>
+        task.id === source &&
+        (task.dependencies_out || []).some((dep) => dep.to_id === target),
+    );
+
+    if (alreadyExists) {
+      toast({
+        title: 'Связь уже существует',
+        description: 'Эти задачи уже связаны зависимостью.',
+      });
+      return;
+    }
+
+    try {
+      await createDependency(source, target);
+      toast({ title: 'Связь создана', description: 'Новая зависимость сохранена.' });
+    } catch (error: any) {
+      toast({
+        title: 'Ошибка при создании зависимости',
+        description: error?.message ?? 'Не удалось создать зависимость.',
+        variant: 'destructive',
+      });
+    }
+  }, [createDependency, tasks, toast]);
+
+  const handleEdgesDelete = useCallback(async (deleted: Edge[]) => {
+    for (const edge of deleted) {
+      if (!edge?.id) continue;
+      try {
+        await deleteDependency(edge.id);
+        toast({ title: 'Связь удалена', description: 'Зависимость удалена из задачи.' });
+      } catch (error: any) {
+        toast({
+          title: 'Ошибка при удалении зависимости',
+          description: error?.message ?? 'Не удалось удалить зависимость.',
+          variant: 'destructive',
+        });
+      }
+    }
+  }, [deleteDependency, toast]);
+
   useEffect(() => {
     setNodes(buildNodes(tasks));
     setEdges(buildEdges(tasks));
@@ -81,6 +133,8 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onEdgesDelete={handleEdgesDelete}
+        onConnect={handleConnect}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         proOptions={{ hideAttribution: true }}

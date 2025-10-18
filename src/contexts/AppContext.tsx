@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProductProgress } from '@/hooks/use-product-progress';
 import { useActionNotifications } from '@/hooks/use-notifications';
@@ -146,7 +146,11 @@ const getInitialState = (): AppState => {
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  console.log('🏗️ AppProvider initializing - Supabase Auth Only');
+  const hasLoggedInit = useRef(false);
+  if (!hasLoggedInit.current) {
+    console.log('🏗️ AppProvider initializing - Supabase Auth Only');
+    hasLoggedInit.current = true;
+  }
   
   const [state, setState] = useState<AppState>(getInitialState);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
