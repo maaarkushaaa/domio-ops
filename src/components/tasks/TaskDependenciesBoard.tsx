@@ -87,7 +87,7 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     return edges;
   };
 
-  const initialNodes = useMemo(() => buildNodes(tasks), [tasks]);
+  const initialNodes = useMemo(() => buildNodes(tasks), [tasks, buildNodes]);
   const initialEdges = useMemo(() => buildEdges(tasks), [tasks]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -122,20 +122,15 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
 
     try {
       const created = await createDependency(source, target);
-      setEdges((eds) => addEdge({
+      setEdges((eds) => [...eds, {
         id: created.id,
         source,
         target,
         animated: true,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: 'var(--primary)',
-        },
-        style: {
-          stroke: 'var(--primary)',
-          strokeWidth: 2,
-        },
-      }, eds));
+        markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--primary)' },
+        style: { stroke: 'var(--primary)', strokeWidth: 2 },
+        type: 'smoothstep',
+      }]);
       toast({ title: 'Связь создана', description: 'Новая зависимость сохранена.' });
     } catch (error: any) {
       toast({
@@ -153,7 +148,10 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
     for (const edge of deleted) {
       if (!edge?.id) continue;
       try {
-        await deleteDependency(edge.id);
+        await deleteDependency(edge.id, {
+          predecessorId: edge.source,
+          successorId: edge.target,
+        });
         toast({ title: 'Связь удалена', description: 'Зависимость удалена из задачи.' });
       } catch (error: any) {
         toast({
@@ -171,8 +169,14 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
 
   useEffect(() => {
     setNodes(buildNodes(tasks));
-    setEdges(buildEdges(tasks));
-  }, [tasks, buildNodes, setNodes, setEdges]);
+    setEdges((current) => {
+      const incoming = buildEdges(tasks);
+      if (current.length === incoming.length && current.every((edge, idx) => edge.id === incoming[idx].id)) {
+        return current;
+      }
+      return incoming;
+    });
+  }, [tasks, buildNodes, setNodes, buildEdges]);
 
   return (
     <div className="h-[70vh] rounded-lg border bg-card">

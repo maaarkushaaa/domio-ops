@@ -327,6 +327,24 @@ export const useTasks = () => {
         .select('id, predecessor_id, successor_id')
         .single();
       if (error) throw error;
+      const predecessorTask = tasks.find((t) => t.id === predecessorId);
+      if (predecessorTask) {
+        const nextOut = [...(predecessorTask.dependencies_out ?? [])];
+        if (!nextOut.some((dep) => dep.to_id === successorId)) {
+          nextOut.push({ id: data.id, to_id: successorId });
+          updateTask(predecessorId, { dependencies_out: nextOut });
+        }
+      }
+
+      const successorTask = tasks.find((t) => t.id === successorId);
+      if (successorTask) {
+        const nextIn = [...(successorTask.dependencies_in ?? [])];
+        if (!nextIn.some((dep) => dep.from_id === predecessorId)) {
+          nextIn.push({ id: data.id, from_id: predecessorId });
+          updateTask(successorId, { dependencies_in: nextIn });
+        }
+      }
+
       await loadTasks();
       return data;
     } catch (err) {
@@ -335,14 +353,48 @@ export const useTasks = () => {
     }
   };
 
-  const deleteDependency = async (dependencyId: string) => {
+  const deleteDependency = async (
+    dependencyId: string,
+    meta?: { predecessorId?: string; successorId?: string },
+  ) => {
     if (!dependencyId) return;
     try {
+      let predecessorId = meta?.predecessorId;
+      let successorId = meta?.successorId;
+
+      if (!predecessorId || !successorId) {
+        const { data: depRow, error: fetchError } = await (supabase as any)
+          .from('task_dependencies')
+          .select('predecessor_id, successor_id')
+          .eq('id', dependencyId)
+          .maybeSingle();
+        if (fetchError) throw fetchError;
+        predecessorId = predecessorId ?? depRow?.predecessor_id;
+        successorId = successorId ?? depRow?.successor_id;
+      }
+
       const { error } = await (supabase as any)
         .from('task_dependencies')
         .delete()
         .eq('id', dependencyId);
       if (error) throw error;
+
+      if (predecessorId) {
+        const predecessorTask = tasks.find((t) => t.id === predecessorId);
+        if (predecessorTask) {
+          const nextOut = (predecessorTask.dependencies_out ?? []).filter((dep) => dep.id !== dependencyId);
+          updateTask(predecessorId, { dependencies_out: nextOut });
+        }
+      }
+
+      if (successorId) {
+        const successorTask = tasks.find((t) => t.id === successorId);
+        if (successorTask) {
+          const nextIn = (successorTask.dependencies_in ?? []).filter((dep) => dep.id !== dependencyId);
+          updateTask(successorId, { dependencies_in: nextIn });
+        }
+      }
+
       await loadTasks();
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
