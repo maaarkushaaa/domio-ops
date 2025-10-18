@@ -44,6 +44,7 @@ import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { FeatureFlagsProvider } from "./contexts/FeatureFlags";
 import { initSentry } from "@/integrations/monitoring/sentry";
+import { useEffect, useRef } from "react";
 
 const queryClient = new QueryClient();
 initSentry({
@@ -53,8 +54,22 @@ initSentry({
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoadingAuth } = useApp();
-  
-  console.log('ЁЯФР ProtectedRoute check - User:', user ? `${user.email} (${user.role})` : 'Not authenticated', 'Loading:', isLoadingAuth);
+  const prevSnapshot = useRef<{ userId: string | null; loading: boolean }>({ userId: null, loading: true });
+
+  useEffect(() => {
+    const current = { userId: user?.id ?? null, loading: isLoadingAuth };
+    const prev = prevSnapshot.current;
+    if (prev.userId !== current.userId || prev.loading !== current.loading) {
+      if (current.loading) {
+        console.debug('[ProtectedRoute] awaiting auth state');
+      } else if (!current.userId) {
+        console.debug('[ProtectedRoute] redirect to /auth');
+      } else {
+        console.debug('[ProtectedRoute] access granted for', user?.email, `(${user?.role})`);
+      }
+      prevSnapshot.current = current;
+    }
+  }, [user, isLoadingAuth]);
   
   if (isLoadingAuth) {
     return <div className="flex items-center justify-center min-h-screen">
@@ -63,11 +78,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user) {
-    console.log('ЁЯЪк Redirecting to /auth');
     return <Navigate to="/auth" replace />;
   }
   
-  console.log('тЬЕ Access granted');
   return <>{children}</>;
 };
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -10,6 +10,8 @@ import ReactFlow, {
   Node,
   Connection,
   addEdge,
+  NodeChange,
+  EdgeChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Task } from '@/contexts/AppContext';
@@ -23,29 +25,49 @@ interface TaskDependenciesBoardProps {
 export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   const { createDependency, deleteDependency } = useTasks();
   const { toast } = useToast();
+  const positionsRef = useRef(new Map<string, { x: number; y: number }>());
 
-  const buildNodes = (source: Task[]): Node[] => {
-    return source.map((task, index) => ({
-      id: task.id,
-      data: {
-        label: `${task.title}${task.status ? `\n(${task.status})` : ''}`,
-      },
-      position: {
-        x: (index % 5) * 220,
-        y: Math.floor(index / 5) * 160,
-      },
-      style: {
-        padding: 12,
-        borderRadius: 8,
-        border: '1px solid var(--border)',
-        background: 'var(--card)',
-        color: 'var(--foreground)',
-        fontSize: 12,
-        lineHeight: 1.25,
-        whiteSpace: 'pre-line',
-      },
-    }));
-  };
+  const buildNodes = useCallback((source: Task[]): Node[] => {
+    const nextNodes: Node[] = [];
+    const seen = new Set<string>();
+
+    source.forEach((task, index) => {
+      const fallbackPosition = {
+        x: (index % 5) * 240,
+        y: Math.floor(index / 5) * 180,
+      };
+      const stored = positionsRef.current.get(task.id) ?? fallbackPosition;
+      positionsRef.current.set(task.id, stored);
+      seen.add(task.id);
+
+      nextNodes.push({
+        id: task.id,
+        data: {
+          label: `${task.title}${task.status ? `\n(${task.status})` : ''}`,
+        },
+        position: stored,
+        draggable: true,
+        style: {
+          padding: 12,
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          background: 'var(--card)',
+          color: 'var(--foreground)',
+          fontSize: 12,
+          lineHeight: 1.25,
+          whiteSpace: 'pre-line',
+        },
+      });
+    });
+
+    positionsRef.current.forEach((_, key) => {
+      if (!seen.has(key)) {
+        positionsRef.current.delete(key);
+      }
+    });
+
+    return nextNodes;
+  }, []);
 
   const buildEdges = (source: Task[]): Edge[] => {
     const edges: Edge[] = [];
@@ -56,14 +78,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
           source: task.id,
           target: dep.to_id,
           animated: true,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: 'var(--primary)',
-          },
-          style: {
-            stroke: 'var(--primary)',
-            strokeWidth: 2,
-          },
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--primary)' },
+          style: { stroke: 'var(--primary)', strokeWidth: 2 },
+          type: 'smoothstep',
         } as Edge);
       });
     });
@@ -75,6 +92,15 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    changes.forEach((change) => {
+      if (change.type === 'position' && change.position) {
+        positionsRef.current.set(change.id, change.position);
+      }
+    });
+    onNodesChange(changes);
+  }, [onNodesChange]);
 
   const handleConnect = useCallback(async (connection: Connection) => {
     const { source, target } = connection;
@@ -121,6 +147,9 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
   }, [createDependency, setEdges, tasks, toast]);
 
   const handleEdgesDelete = useCallback(async (deleted: Edge[]) => {
+    if (!deleted.length) return;
+    setEdges((eds) => eds.filter((edge) => !deleted.some((item) => item.id === edge.id)));
+
     for (const edge of deleted) {
       if (!edge?.id) continue;
       try {
@@ -134,28 +163,36 @@ export function TaskDependenciesBoard({ tasks }: TaskDependenciesBoardProps) {
         });
       }
     }
-  }, [deleteDependency, toast]);
+  }, [deleteDependency, setEdges, toast]);
+
+  const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
+    onEdgesChange(changes);
+  }, [onEdgesChange]);
 
   useEffect(() => {
     setNodes(buildNodes(tasks));
     setEdges(buildEdges(tasks));
-  }, [tasks, setNodes, setEdges]);
+  }, [tasks, buildNodes, setNodes, setEdges]);
 
   return (
     <div className="h-[70vh] rounded-lg border bg-card">
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
         onEdgesDelete={handleEdgesDelete}
         onConnect={handleConnect}
         onEdgeDoubleClick={(_, edge) => {
           void handleEdgesDelete([edge]);
         }}
         fitView
+        fitView
         fitViewOptions={{ padding: 0.2 }}
         proOptions={{ hideAttribution: true }}
+        nodesDraggable
+        panOnScroll
+        zoomOnScroll
       >
         <MiniMap pannable zoomable />
         <Controls showInteractive={false} />
