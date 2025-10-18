@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ReactFlow, {
   Background,
   Controls,
@@ -20,6 +21,9 @@ import 'reactflow/dist/style.css';
 import { Task } from '@/contexts/AppContext';
 import { useTasks } from '@/hooks/use-tasks';
 import { useToast } from '@/components/ui/use-toast';
+import { TaskChecklists } from '@/components/tasks/TaskChecklists';
+import { TaskComments } from '@/components/tasks/TaskComments';
+import { TaskDependencyManager } from '@/components/tasks/TaskDependencyManager';
 
 type TaskNodeData = {
   task: Task;
@@ -35,10 +39,128 @@ interface TaskDependenciesBoardProps {
   tasks: Task[];
 }
 
+const TaskPreview: React.FC<{
+  task: Task;
+  anchor: DOMRect;
+  onClose: () => void;
+}> = ({ task, anchor, onClose }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+
+  useEffect(() => {
+    const updatePosition = () => {
+      const { innerWidth, innerHeight } = window;
+      const width = 420;
+      const height = Math.min(innerHeight * 0.8, 640);
+      let left = anchor.right + 16;
+      let top = anchor.top;
+
+      if (left + width > innerWidth - 16) {
+        left = Math.max(16, anchor.left - width - 16);
+      }
+      if (top + height > innerHeight - 16) {
+        top = Math.max(16, innerHeight - height - 16);
+      }
+
+      setPosition({ top, left });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [anchor]);
+
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    const handleClick = (event: MouseEvent) => {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    window.addEventListener('mousedown', handleClick);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      window.removeEventListener('mousedown', handleClick);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] pointer-events-none">
+      <div
+        ref={containerRef}
+        className="pointer-events-auto w-[90vw] max-w-[420px] max-h-[80vh] overflow-y-auto rounded-xl border bg-popover text-popover-foreground shadow-2xl"
+        style={{ top: position.top, left: position.left, position: 'absolute' }}
+      >
+        <div className="sticky top-0 z-10 flex items-start justify-between bg-popover px-4 pt-4">
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">Задача</div>
+            <div className="text-base font-semibold leading-tight text-foreground">{task.title}</div>
+            <div className="text-xs text-muted-foreground">
+              {task.project?.name || 'Без проекта'}
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Закрыть предпросмотр"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground transition hover:bg-muted/80"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+        <div className="space-y-6 px-4 pb-6">
+          <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+            <div><span className="font-semibold text-foreground">Статус:</span> <span className="uppercase">{task.status}</span></div>
+            <div><span className="font-semibold text-foreground">Приоритет:</span> {task.priority || '—'}</div>
+            <div><span className="font-semibold text-foreground">Ответственный:</span> {task.assignee?.full_name || task.assignee?.email || 'Не назначен'}</div>
+            <div><span className="font-semibold text-foreground">Период:</span>{' '}
+              {task.due_date
+                ? `${new Date(task.due_date).toLocaleDateString('ru-RU')}${(task as any).due_end && (task as any).due_end !== task.due_date ? ` — ${new Date((task as any).due_end).toLocaleDateString('ru-RU')}` : ''}`
+                : '—'}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">Описание</div>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              {task.description || 'Описание отсутствует.'}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">Чек-листы</div>
+            <TaskChecklists taskId={task.id} />
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">Комментарии</div>
+            <TaskComments taskId={task.id} />
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">Зависимости</div>
+            <TaskDependencyManager task={task} />
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
 const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
-  const [showPreview, setShowPreview] = useState(false);
+  const [previewAnchor, setPreviewAnchor] = useState<DOMRect | null>(null);
   const assignee = data.task.assignee?.full_name || data.task.assignee?.email;
-  const hasDescription = Boolean(data.task.description);
 
   return (
     <div className="relative flex min-w-[200px] max-w-[240px] flex-col gap-2 text-left">
@@ -61,10 +183,9 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
           className="flex-1 text-left text-sm font-medium leading-snug text-foreground hover:underline"
           onClick={(event) => {
             event.stopPropagation();
-            if (!hasDescription) return;
-            setShowPreview((prev) => !prev);
+            const rect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
+            setPreviewAnchor(rect);
           }}
-          disabled={!hasDescription}
         >
           {data.task.title}
         </button>
@@ -78,24 +199,15 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
       {assignee ? (
         <span className="truncate text-xs font-medium text-muted-foreground">{assignee}</span>
       ) : null}
-      {showPreview && hasDescription ? (
-        <div className="rounded-lg border bg-background p-2 text-xs text-muted-foreground shadow-lg">
-          <div className="mb-2 font-semibold text-foreground">Описание</div>
-          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap leading-relaxed">{data.task.description}</p>
-          <button
-            type="button"
-            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
-            onClick={(event) => {
-              event.stopPropagation();
-              setShowPreview(false);
-            }}
-          >
-            Закрыть
-          </button>
-        </div>
-      ) : null}
       <Handle type="target" position={Position.Top} className="bg-primary" />
       <Handle type="source" position={Position.Bottom} className="bg-primary" />
+      {previewAnchor ? (
+        <TaskPreview
+          task={data.task}
+          anchor={previewAnchor}
+          onClose={() => setPreviewAnchor(null)}
+        />
+      ) : null}
     </div>
   );
 };

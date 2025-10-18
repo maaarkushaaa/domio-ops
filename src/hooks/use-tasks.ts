@@ -394,6 +394,7 @@ export const useTasks = () => {
         }
       }
 
+      await loadTasks();
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
       throw err;
