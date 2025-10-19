@@ -175,6 +175,18 @@ export const useTasks = () => {
     return pendingDependencyDeletionsRef.current.has(depId);
   }, [prunePendingDependencyDeletions]);
 
+  const shouldSuppressDependency = useCallback(
+    (depId?: string | null) => {
+      if (!depId) return false;
+      pruneDeletedDependencies();
+      prunePendingDependencyDeletions();
+      return (
+        deletedDependencyIdsRef.current.has(depId) || pendingDependencyDeletionsRef.current.has(depId)
+      );
+    },
+    [pruneDeletedDependencies, prunePendingDependencyDeletions],
+  );
+
   const applyDependencyRemovalImmediate = useCallback(
     (depId?: string | null, predecessorId?: string | null, successorId?: string | null) => {
       if (!depId) return;
@@ -281,7 +293,11 @@ export const useTasks = () => {
         setDependencyCache((prev) => {
           const next = new Map(prev);
           uniqueIds.forEach((taskId) => {
-            next.set(taskId, depsMap.get(taskId) || { dependencies_in: [], dependencies_out: [] });
+            const payload = depsMap.get(taskId) || { dependencies_in: [], dependencies_out: [] };
+            next.set(taskId, {
+              dependencies_in: (payload.dependencies_in || []).filter((dep) => !shouldSuppressDependency(dep.id)),
+              dependencies_out: (payload.dependencies_out || []).filter((dep) => !shouldSuppressDependency(dep.id)),
+            });
           });
           return next;
         });
@@ -289,8 +305,8 @@ export const useTasks = () => {
         uniqueIds.forEach((taskId) => {
           const data = depsMap.get(taskId) || { dependencies_in: [], dependencies_out: [] };
           updateTask(taskId, {
-            dependencies_in: data.dependencies_in,
-            dependencies_out: data.dependencies_out,
+            dependencies_in: (data.dependencies_in || []).filter((dep) => !shouldSuppressDependency(dep.id)),
+            dependencies_out: (data.dependencies_out || []).filter((dep) => !shouldSuppressDependency(dep.id)),
           });
         });
       } catch (err) {
@@ -403,6 +419,10 @@ export const useTasks = () => {
           }
           if (deletedDependencyIdsRef.current.has(depId)) {
             console.debug('[TASKS] Skip realtime INSERT because dependency marked deleted', depId);
+            break;
+          }
+          if (shouldSuppressDependency(depId)) {
+            console.debug('[TASKS] Skip realtime INSERT because dependency suppressed', depId);
             break;
           }
           setDependencyCache((prev) => {
