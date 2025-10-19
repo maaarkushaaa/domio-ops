@@ -684,9 +684,25 @@ export const useTasks = () => {
     }
 
     try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('[DEPENDENCY-CREATE] Failed to fetch current user', authError);
+        throw authError;
+      }
+      if (!user?.id) {
+        throw new Error('Не удалось определить текущего пользователя для зависимости');
+      }
+
       const { data, error } = await (supabase as any)
         .from('task_dependencies')
-        .insert({ predecessor_id: predecessorId, successor_id: successorId })
+        .insert({
+          predecessor_id: predecessorId,
+          successor_id: successorId,
+          created_by: user.id,
+        })
         .select('id, predecessor_id, successor_id')
         .single();
       if (error) throw error;
