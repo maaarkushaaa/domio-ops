@@ -131,6 +131,8 @@ export const useTasks = () => {
   const dependencyRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dependencyRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const dependencyRefreshWaitersRef = useRef<Array<() => void>>([]);
+  const dependencyRefreshLastRunRef = useRef(0);
+  const MIN_DEP_REFRESH_INTERVAL_MS = 350;
   const deletedDependencyIdsRef = useRef(new Map<string, number>());
   const DELETION_SUPPRESSION_WINDOW_MS = 4000;
   const pendingDependencyDeletionsRef = useRef(
@@ -314,6 +316,16 @@ export const useTasks = () => {
       return;
     }
 
+    const now = Date.now();
+    const sinceLastRun = now - dependencyRefreshLastRunRef.current;
+    if (sinceLastRun < MIN_DEP_REFRESH_INTERVAL_MS) {
+      dependencyRefreshTimerRef.current = setTimeout(() => {
+        dependencyRefreshTimerRef.current = null;
+        void flushDependencyRefresh();
+      }, MIN_DEP_REFRESH_INTERVAL_MS - sinceLastRun);
+      return;
+    }
+
     const taskIds = Array.from(queue);
     queue.clear();
 
@@ -321,6 +333,7 @@ export const useTasks = () => {
     dependencyRefreshInFlightRef.current = refreshPromise;
     try {
       await refreshPromise;
+      dependencyRefreshLastRunRef.current = Date.now();
     } finally {
       dependencyRefreshInFlightRef.current = null;
       const waiters = dependencyRefreshWaitersRef.current.splice(0);
@@ -348,7 +361,7 @@ export const useTasks = () => {
           dependencyRefreshTimerRef.current = setTimeout(() => {
             dependencyRefreshTimerRef.current = null;
             void flushDependencyRefresh();
-          }, 80);
+          }, 120);
         }
       });
     },
