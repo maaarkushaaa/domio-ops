@@ -428,12 +428,27 @@ export const useTasks = () => {
   const scheduleDependencyRefresh = useCallback(
     (taskIds: (string | undefined | null)[]): Promise<void> => {
       const filtered = taskIds.filter((id): id is string => Boolean(id));
-      if (filtered.length) {
-        filtered.forEach((taskId) => dependencyRefreshQueueRef.current.add(taskId));
-        console.debug('[TASKS][DEP-REFRESH] enqueue', filtered, 'queue size', dependencyRefreshQueueRef.current.size);
-      } else {
+      if (!filtered.length) {
         console.debug('[TASKS][DEP-REFRESH] enqueue skipped (empty input)');
+        return Promise.resolve();
       }
+
+      let hasNew = false;
+      filtered.forEach((taskId) => {
+        if (!dependencyRefreshQueueRef.current.has(taskId)) {
+          dependencyRefreshQueueRef.current.add(taskId);
+          hasNew = true;
+        }
+      });
+
+      if (!hasNew) {
+        console.debug('[TASKS][DEP-REFRESH] enqueue skipped (duplicates only)', filtered);
+        return dependencyRefreshTimerRef.current
+          ? new Promise<void>((resolve) => dependencyRefreshWaitersRef.current.push(resolve))
+          : Promise.resolve();
+      }
+
+      console.debug('[TASKS][DEP-REFRESH] enqueue', filtered, 'queue size', dependencyRefreshQueueRef.current.size);
 
       return new Promise<void>((resolve) => {
         dependencyRefreshWaitersRef.current.push(resolve);
