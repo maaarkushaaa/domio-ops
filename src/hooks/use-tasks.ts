@@ -276,6 +276,7 @@ export const useTasks = () => {
       if (!uniqueIds.length) return;
 
       try {
+        console.debug('[TASKS][DEP-REFRESH] fetch start', uniqueIds);
         const depsMap = await fetchDependencies(uniqueIds);
         setDependencyCache((prev) => {
           const next = new Map(prev);
@@ -294,6 +295,8 @@ export const useTasks = () => {
         });
       } catch (err) {
         console.warn('[TASKS] Failed to refresh dependency tasks', uniqueIds, err);
+      } finally {
+        console.debug('[TASKS][DEP-REFRESH] fetch finished', uniqueIds);
       }
     },
     [fetchDependencies, updateTask],
@@ -310,6 +313,7 @@ export const useTasks = () => {
     }
 
     const queue = dependencyRefreshQueueRef.current;
+    console.debug('[TASKS][DEP-REFRESH] flush queue size', queue.size);
     if (!queue.size) {
       const waiters = dependencyRefreshWaitersRef.current.splice(0);
       waiters.forEach((resolve) => resolve());
@@ -334,6 +338,7 @@ export const useTasks = () => {
     try {
       await refreshPromise;
       dependencyRefreshLastRunRef.current = Date.now();
+      console.debug('[TASKS][DEP-REFRESH] flush applied', taskIds);
     } finally {
       dependencyRefreshInFlightRef.current = null;
       const waiters = dependencyRefreshWaitersRef.current.splice(0);
@@ -352,6 +357,9 @@ export const useTasks = () => {
       const filtered = taskIds.filter((id): id is string => Boolean(id));
       if (filtered.length) {
         filtered.forEach((taskId) => dependencyRefreshQueueRef.current.add(taskId));
+        console.debug('[TASKS][DEP-REFRESH] enqueue', filtered, 'queue size', dependencyRefreshQueueRef.current.size);
+      } else {
+        console.debug('[TASKS][DEP-REFRESH] enqueue skipped (empty input)');
       }
 
       return new Promise<void>((resolve) => {
@@ -381,10 +389,20 @@ export const useTasks = () => {
       markDependencyDirty(predecessorId);
       markDependencyDirty(successorId);
 
+      console.debug('[TASKS][REALTIME] event', payload.eventType, 'dep', depId, 'from', predecessorId, 'to', successorId);
+
       switch (payload.eventType) {
         case 'INSERT':
           if (isDependencyRecentlyDeleted(depId) || isDependencyDeletionPending(depId)) {
             console.debug('[TASKS] Skip realtime INSERT for pending/recently deleted dependency', depId);
+            break;
+          }
+          if (pendingDependencyDeletionsRef.current.has(depId)) {
+            console.debug('[TASKS] Skip realtime INSERT because deletion pending', depId);
+            break;
+          }
+          if (deletedDependencyIdsRef.current.has(depId)) {
+            console.debug('[TASKS] Skip realtime INSERT because dependency marked deleted', depId);
             break;
           }
           setDependencyCache((prev) => {
@@ -629,6 +647,8 @@ export const useTasks = () => {
       let predecessorId = meta?.predecessorId;
       let successorId = meta?.successorId;
 
+      console.debug('[DEPENDENCY-DELETE] start', dependencyId, predecessorId, successorId);
+
       if (!predecessorId || !successorId) {
         const { data: existingRow, error: fetchError } = await (supabase as any)
           .from('task_dependencies')
@@ -656,6 +676,8 @@ export const useTasks = () => {
       markDependencyDeleted(dependencyId);
       await scheduleDependencyRefresh([predecessorId, successorId]);
       pendingDependencyDeletionsRef.current.delete(dependencyId);
+
+      console.debug('[DEPENDENCY-DELETE] completed', dependencyId, 'pending size', pendingDependencyDeletionsRef.current.size);
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
       pendingDependencyDeletionsRef.current.delete(dependencyId);
