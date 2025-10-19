@@ -133,6 +133,10 @@ export const useTasks = () => {
   const dependencyRefreshWaitersRef = useRef<Array<() => void>>([]);
   const deletedDependencyIdsRef = useRef(new Map<string, number>());
   const DELETION_SUPPRESSION_WINDOW_MS = 4000;
+  const pendingDependencyDeletionsRef = useRef(
+    new Map<string, { predecessorId?: string; successorId?: string; startedAt: number }>(),
+  );
+  const PENDING_DELETION_TIMEOUT_MS = 10000;
 
   const pruneDeletedDependencies = useCallback(() => {
     const now = Date.now();
@@ -153,6 +157,63 @@ export const useTasks = () => {
     pruneDeletedDependencies();
     return deletedDependencyIdsRef.current.has(depId);
   }, [pruneDeletedDependencies]);
+
+  const prunePendingDependencyDeletions = useCallback(() => {
+    const now = Date.now();
+    pendingDependencyDeletionsRef.current.forEach((entry, depId) => {
+      if (now - entry.startedAt > PENDING_DELETION_TIMEOUT_MS) {
+        pendingDependencyDeletionsRef.current.delete(depId);
+      }
+    });
+  }, []);
+
+  const isDependencyDeletionPending = useCallback((depId?: string | null) => {
+    if (!depId) return false;
+    prunePendingDependencyDeletions();
+    return pendingDependencyDeletionsRef.current.has(depId);
+  }, [prunePendingDependencyDeletions]);
+
+  const applyDependencyRemovalImmediate = useCallback(
+    (depId?: string | null, predecessorId?: string | null, successorId?: string | null) => {
+      if (!depId) return;
+
+      setDependencyCache((prev) => {
+        const next = new Map(prev);
+        if (predecessorId) {
+          const current = next.get(predecessorId) || { dependencies_in: [], dependencies_out: [] };
+          next.set(predecessorId, {
+            dependencies_in: current.dependencies_in,
+            dependencies_out: current.dependencies_out.filter((dep) => dep.id !== depId),
+          });
+        }
+        if (successorId) {
+          const current = next.get(successorId) || { dependencies_in: [], dependencies_out: [] };
+          next.set(successorId, {
+            dependencies_in: current.dependencies_in.filter((dep) => dep.id !== depId),
+            dependencies_out: current.dependencies_out,
+          });
+        }
+        return next;
+      });
+
+      if (predecessorId) {
+        const predecessorTask = tasks.find((task) => task.id === predecessorId);
+        if (predecessorTask) {
+          const nextOut = (predecessorTask.dependencies_out || []).filter((dep) => dep.id !== depId);
+          updateTask(predecessorId, { dependencies_out: nextOut });
+        }
+      }
+
+      if (successorId) {
+        const successorTask = tasks.find((task) => task.id === successorId);
+        if (successorTask) {
+          const nextIn = (successorTask.dependencies_in || []).filter((dep) => dep.id !== depId);
+          updateTask(successorId, { dependencies_in: nextIn });
+        }
+      }
+    },
+    [setDependencyCache, tasks, updateTask],
+  );
 
   const loadTasks = useCallback(async (): Promise<Task[]> => {
     const callId = ++loadCallIdRef.current;
@@ -309,8 +370,8 @@ export const useTasks = () => {
 
       switch (payload.eventType) {
         case 'INSERT':
-          if (isDependencyRecentlyDeleted(depId)) {
-            console.debug('[TASKS] Skip realtime INSERT for recently deleted dependency', depId);
+          if (isDependencyRecentlyDeleted(depId) || isDependencyDeletionPending(depId)) {
+            console.debug('[TASKS] Skip realtime INSERT for pending/recently deleted dependency', depId);
             break;
           }
           setDependencyCache((prev) => {
@@ -334,20 +395,7 @@ export const useTasks = () => {
           break;
         case 'DELETE':
           markDependencyDeleted(depId);
-          setDependencyCache((prev) => {
-            const next = new Map(prev);
-            const currentPredecessor = next.get(predecessorId) || { dependencies_in: [], dependencies_out: [] };
-            const currentSuccessor = next.get(successorId) || { dependencies_in: [], dependencies_out: [] };
-            next.set(predecessorId, {
-              dependencies_out: currentPredecessor.dependencies_out.filter((dep) => dep.id !== depId),
-              dependencies_in: currentPredecessor.dependencies_in,
-            });
-            next.set(successorId, {
-              dependencies_in: currentSuccessor.dependencies_in.filter((dep) => dep.id !== depId),
-              dependencies_out: currentSuccessor.dependencies_out,
-            });
-            return next;
-          });
+          applyDependencyRemovalImmediate(depId, predecessorId, successorId);
           break;
         case 'UPDATE':
           void scheduleDependencyRefresh([predecessorId, successorId, payload.old?.predecessor_id, payload.old?.successor_id]);
@@ -579,6 +627,13 @@ export const useTasks = () => {
         successorId = successorId ?? existingRow?.successor_id;
       }
 
+      pendingDependencyDeletionsRef.current.set(dependencyId, {
+        predecessorId,
+        successorId,
+        startedAt: Date.now(),
+      });
+      applyDependencyRemovalImmediate(dependencyId, predecessorId, successorId);
+
       const { error: deleteError } = await (supabase as any)
         .from('task_dependencies')
         .delete()
@@ -587,8 +642,10 @@ export const useTasks = () => {
 
       markDependencyDeleted(dependencyId);
       await scheduleDependencyRefresh([predecessorId, successorId]);
+      pendingDependencyDeletionsRef.current.delete(dependencyId);
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
+      pendingDependencyDeletionsRef.current.delete(dependencyId);
       throw err;
     }
   };
