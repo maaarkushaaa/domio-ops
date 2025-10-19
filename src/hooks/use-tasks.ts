@@ -132,6 +132,7 @@ export const useTasks = () => {
   const dependencyRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const dependencyRefreshWaitersRef = useRef<Array<() => void>>([]);
   const dependencyRefreshLastRunRef = useRef(0);
+  const dependencyRefreshLastAppliedAtRef = useRef<Record<string, number>>({});
   const MIN_DEP_REFRESH_INTERVAL_MS = 350;
   const deletedDependencyIdsRef = useRef(new Map<string, number>());
   const DELETION_SUPPRESSION_WINDOW_MS = 4000;
@@ -386,23 +387,6 @@ export const useTasks = () => {
     }
 
     const queue = dependencyRefreshQueueRef.current;
-    console.debug('[TASKS][DEP-REFRESH] flush queue size', queue.size);
-    if (!queue.size) {
-      const waiters = dependencyRefreshWaitersRef.current.splice(0);
-      waiters.forEach((resolve) => resolve());
-      return;
-    }
-
-    const now = Date.now();
-    const sinceLastRun = now - dependencyRefreshLastRunRef.current;
-    if (sinceLastRun < MIN_DEP_REFRESH_INTERVAL_MS) {
-      dependencyRefreshTimerRef.current = setTimeout(() => {
-        dependencyRefreshTimerRef.current = null;
-        void flushDependencyRefresh();
-      }, MIN_DEP_REFRESH_INTERVAL_MS - sinceLastRun);
-      return;
-    }
-
     const taskIds = Array.from(queue);
     queue.clear();
 
@@ -411,6 +395,9 @@ export const useTasks = () => {
     try {
       await refreshPromise;
       dependencyRefreshLastRunRef.current = Date.now();
+      taskIds.forEach((taskId) => {
+        dependencyRefreshLastAppliedAtRef.current[taskId] = dependencyRefreshLastRunRef.current;
+      });
       console.debug('[TASKS][DEP-REFRESH] flush applied', taskIds);
     } finally {
       dependencyRefreshInFlightRef.current = null;
@@ -426,29 +413,40 @@ export const useTasks = () => {
   }, [executeDependencyRefresh]);
 
   const scheduleDependencyRefresh = useCallback(
-    (taskIds: (string | undefined | null)[]): Promise<void> => {
+    (taskIds: (string | undefined | null)[], options?: { force?: boolean }): Promise<void> => {
       const filtered = taskIds.filter((id): id is string => Boolean(id));
       if (!filtered.length) {
         console.debug('[TASKS][DEP-REFRESH] enqueue skipped (empty input)');
         return Promise.resolve();
       }
 
-      let hasNew = false;
+      const now = Date.now();
+      const enqueued: string[] = [];
       filtered.forEach((taskId) => {
-        if (!dependencyRefreshQueueRef.current.has(taskId)) {
-          dependencyRefreshQueueRef.current.add(taskId);
-          hasNew = true;
+        if (!options?.force) {
+          const lastApplied = dependencyRefreshLastAppliedAtRef.current[taskId] ?? 0;
+          if (now - lastApplied < MIN_DEP_REFRESH_INTERVAL_MS) {
+            console.debug('[TASKS][DEP-REFRESH] enqueue skipped (recently refreshed)', taskId);
+            return;
+          }
         }
+
+        if (dependencyRefreshQueueRef.current.has(taskId) && !options?.force) {
+          console.debug('[TASKS][DEP-REFRESH] enqueue skipped (already queued)', taskId);
+          return;
+        }
+
+        dependencyRefreshQueueRef.current.add(taskId);
+        enqueued.push(taskId);
       });
 
-      if (!hasNew) {
-        console.debug('[TASKS][DEP-REFRESH] enqueue skipped (duplicates only)', filtered);
-        return dependencyRefreshTimerRef.current
+      if (!enqueued.length) {
+        return dependencyRefreshTimerRef.current || dependencyRefreshInFlightRef.current
           ? new Promise<void>((resolve) => dependencyRefreshWaitersRef.current.push(resolve))
           : Promise.resolve();
       }
 
-      console.debug('[TASKS][DEP-REFRESH] enqueue', filtered, 'queue size', dependencyRefreshQueueRef.current.size);
+      console.debug('[TASKS][DEP-REFRESH] enqueue', enqueued, 'queue size', dependencyRefreshQueueRef.current.size);
 
       return new Promise<void>((resolve) => {
         dependencyRefreshWaitersRef.current.push(resolve);
@@ -468,6 +466,7 @@ export const useTasks = () => {
     async (payload: any) => {
       const depId: string | undefined = payload.new?.id ?? payload.old?.id;
       const predecessorId: string | undefined = payload.new?.predecessor_id ?? payload.old?.predecessor_id;
+      // ...
       const successorId: string | undefined = payload.new?.successor_id ?? payload.old?.successor_id;
 
       if (!depId || !predecessorId || !successorId) {
