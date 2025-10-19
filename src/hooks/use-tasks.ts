@@ -55,29 +55,75 @@ const mapTaskRow = (
 export const useTasks = () => {
   const { tasks, addTask, updateTask, deleteTask } = useApp();
 
-  const fetchAssigneeProfiles = useCallback(async (rows: any[]) => {
+  const assigneeProfilesCacheRef = useRef<Record<string, { profile: AssigneeProfile; expiresAt: number }>>({});
+  const dependenciesCacheRef = useRef<Record<string, { payload: TaskDependenciesPayload; expiresAt: number }>>({});
+  const currentLoadPromiseRef = useRef<Promise<Task[]> | null>(null);
+  const CACHE_TTL_MS = 5000;
+
+  const fetchAssigneeProfiles = useCallback(async (rows: any[], { force }: { force?: boolean } = {}) => {
     const ids = Array.from(new Set((rows || []).map((r) => r.assignee_id).filter(Boolean))) as string[];
     if (!ids.length) return new Map<string, AssigneeProfile>();
+
+    const now = Date.now();
+    const missingIds: string[] = [];
+    const result = new Map<string, AssigneeProfile>();
+
+    ids.forEach((id) => {
+      const entry = assigneeProfilesCacheRef.current[id];
+      if (!force && entry && entry.expiresAt > now) {
+        result.set(id, entry.profile);
+      } else {
+        missingIds.push(id);
+      }
+    });
+
+    if (!missingIds.length) {
+      return result;
+    }
+
     try {
       const { data, error } = await (supabase as any)
         .from('profiles')
         .select('id, full_name, email, avatar_url')
-        .in('id', ids);
+        .in('id', missingIds);
       if (error) throw error;
-      return new Map<string, AssigneeProfile>((data || []).map((profile: AssigneeProfile) => [profile.id, profile]));
+      const expiresAt = Date.now() + CACHE_TTL_MS;
+      (data || []).forEach((profile: AssigneeProfile) => {
+        assigneeProfilesCacheRef.current[profile.id] = { profile, expiresAt };
+        result.set(profile.id, profile);
+      });
+      return result;
     } catch (err) {
       console.warn('[TASKS] Failed to load assignee profiles', err);
-      return new Map<string, AssigneeProfile>();
+      return result;
     }
   }, []);
 
-  const fetchDependencies = useCallback(async (taskIds: string[]) => {
+  const fetchDependencies = useCallback(async (taskIds: string[], { force }: { force?: boolean } = {}) => {
     if (!taskIds.length) return new Map<string, TaskDependenciesPayload>();
+
+    const now = Date.now();
+    const result = new Map<string, TaskDependenciesPayload>();
+    const missingIds: string[] = [];
+
+    taskIds.forEach((taskId) => {
+      const entry = dependenciesCacheRef.current[taskId];
+      if (!force && entry && entry.expiresAt > now) {
+        result.set(taskId, entry.payload);
+      } else {
+        missingIds.push(taskId);
+      }
+    });
+
+    if (!missingIds.length) {
+      return result;
+    }
+
     try {
       const chunkSize = 20;
       const chunks: string[][] = [];
-      for (let i = 0; i < taskIds.length; i += chunkSize) {
-        chunks.push(taskIds.slice(i, i + chunkSize));
+      for (let i = 0; i < missingIds.length; i += chunkSize) {
+        chunks.push(missingIds.slice(i, i + chunkSize));
       }
 
       const collect = async (column: 'predecessor_id' | 'successor_id') => {
@@ -98,24 +144,31 @@ export const useTasks = () => {
         collect('successor_id'),
       ]);
 
-      const depsMap = new Map<string, TaskDependenciesPayload>();
+      const fetched = new Map<string, TaskDependenciesPayload>();
 
       outgoing.forEach((dep: any) => {
-        const list = depsMap.get(dep.predecessor_id) || { dependencies_in: [], dependencies_out: [] };
+        const list = fetched.get(dep.predecessor_id) || { dependencies_in: [], dependencies_out: [] };
         list.dependencies_out.push({ id: dep.id, to_id: dep.successor_id });
-        depsMap.set(dep.predecessor_id, list);
+        fetched.set(dep.predecessor_id, list);
       });
 
       incoming.forEach((dep: any) => {
-        const list = depsMap.get(dep.successor_id) || { dependencies_in: [], dependencies_out: [] };
+        const list = fetched.get(dep.successor_id) || { dependencies_in: [], dependencies_out: [] };
         list.dependencies_in.push({ id: dep.id, from_id: dep.predecessor_id });
-        depsMap.set(dep.successor_id, list);
+        fetched.set(dep.successor_id, list);
       });
 
-      return depsMap;
+      const expiresAt = Date.now() + CACHE_TTL_MS;
+      missingIds.forEach((taskId) => {
+        const payload = fetched.get(taskId) || { dependencies_in: [], dependencies_out: [] };
+        dependenciesCacheRef.current[taskId] = { payload, expiresAt };
+        result.set(taskId, payload);
+      });
+
+      return result;
     } catch (err) {
       console.error('[TASKS] Failed to load dependencies', err);
-      return new Map<string, TaskDependenciesPayload>();
+      return result;
     }
   }, []);
 
@@ -273,50 +326,56 @@ export const useTasks = () => {
 
   const loadTasks = useCallback(async (): Promise<Task[]> => {
     const callId = ++loadCallIdRef.current;
-    if (isLoadingRef.current) {
+    if (currentLoadPromiseRef.current && isLoadingRef.current) {
       pendingReloadRef.current = true;
-      return lastLoadedTasksRef.current;
+      return currentLoadPromiseRef.current;
     }
     isLoadingRef.current = true;
-    try {
-      const { data, error } = await (supabase as any)
-        .from('tasks')
-        .select(TASK_SELECT)
-        .order('order', { ascending: true });
-      if (error) throw error;
+    const promise = (async () => {
+      try {
+        const { data, error } = await (supabase as any)
+          .from('tasks')
+          .select(TASK_SELECT)
+          .order('order', { ascending: true });
+        if (error) throw error;
 
-      const profilesById = await fetchAssigneeProfiles(data || []);
-      const depsByTaskId = await fetchDependencies((data || []).map((row: any) => row.id));
+        const profilesById = await fetchAssigneeProfiles(data || []);
+        const depsByTaskId = await fetchDependencies((data || []).map((row: any) => row.id));
 
-      const transformed = (data || []).map((row: any) => mapTaskRow(row, profilesById, depsByTaskId.get(row.id)));
+        const transformed = (data || []).map((row: any) => mapTaskRow(row, profilesById, depsByTaskId.get(row.id)));
 
-      if (callId < lastAppliedLoadIdRef.current) {
-        return lastLoadedTasksRef.current;
-      }
-
-      const now = Date.now();
-      deletedDependencyIdsRef.current.forEach((timestamp, depId) => {
-        if (now - timestamp > DELETION_SUPPRESSION_WINDOW_MS) {
-          deletedDependencyIdsRef.current.delete(depId);
+        if (callId < lastAppliedLoadIdRef.current) {
+          return lastLoadedTasksRef.current;
         }
-      });
 
-      lastLoadedTasksRef.current = transformed;
-      lastAppliedLoadIdRef.current = callId;
-      transformed.forEach((task) => {
-        addTask(task);
-      });
-      return transformed;
-    } catch (e) {
-      console.error('load tasks error', e);
-      return lastLoadedTasksRef.current;
-    } finally {
-      isLoadingRef.current = false;
-      if (pendingReloadRef.current) {
-        pendingReloadRef.current = false;
-        void loadTasks();
+        const now = Date.now();
+        deletedDependencyIdsRef.current.forEach((timestamp, depId) => {
+          if (now - timestamp > DELETION_SUPPRESSION_WINDOW_MS) {
+            deletedDependencyIdsRef.current.delete(depId);
+          }
+        });
+
+        lastLoadedTasksRef.current = transformed;
+        lastAppliedLoadIdRef.current = callId;
+        transformed.forEach((task) => {
+          addTask(task);
+        });
+        return transformed;
+      } catch (e) {
+        console.error('load tasks error', e);
+        return lastLoadedTasksRef.current;
+      } finally {
+        isLoadingRef.current = false;
+        currentLoadPromiseRef.current = null;
+        if (pendingReloadRef.current) {
+          pendingReloadRef.current = false;
+          void loadTasks();
+        }
       }
-    }
+    })();
+
+    currentLoadPromiseRef.current = promise;
+    return promise;
   }, [addTask, fetchAssigneeProfiles, fetchDependencies]);
 
   const markDependencyDirty = useCallback((taskId: string) => {
@@ -546,8 +605,8 @@ export const useTasks = () => {
       throw new Error('Task not found');
     }
 
-    const profilesById = await fetchAssigneeProfiles([data]);
-    const depsByTaskId = await fetchDependencies([data.id]);
+    const profilesById = await fetchAssigneeProfiles([data], { force: false });
+    const depsByTaskId = await fetchDependencies([data.id], { force: false });
 
     return mapTaskRow(data, profilesById, depsByTaskId.get(data.id));
   }, [fetchAssigneeProfiles, fetchDependencies]);
@@ -644,7 +703,7 @@ export const useTasks = () => {
       
       // Transform data to match expected format
       const profilesById = await fetchAssigneeProfiles([data]);
-      const depsByTaskId = await fetchDependencies([data.id]);
+      const depsByTaskId = await fetchDependencies([data.id], { force: true });
       const transformedData = mapTaskRow(data, profilesById, depsByTaskId.get(data.id));
       updateTask(updates.id, transformedData);
       console.log('[TASK-UPDATE] Local state updated');
