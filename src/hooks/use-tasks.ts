@@ -229,6 +229,47 @@ export const useTasks = () => {
     [setDependencyCache, tasks, updateTask],
   );
 
+  const dependencyExists = useCallback(async (depId?: string | null): Promise<boolean> => {
+    if (!depId) return false;
+    const { data, error } = await (supabase as any)
+      .from('task_dependencies')
+      .select('id')
+      .eq('id', depId)
+      .maybeSingle();
+    if (error && error.code !== 'PGRST116') {
+      console.warn('[DEPENDENCY-DELETE] existence check error', depId, error);
+      throw error;
+    }
+    return Boolean(data);
+  }, []);
+
+  const verifyDependencyDeletion = useCallback(
+    async (depId?: string | null, predecessorId?: string | null, successorId?: string | null) => {
+      if (!depId) return true;
+      const attempts = 6;
+      const baseDelay = 180;
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        const exists = await dependencyExists(depId);
+        if (!exists) {
+          console.debug('[DEPENDENCY-DELETE] verification succeeded', depId, 'attempt', attempt + 1);
+          applyDependencyRemovalImmediate(depId, predecessorId, successorId);
+          return true;
+        }
+        console.warn('[DEPENDENCY-DELETE] verification: dependency still exists', depId, 'attempt', attempt + 1);
+        await new Promise((resolve) => setTimeout(resolve, baseDelay * (attempt + 1)));
+        const { error } = await (supabase as any)
+          .from('task_dependencies')
+          .delete()
+          .eq('id', depId);
+        if (error && error.code !== 'PGRST116') {
+          console.warn('[DEPENDENCY-DELETE] re-delete attempt failed', depId, error);
+        }
+      }
+      return false;
+    },
+    [applyDependencyRemovalImmediate, dependencyExists],
+  );
+
   const loadTasks = useCallback(async (): Promise<Task[]> => {
     const callId = ++loadCallIdRef.current;
     if (isLoadingRef.current) {
@@ -294,6 +335,14 @@ export const useTasks = () => {
           const next = new Map(prev);
           uniqueIds.forEach((taskId) => {
             const payload = depsMap.get(taskId) || { dependencies_in: [], dependencies_out: [] };
+            const suppressedIn = (payload.dependencies_in || []).filter((dep) => shouldSuppressDependency(dep.id));
+            const suppressedOut = (payload.dependencies_out || []).filter((dep) => shouldSuppressDependency(dep.id));
+            if (suppressedIn.length || suppressedOut.length) {
+              console.debug('[TASKS][DEP-REFRESH] suppress entries for task', taskId, {
+                in: suppressedIn.map((dep) => dep.id),
+                out: suppressedOut.map((dep) => dep.id),
+              });
+            }
             next.set(taskId, {
               dependencies_in: (payload.dependencies_in || []).filter((dep) => !shouldSuppressDependency(dep.id)),
               dependencies_out: (payload.dependencies_out || []).filter((dep) => !shouldSuppressDependency(dep.id)),
@@ -304,6 +353,14 @@ export const useTasks = () => {
 
         uniqueIds.forEach((taskId) => {
           const data = depsMap.get(taskId) || { dependencies_in: [], dependencies_out: [] };
+          const suppressedIn = (data.dependencies_in || []).filter((dep) => shouldSuppressDependency(dep.id));
+          const suppressedOut = (data.dependencies_out || []).filter((dep) => shouldSuppressDependency(dep.id));
+          if (suppressedIn.length || suppressedOut.length) {
+            console.debug('[TASKS][DEP-REFRESH] suppress state update for task', taskId, {
+              in: suppressedIn.map((dep) => dep.id),
+              out: suppressedOut.map((dep) => dep.id),
+            });
+          }
           updateTask(taskId, {
             dependencies_in: (data.dependencies_in || []).filter((dep) => !shouldSuppressDependency(dep.id)),
             dependencies_out: (data.dependencies_out || []).filter((dep) => !shouldSuppressDependency(dep.id)),
@@ -315,7 +372,7 @@ export const useTasks = () => {
         console.debug('[TASKS][DEP-REFRESH] fetch finished', uniqueIds);
       }
     },
-    [fetchDependencies, updateTask],
+    [fetchDependencies, shouldSuppressDependency, updateTask],
   );
 
   const flushDependencyRefresh = useCallback(async () => {
@@ -695,6 +752,13 @@ export const useTasks = () => {
 
       markDependencyDeleted(dependencyId);
       await scheduleDependencyRefresh([predecessorId, successorId]);
+
+      const verified = await verifyDependencyDeletion(dependencyId, predecessorId, successorId);
+      if (!verified) {
+        console.error('[DEPENDENCY-DELETE] verification failed after retries', dependencyId);
+        throw new Error('Не удалось подтвердить удаление зависимости. Попробуйте позже.');
+      }
+
       pendingDependencyDeletionsRef.current.delete(dependencyId);
 
       console.debug('[DEPENDENCY-DELETE] completed', dependencyId, 'pending size', pendingDependencyDeletionsRef.current.size);
