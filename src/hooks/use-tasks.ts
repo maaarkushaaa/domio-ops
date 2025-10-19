@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Task } from '@/contexts/AppContext';
 import { sendTelegramNotification } from '@/services/telegram';
@@ -127,6 +127,10 @@ export const useTasks = () => {
   const lastAppliedLoadIdRef = useRef(0);
   const [dependencyCache, setDependencyCache] = useState(new Map<string, TaskDependenciesPayload>());
   const dependencyUpdatesRef = useRef<{ [taskId: string]: number }>({});
+  const dependencyRefreshQueueRef = useRef<Set<string>>(new Set());
+  const dependencyRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dependencyRefreshInFlightRef = useRef<Promise<void> | null>(null);
+  const dependencyRefreshWaitersRef = useRef<Array<() => void>>([]);
 
   const loadTasks = useCallback(async (): Promise<Task[]> => {
     const callId = ++loadCallIdRef.current;
@@ -173,7 +177,7 @@ export const useTasks = () => {
     dependencyUpdatesRef.current[taskId] = Date.now();
   }, []);
 
-  const refreshDependencyTasks = useCallback(
+  const executeDependencyRefresh = useCallback(
     async (taskIds: string[]) => {
       if (!taskIds.length) return;
       const uniqueIds = Array.from(new Set(taskIds.filter(Boolean)));
@@ -201,6 +205,64 @@ export const useTasks = () => {
       }
     },
     [fetchDependencies, updateTask],
+  );
+
+  const flushDependencyRefresh = useCallback(async () => {
+    dependencyRefreshTimerRef.current = null;
+    if (dependencyRefreshInFlightRef.current) {
+      try {
+        await dependencyRefreshInFlightRef.current;
+      } catch (err) {
+        console.warn('[TASKS] Pending dependency refresh failed', err);
+      }
+    }
+
+    const queue = dependencyRefreshQueueRef.current;
+    if (!queue.size) {
+      const waiters = dependencyRefreshWaitersRef.current.splice(0);
+      waiters.forEach((resolve) => resolve());
+      return;
+    }
+
+    const taskIds = Array.from(queue);
+    queue.clear();
+
+    const refreshPromise = executeDependencyRefresh(taskIds);
+    dependencyRefreshInFlightRef.current = refreshPromise;
+    try {
+      await refreshPromise;
+    } finally {
+      dependencyRefreshInFlightRef.current = null;
+      const waiters = dependencyRefreshWaitersRef.current.splice(0);
+      waiters.forEach((resolve) => resolve());
+      if (dependencyRefreshQueueRef.current.size) {
+        dependencyRefreshTimerRef.current = setTimeout(() => {
+          dependencyRefreshTimerRef.current = null;
+          void flushDependencyRefresh();
+        }, 60);
+      }
+    }
+  }, [executeDependencyRefresh]);
+
+  const scheduleDependencyRefresh = useCallback(
+    (taskIds: (string | undefined | null)[]): Promise<void> => {
+      const filtered = taskIds.filter((id): id is string => Boolean(id));
+      if (filtered.length) {
+        filtered.forEach((taskId) => dependencyRefreshQueueRef.current.add(taskId));
+      }
+
+      return new Promise<void>((resolve) => {
+        dependencyRefreshWaitersRef.current.push(resolve);
+
+        if (!dependencyRefreshTimerRef.current) {
+          dependencyRefreshTimerRef.current = setTimeout(() => {
+            dependencyRefreshTimerRef.current = null;
+            void flushDependencyRefresh();
+          }, 80);
+        }
+      });
+    },
+    [flushDependencyRefresh],
   );
 
   const applyRealtimeDependencyChange = useCallback(
@@ -254,15 +316,15 @@ export const useTasks = () => {
           });
           break;
         case 'UPDATE':
-          await refreshDependencyTasks([predecessorId, successorId, payload.old?.predecessor_id, payload.old?.successor_id].filter(Boolean) as string[]);
+          void scheduleDependencyRefresh([predecessorId, successorId, payload.old?.predecessor_id, payload.old?.successor_id]);
           break;
         default:
           break;
       }
 
-      await refreshDependencyTasks([predecessorId, successorId]);
+      void scheduleDependencyRefresh([predecessorId, successorId]);
     },
-    [markDependencyDirty, refreshDependencyTasks],
+    [markDependencyDirty, scheduleDependencyRefresh],
   );
 
   const fetchTaskDetails = useCallback(async (taskId: string) => {
@@ -489,7 +551,7 @@ export const useTasks = () => {
         .eq('id', dependencyId);
       if (deleteError) throw deleteError;
 
-      await refreshDependencyTasks([predecessorId, successorId].filter(Boolean) as string[]);
+      await scheduleDependencyRefresh([predecessorId, successorId]);
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
       throw err;
