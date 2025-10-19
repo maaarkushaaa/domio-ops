@@ -472,16 +472,22 @@ export const useTasks = () => {
       let predecessorId = meta?.predecessorId;
       let successorId = meta?.successorId;
 
-      const { data: deletedRow, error } = await (supabase as any)
+      if (!predecessorId || !successorId) {
+        const { data: existingRow, error: fetchError } = await (supabase as any)
+          .from('task_dependencies')
+          .select('id, predecessor_id, successor_id')
+          .eq('id', dependencyId)
+          .maybeSingle();
+        if (fetchError) throw fetchError;
+        predecessorId = predecessorId ?? existingRow?.predecessor_id;
+        successorId = successorId ?? existingRow?.successor_id;
+      }
+
+      const { error: deleteError } = await (supabase as any)
         .from('task_dependencies')
         .delete()
-        .eq('id', dependencyId)
-        .select('id, predecessor_id, successor_id')
-        .maybeSingle();
-      if (error) throw error;
-
-      predecessorId = predecessorId ?? deletedRow?.predecessor_id;
-      successorId = successorId ?? deletedRow?.successor_id;
+        .eq('id', dependencyId);
+      if (deleteError) throw deleteError;
 
       await refreshDependencyTasks([predecessorId, successorId].filter(Boolean) as string[]);
     } catch (err) {
