@@ -131,6 +131,28 @@ export const useTasks = () => {
   const dependencyRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dependencyRefreshInFlightRef = useRef<Promise<void> | null>(null);
   const dependencyRefreshWaitersRef = useRef<Array<() => void>>([]);
+  const deletedDependencyIdsRef = useRef(new Map<string, number>());
+  const DELETION_SUPPRESSION_WINDOW_MS = 4000;
+
+  const pruneDeletedDependencies = useCallback(() => {
+    const now = Date.now();
+    deletedDependencyIdsRef.current.forEach((timestamp, depId) => {
+      if (now - timestamp > DELETION_SUPPRESSION_WINDOW_MS) {
+        deletedDependencyIdsRef.current.delete(depId);
+      }
+    });
+  }, []);
+
+  const markDependencyDeleted = useCallback((depId?: string | null) => {
+    if (!depId) return;
+    deletedDependencyIdsRef.current.set(depId, Date.now());
+  }, []);
+
+  const isDependencyRecentlyDeleted = useCallback((depId?: string | null) => {
+    if (!depId) return false;
+    pruneDeletedDependencies();
+    return deletedDependencyIdsRef.current.has(depId);
+  }, [pruneDeletedDependencies]);
 
   const loadTasks = useCallback(async (): Promise<Task[]> => {
     const callId = ++loadCallIdRef.current;
@@ -154,6 +176,13 @@ export const useTasks = () => {
       if (callId < lastAppliedLoadIdRef.current) {
         return lastLoadedTasksRef.current;
       }
+
+      const now = Date.now();
+      deletedDependencyIdsRef.current.forEach((timestamp, depId) => {
+        if (now - timestamp > DELETION_SUPPRESSION_WINDOW_MS) {
+          deletedDependencyIdsRef.current.delete(depId);
+        }
+      });
 
       lastLoadedTasksRef.current = transformed;
       lastAppliedLoadIdRef.current = callId;
@@ -280,6 +309,10 @@ export const useTasks = () => {
 
       switch (payload.eventType) {
         case 'INSERT':
+          if (isDependencyRecentlyDeleted(depId)) {
+            console.debug('[TASKS] Skip realtime INSERT for recently deleted dependency', depId);
+            break;
+          }
           setDependencyCache((prev) => {
             const next = new Map(prev);
             const sourceOut = next.get(predecessorId)?.dependencies_out || [];
@@ -300,6 +333,7 @@ export const useTasks = () => {
           });
           break;
         case 'DELETE':
+          markDependencyDeleted(depId);
           setDependencyCache((prev) => {
             const next = new Map(prev);
             const currentPredecessor = next.get(predecessorId) || { dependencies_in: [], dependencies_out: [] };
@@ -551,6 +585,7 @@ export const useTasks = () => {
         .eq('id', dependencyId);
       if (deleteError) throw deleteError;
 
+      markDependencyDeleted(dependencyId);
       await scheduleDependencyRefresh([predecessorId, successorId]);
     } catch (err) {
       console.error('[DEPENDENCY-DELETE] Failed to delete dependency:', err);
