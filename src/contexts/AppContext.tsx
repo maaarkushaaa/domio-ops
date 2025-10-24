@@ -27,7 +27,7 @@ export interface Task {
   project?: { id: string; name: string } | null;
   tags?: string[];
   parent_task_id?: string | null;
-  order?: number | null;
+  order: number;
   _comment_count?: number;
   _checklist_count?: number;
   dependencies_in?: { id: string; from_id: string }[];
@@ -589,3 +589,594 @@ export function useApp() {
   }
   return context;
 }
+
+
+        // Realtime подписка на изменения
+
+        const channel = supabase
+
+          .channel('products_changes')
+
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+
+            loadProducts();
+
+          })
+
+          .subscribe();
+
+
+
+        return () => {
+
+          supabase.removeChannel(channel);
+
+        };
+
+      } catch (error) {
+
+        console.error('Error loading products:', error);
+
+      }
+
+    };
+
+
+
+    loadProducts();
+
+  }, [state.user]);
+
+
+
+  const setUser = (user: User | null) => {
+
+    console.log('👤 Setting user:', user ? `${user.email} (${user.role})` : 'null');
+
+    setState(prev => ({ ...prev, user }));
+
+  };
+
+
+
+  const signIn = async (email: string, password: string) => {
+
+    if (!password || password.trim().length === 0) {
+
+      throw new Error('Пароль не может быть пустым');
+
+    }
+
+
+
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+
+      email,
+
+      password,
+
+    });
+
+
+
+    if (authError) {
+
+      console.error('❌ Login failed:', authError.message);
+
+      throw new Error('Неверный email или пароль');
+
+    }
+
+
+
+    if (!authData.user) {
+
+      throw new Error('Ошибка аутентификации');
+
+    }
+
+
+
+    // Auth state change listener will handle setting the user
+
+    console.log('✅ Login successful');
+
+  };
+
+
+
+  const signUp = async (email: string, password: string, name: string) => {
+
+    if (!email || !password || !name) {
+
+      throw new Error('Все поля обязательны для заполнения');
+
+    }
+
+
+
+    if (password.length < 6) {
+
+      throw new Error('Пароль должен быть не менее 6 символов');
+
+    }
+
+
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+
+      email,
+
+      password,
+
+      options: {
+
+        data: {
+
+          full_name: name,
+
+        },
+
+        emailRedirectTo: `${window.location.origin}/`,
+
+      }
+
+    });
+
+
+
+    if (authError) {
+
+      console.error('❌ Signup failed:', authError.message);
+
+      throw new Error(authError.message === 'User already registered' 
+
+        ? 'Пользователь с таким email уже зарегистрирован'
+
+        : 'Ошибка регистрации');
+
+    }
+
+
+
+    if (!authData.user) {
+
+      throw new Error('Ошибка создания пользователя');
+
+    }
+
+
+
+    // Role assignment is handled by the database trigger automatically
+
+    console.log('✅ Registration successful');
+
+  };
+
+
+
+  const signOut = async () => {
+
+    try {
+
+      // Sign out from Supabase
+
+      await supabase.auth.signOut();
+
+    } catch (error) {
+
+      console.error('Supabase signout error:', error);
+
+    }
+
+    
+
+    // Clear local state
+
+    setUser(null);
+
+  };
+
+
+
+  const addTask = (task: any) => {
+
+    const now = new Date().toISOString();
+
+    const newTask: Task = {
+
+      ...task,
+
+      id: task.id || Date.now().toString(),
+
+      created_at: task.created_at || now,
+
+      updated_at: task.updated_at || now,
+
+      dependencies_in: task.dependencies_in || [],
+
+      dependencies_out: task.dependencies_out || [],
+
+    };
+
+    setState(prev => {
+
+      const exists = prev.tasks.some(t => t.id === newTask.id);
+
+      return exists
+
+        ? { ...prev, tasks: prev.tasks.map(t => (t.id === newTask.id ? { ...t, ...newTask } : t)) }
+
+        : { ...prev, tasks: [...prev.tasks, newTask] };
+
+    });
+
+  };
+
+
+
+  const updateTask = (id: string, updates: Partial<Task>) => {
+
+    setState(prev => ({
+
+      ...prev,
+
+      tasks: prev.tasks.map(task =>
+
+        task.id === id ? { ...task, ...updates, updated_at: new Date().toISOString() } : task
+
+      ),
+
+    }));
+
+  };
+
+
+
+  const deleteTask = (id: string) => {
+
+    setState(prev => ({
+
+      ...prev,
+
+      tasks: prev.tasks.filter(task => task.id !== id),
+
+    }));
+
+  };
+
+
+
+  const addProject = (project: any) => {
+
+    const newProject: Project = {
+
+      ...project,
+
+      id: project.id || Date.now().toString(),
+
+      created_at: project.created_at || new Date().toISOString(),
+
+    } as Project;
+
+    setState(prev => {
+
+      const exists = prev.projects.some(p => p.id === newProject.id);
+
+      return exists
+
+        ? { ...prev, projects: prev.projects.map(p => (p.id === newProject.id ? { ...p, ...newProject } : p)) }
+
+        : { ...prev, projects: [...prev.projects, newProject] };
+
+    });
+
+  };
+
+
+
+  const setProjects = (projects: Project[]) => {
+
+    setState(prev => ({
+
+      ...prev,
+
+      projects,
+
+    }));
+
+  };
+
+
+
+  const updateProject = (id: string, updates: Partial<Project>) => {
+
+    setState(prev => ({
+
+      ...prev,
+
+      projects: prev.projects.map(project =>
+
+        project.id === id ? { ...project, ...updates } : project
+
+      ),
+
+    }));
+
+  };
+
+
+
+  const deleteProject = (id: string) => {
+
+    setState(prev => ({
+
+      ...prev,
+
+      projects: prev.projects.filter(project => project.id !== id),
+
+    }));
+
+  };
+
+
+
+  const addClient = (client: Omit<Client, 'id' | 'created_at'>) => {
+
+    const newClient: Client = {
+
+      ...client,
+
+      id: Date.now().toString(),
+
+      created_at: new Date().toISOString(),
+
+    };
+
+    setState(prev => ({ ...prev, clients: [...prev.clients, newClient] }));
+
+  };
+
+
+
+  const updateClient = (id: string, updates: Partial<Client>) => {
+
+    setState(prev => ({
+
+      ...prev,
+
+      clients: prev.clients.map(client =>
+
+        client.id === id ? { ...client, ...updates } : client
+
+      ),
+
+    }));
+
+  };
+
+
+
+  const addProduct = async (product: Omit<Product, 'id' | 'created_at'>) => {
+
+    try {
+
+      // Сохраняем в Supabase (прогресс будет рассчитан автоматически)
+
+      const { data, error } = await (supabase as any)
+
+        .from('products')
+
+        .insert({
+
+          name: product.name,
+
+          sku: product.sku,
+
+          description: product.description,
+
+          status: product.status,
+
+          progress: 0, // Начальный прогресс, будет обновлен автоматически
+
+          assignee_id: product.assignee_id,
+
+          deadline: product.deadline,
+
+          unit_price: product.unit_price,
+
+          quantity_in_stock: product.quantity_in_stock,
+
+        })
+
+        .select()
+
+        .single();
+
+
+
+      if (error) {
+
+        console.error('Error creating product:', error);
+
+        alert('Ошибка при создании изделия: ' + error.message);
+
+        return;
+
+      }
+
+
+
+      // Обновляем локальный стейт с реальным UUID из БД
+
+      setState(prev => ({ ...prev, products: [...prev.products, data] }));
+
+      
+
+      // Автоматически рассчитываем прогресс для нового изделия
+
+      setTimeout(async () => {
+
+        try {
+
+          const { updateProductProgress } = useProductProgress();
+
+          await updateProductProgress(data.id);
+
+        } catch (error) {
+
+          console.error('Error updating progress for new product:', error);
+
+        }
+
+      }, 1000); // Небольшая задержка для завершения создания
+
+      
+
+      console.log('Product created successfully:', data);
+
+    } catch (error) {
+
+      console.error('Error creating product:', error);
+
+      alert('Ошибка при создании изделия: ' + (error as Error).message);
+
+    }
+
+  };
+
+
+
+  const updateProduct = (id: string, updates: Partial<Product>) => {
+
+    setState(prev => ({
+
+      ...prev,
+
+      products: prev.products.map(product =>
+
+        product.id === id ? { ...product, ...updates } : product
+
+      ),
+
+    }));
+
+  };
+
+
+
+  const addFinancialOperation = (operation: Omit<FinancialOperation, 'id' | 'created_at'>) => {
+
+    const newOperation: FinancialOperation = {
+
+      ...operation,
+
+      id: Date.now().toString(),
+
+      created_at: new Date().toISOString(),
+
+    };
+
+    setState(prev => ({
+
+      ...prev,
+
+      financialOperations: [...prev.financialOperations, newOperation],
+
+    }));
+
+  };
+
+
+
+  const addSupplier = (supplier: Omit<Supplier, 'id' | 'created_at'>) => {
+
+    const newSupplier: Supplier = {
+
+      ...supplier,
+
+      id: Date.now().toString(),
+
+      created_at: new Date().toISOString(),
+
+    };
+
+    setState(prev => ({ ...prev, suppliers: [...prev.suppliers, newSupplier] }));
+
+  };
+
+
+
+  return (
+
+    <AppContext.Provider
+
+      value={{
+
+        ...state,
+
+        isLoadingAuth,
+
+        setUser,
+
+        addTask,
+
+        updateTask,
+
+        deleteTask,
+
+        addProject,
+
+        updateProject,
+
+        setProjects,
+
+        deleteProject,
+
+        addClient,
+
+        updateClient,
+
+        addProduct,
+
+        updateProduct,
+
+        addFinancialOperation,
+
+        addSupplier,
+
+        signIn,
+
+        signUp,
+
+        signOut,
+
+      }}
+
+    >
+
+      {children}
+
+    </AppContext.Provider>
+
+  );
+
+}
+
+
+
+export function useApp() {
+
+  const context = useContext(AppContext);
+
+  if (context === undefined) {
+
+    throw new Error('useApp must be used within an AppProvider');
+
+  }
+
+  return context;
+
+}
+
+

@@ -104,6 +104,7 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
         assignee_id: assigneeId || null,
         due_date: due_from || null,
         due_end: due_to as any,
+        order: initialTask.order || 0,
       });
     } else {
       await createTask({
@@ -115,6 +116,7 @@ export function TaskDialog({ trigger, onClose, defaultStatus = 'backlog', openEx
         assignee_id: assigneeId || null,
         due_date: due_from || null,
         due_end: due_to as any,
+        order: 0,
       } as any);
     }
 

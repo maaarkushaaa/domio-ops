@@ -43,7 +43,7 @@ const mapTaskRow = (
   due_end: row.due_end || undefined,
   tags: row.tags ?? undefined,
   parent_task_id: row.parent_task_id || null,
-  order: row.order ?? null,
+  order: row.order ?? 0,
   created_at: row.created_at,
   updated_at: row.updated_at,
   _comment_count: row.comment_count?.[0]?.count || 0,
@@ -668,7 +668,7 @@ export const useTasks = () => {
         due_end: (task as any).due_end || null,
         tags: (task as any).tags || null,
         parent_task_id: (task as any).parent_task_id || null,
-        order: (task as any).order ?? null,
+        order: (task as any).order ?? 0,
       })
       .select(TASK_SELECT)
       .single();
